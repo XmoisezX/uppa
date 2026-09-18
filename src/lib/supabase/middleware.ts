@@ -10,6 +10,17 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
+  const pathname = request.nextUrl.pathname;
+
+  // Rotas de API que usam service role ou autenticação própria por header
+  if (
+    pathname.startsWith("/api/feeds") ||
+    pathname.startsWith("/api/webhooks") ||
+    pathname.startsWith("/api/internal")
+  ) {
+    return supabaseResponse;
+  }
+
   const supabaseUrl =
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const supabaseKey =
@@ -18,6 +29,29 @@ export async function updateSession(request: NextRequest) {
     process.env.SUPABASE_PUBLISHABLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
+    return supabaseResponse;
+  }
+
+  const allCookies = request.cookies.getAll();
+  const hasAuthCookie = allCookies.some(
+    (c) => c.name.includes("auth-token") || c.name.startsWith("sb-")
+  );
+
+  // Se for rota privada (/painel) e não tem nenhum cookie de autenticação, redireciona de imediato
+  if (!hasAuthCookie && pathname.startsWith("/painel")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/entrar";
+    url.searchParams.set("redirectTo", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Se rota pública e sem cookie de autenticação, não precisa chamar rede externa
+  if (
+    !hasAuthCookie &&
+    !pathname.startsWith("/painel") &&
+    pathname !== "/entrar" &&
+    pathname !== "/cadastrar"
+  ) {
     return supabaseResponse;
   }
 
@@ -44,8 +78,6 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const pathname = request.nextUrl.pathname;
 
   // Proteção da rota /painel: exige autenticação
   if (!user && pathname.startsWith("/painel")) {
