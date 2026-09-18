@@ -497,18 +497,4 @@ export class VRSyncParser {
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'");
   }
-
-  private parseNumeric(val: string | null): number | undefined {
-    if (!val) return undefined;
-    const clean = val.replace(/[^\d.,]/g, "").replace(",", ".");
-    const num = parseFloat(clean);
-    return isNaN(num) ? undefined : num;
-  }
-
-  private parseIntSafe(val: string | null): number {
-    if (!val) return 0;
-    const clean = val.replace(/\D/g, "");
-    const num = parseInt(clean, 10);
-    return isNaN(num) ? 0 : num;
-  }
 }
