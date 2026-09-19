@@ -76,6 +76,11 @@ const SEARCH_PROPERTIES_SELECT = `
     name,
     slug
   ),
+  neighborhood:neighborhoods!neighborhood_id (
+    id,
+    name,
+    slug
+  ),
   state:states!state_id (
     id,
     code,
@@ -240,6 +245,8 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
     query = query.order(priceColumn, { ascending: true, nullsFirst: false });
   } else if (filters.orderBy === "price_desc") {
     query = query.order(priceColumn, { ascending: false, nullsFirst: false });
+  } else if (filters.orderBy === "area_desc") {
+    query = query.order("usable_area", { ascending: false, nullsFirst: false });
   } else {
     // Padrão: mais recentes primeiro
     query = query.order("published_at", { ascending: false, nullsFirst: false });
@@ -316,6 +323,7 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
       longitude: lng,
       publishedAt: row.published_at,
       city: row.city,
+      neighborhood: row.neighborhood,
       state: row.state,
       agency: row.agency
         ? {

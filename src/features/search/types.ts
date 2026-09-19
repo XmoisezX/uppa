@@ -18,7 +18,7 @@ export interface SearchFilters {
   acceptsExchange?: boolean;
   page?: number;
   limit?: number;
-  orderBy?: "recent" | "price_asc" | "price_desc";
+  orderBy?: "recent" | "price_asc" | "price_desc" | "area_desc";
   bbox?: {
     north: number;
     south: number;
@@ -54,6 +54,11 @@ export interface SearchPropertyItem {
   longitude?: number | null;
   publishedAt?: string | null;
   city?: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+  neighborhood?: {
     id: string;
     name: string;
     slug: string;

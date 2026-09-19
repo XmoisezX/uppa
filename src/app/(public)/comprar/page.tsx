@@ -81,9 +81,9 @@ export async function generateMetadata({ searchParams }: ComprarPageProps): Prom
     (filters.page && filters.page > 1)
   );
 
-  const title = "Imóveis à Venda no Brasil | Portal Imobiliário";
+  const title = "Imóveis à Venda no Brasil | UPPA";
   const description =
-    "Encontre casas, apartamentos e terrenos à venda com preços atualizados e contato direto com imobiliárias credenciadas.";
+    "Encontre casas, apartamentos e terrenos à venda com preços atualizados e contato direto com imobiliárias credenciadas na UPPA.";
 
   return {
     title,

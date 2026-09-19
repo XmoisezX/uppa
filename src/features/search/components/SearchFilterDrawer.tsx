@@ -1,10 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { X, SlidersHorizontal, Check } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, SlidersHorizontal, RotateCcw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import type { SearchFilters } from "../types";
 import type { PropertyType } from "@/types/property";
 
@@ -13,17 +11,18 @@ interface SearchFilterDrawerProps {
   onClose: () => void;
   filters: SearchFilters;
   onApply: (newFilters: Partial<SearchFilters>) => void;
+  total?: number;
 }
 
 const PROPERTY_TYPES: { id: PropertyType; label: string }[] = [
   { id: "apartment", label: "Apartamento" },
   { id: "house", label: "Casa" },
-  { id: "townhouse", label: "Sobrado" },
   { id: "condo_house", label: "Casa em Condomínio" },
+  { id: "townhouse", label: "Sobrado" },
+  { id: "land", label: "Terreno" },
   { id: "penthouse", label: "Cobertura" },
   { id: "studio", label: "Studio" },
-  { id: "loft", label: "Loft" },
-  { id: "land", label: "Terreno / Lote" },
+  { id: "kitnet", label: "Kitnet" },
   { id: "commercial", label: "Comercial" },
   { id: "farm", label: "Chácara / Sítio" },
 ];
@@ -33,10 +32,17 @@ export function SearchFilterDrawer({
   onClose,
   filters,
   onApply,
+  total,
 }: SearchFilterDrawerProps) {
   const [localFilters, setLocalFilters] = useState<SearchFilters>(filters);
 
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters, isOpen]);
+
   if (!isOpen) return null;
+
+  const isRent = localFilters.transactionType === "rent";
 
   const handleApply = () => {
     onApply(localFilters);
@@ -44,14 +50,14 @@ export function SearchFilterDrawer({
   };
 
   const handleClear = () => {
-    setLocalFilters({
-      transactionType: filters.transactionType, // mantém se estiver em /comprar ou /alugar
-    });
-    onApply({
+    const cleared: SearchFilters = {
       transactionType: filters.transactionType,
-      state: undefined,
-      city: undefined,
-      neighborhood: undefined,
+      city: filters.city,
+      state: filters.state,
+      neighborhood: filters.neighborhood,
+    };
+    setLocalFilters(cleared);
+    onApply({
       propertyType: undefined,
       priceMin: undefined,
       priceMax: undefined,
@@ -75,26 +81,35 @@ export function SearchFilterDrawer({
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="h-5 w-5 text-indigo-600" />
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              Todos os Filtros
+              Filtros
             </h2>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleClear}
+              className="text-xs font-semibold text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 p-1 cursor-pointer"
+            >
+              Limpar
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* CORPO DE FILTROS COM SCROLL */}
         <div className="flex-1 overflow-y-auto p-5 space-y-6 text-xs">
           {/* 1. TIPO DE IMÓVEL */}
           <div>
-            <Label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">
+            <label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">
               Tipo do Imóvel
-            </Label>
+            </label>
             <div className="grid grid-cols-2 gap-2">
               {PROPERTY_TYPES.map((t) => {
                 const isSelected = localFilters.propertyType === t.id;
@@ -108,10 +123,10 @@ export function SearchFilterDrawer({
                         propertyType: isSelected ? undefined : t.id,
                       }))
                     }
-                    className={`p-2.5 rounded-lg border text-left transition-all ${
+                    className={`p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
                       isSelected
-                        ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-200 font-semibold"
-                        : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850"
+                        ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-200 font-bold"
+                        : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50"
                     }`}
                   >
                     {t.label}
@@ -121,17 +136,17 @@ export function SearchFilterDrawer({
             </div>
           </div>
 
-          {/* 2. VALORES (PREÇO MÍN E MÁX) */}
-          <div>
-            <Label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">
-              Faixa de Preço (R$)
-            </Label>
-            <div className="grid grid-cols-2 gap-3">
+          {/* 2. FAIXA DE PREÇO */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-900 dark:text-white block">
+              Faixa de Preço {isRent ? "(Mensal)" : ""}
+            </label>
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <span className="text-[10px] text-slate-400 block mb-1">Mínimo</span>
-                <Input
+                <span className="text-[10px] text-slate-400 block mb-1">Mínimo (R$)</span>
+                <input
                   type="number"
-                  placeholder="R$ 0"
+                  placeholder="0"
                   value={localFilters.priceMin || ""}
                   onChange={(e) =>
                     setLocalFilters((prev) => ({
@@ -139,12 +154,12 @@ export function SearchFilterDrawer({
                       priceMin: e.target.value ? Number(e.target.value) : undefined,
                     }))
                   }
+                  className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
-
               <div>
-                <span className="text-[10px] text-slate-400 block mb-1">Máximo</span>
-                <Input
+                <span className="text-[10px] text-slate-400 block mb-1">Máximo (R$)</span>
+                <input
                   type="number"
                   placeholder="Sem limite"
                   value={localFilters.priceMax || ""}
@@ -154,105 +169,138 @@ export function SearchFilterDrawer({
                       priceMax: e.target.value ? Number(e.target.value) : undefined,
                     }))
                   }
+                  className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
             </div>
           </div>
 
-          {/* 3. DORMITÓRIOS */}
+          {/* 3. QUARTOS */}
           <div>
-            <Label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">
+            <label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">
               Quartos
-            </Label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4].map((num) => (
+            </label>
+            <div className="grid grid-cols-5 gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setLocalFilters((prev) => ({ ...prev, bedrooms: undefined }))}
+                className={`h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  !localFilters.bedrooms
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
+                    : "text-slate-500"
+                }`}
+              >
+                Todos
+              </button>
+              {[1, 2, 3, 4].map((n) => (
                 <button
-                  key={num}
+                  key={n}
                   type="button"
                   onClick={() =>
                     setLocalFilters((prev) => ({
                       ...prev,
-                      bedrooms: prev.bedrooms === num ? undefined : num,
+                      bedrooms: prev.bedrooms === n ? undefined : n,
                     }))
                   }
-                  className={`flex-1 py-2 rounded-lg border text-center font-bold transition-all ${
-                    localFilters.bedrooms === num
-                      ? "border-indigo-600 bg-indigo-600 text-white"
-                      : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850"
+                  className={`h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    localFilters.bedrooms === n
+                      ? "bg-indigo-600 text-white shadow-2xs"
+                      : "text-slate-600 dark:text-slate-400"
                   }`}
                 >
-                  {num}+
+                  {n}+
                 </button>
               ))}
             </div>
           </div>
 
-          {/* 4. BANHEIROS & VAGAS */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">
-                Banheiros
-              </Label>
-              <div className="flex gap-1.5">
-                {[1, 2, 3].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() =>
-                      setLocalFilters((prev) => ({
-                        ...prev,
-                        bathrooms: prev.bathrooms === num ? undefined : num,
-                      }))
-                    }
-                    className={`flex-1 py-1.5 rounded-lg border text-center font-semibold ${
-                      localFilters.bathrooms === num
-                        ? "border-indigo-600 bg-indigo-600 text-white"
-                        : "border-slate-200 dark:border-slate-800 hover:bg-slate-50"
-                    }`}
-                  >
-                    {num}+
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">
-                Vagas
-              </Label>
-              <div className="flex gap-1.5">
-                {[1, 2, 3].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() =>
-                      setLocalFilters((prev) => ({
-                        ...prev,
-                        parkingSpaces: prev.parkingSpaces === num ? undefined : num,
-                      }))
-                    }
-                    className={`flex-1 py-1.5 rounded-lg border text-center font-semibold ${
-                      localFilters.parkingSpaces === num
-                        ? "border-indigo-600 bg-indigo-600 text-white"
-                        : "border-slate-200 dark:border-slate-800 hover:bg-slate-50"
-                    }`}
-                  >
-                    {num}+
-                  </button>
-                ))}
-              </div>
+          {/* 4. BANHEIROS */}
+          <div>
+            <label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">
+              Banheiros
+            </label>
+            <div className="grid grid-cols-5 gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setLocalFilters((prev) => ({ ...prev, bathrooms: undefined }))}
+                className={`h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  !localFilters.bathrooms
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
+                    : "text-slate-500"
+                }`}
+              >
+                Todos
+              </button>
+              {[1, 2, 3, 4].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() =>
+                    setLocalFilters((prev) => ({
+                      ...prev,
+                      bathrooms: prev.bathrooms === n ? undefined : n,
+                    }))
+                  }
+                  className={`h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    localFilters.bathrooms === n
+                      ? "bg-indigo-600 text-white shadow-2xs"
+                      : "text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  {n}+
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* 5. METRAGEM ÚTIL (M²) */}
+          {/* 5. VAGAS */}
           <div>
-            <Label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">
-              Área Útil Privativa (m²)
-            </Label>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
+            <label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">
+              Vagas de Garagem
+            </label>
+            <div className="grid grid-cols-4 gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setLocalFilters((prev) => ({ ...prev, parkingSpaces: undefined }))}
+                className={`h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  !localFilters.parkingSpaces
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
+                    : "text-slate-500"
+                }`}
+              >
+                Todas
+              </button>
+              {[1, 2, 3].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() =>
+                    setLocalFilters((prev) => ({
+                      ...prev,
+                      parkingSpaces: prev.parkingSpaces === n ? undefined : n,
+                    }))
+                  }
+                  className={`h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    localFilters.parkingSpaces === n
+                      ? "bg-indigo-600 text-white shadow-2xs"
+                      : "text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  {n}+
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 6. ÁREA ÚTIL */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-900 dark:text-white block">
+              Área Útil (m²)
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <input
                 type="number"
-                placeholder="Mín m²"
+                placeholder="Mínima (m²)"
                 value={localFilters.areaMin || ""}
                 onChange={(e) =>
                   setLocalFilters((prev) => ({
@@ -260,10 +308,11 @@ export function SearchFilterDrawer({
                     areaMin: e.target.value ? Number(e.target.value) : undefined,
                   }))
                 }
+                className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
               />
-              <Input
+              <input
                 type="number"
-                placeholder="Máx m²"
+                placeholder="Máxima (m²)"
                 value={localFilters.areaMax || ""}
                 onChange={(e) =>
                   setLocalFilters((prev) => ({
@@ -271,83 +320,87 @@ export function SearchFilterDrawer({
                     areaMax: e.target.value ? Number(e.target.value) : undefined,
                   }))
                 }
+                className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
               />
             </div>
           </div>
 
-          {/* 6. CONDIÇÕES ESPECIAIS */}
-          <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={Boolean(localFilters.financiable)}
-                onChange={(e) =>
-                  setLocalFilters((prev) => ({
-                    ...prev,
-                    financiable: e.target.checked || undefined,
-                  }))
-                }
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                Aceita Financiamento Imobiliário
-              </span>
+          {/* 7. CARACTERÍSTICAS */}
+          <div>
+            <label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">
+              Características
             </label>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={Boolean(localFilters.financiable)}
+                  onChange={(e) =>
+                    setLocalFilters((prev) => ({
+                      ...prev,
+                      financiable: e.target.checked ? true : undefined,
+                    }))
+                  }
+                  className="h-4 w-4 rounded-sm border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">
+                  Financiável
+                </span>
+              </label>
 
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={Boolean(localFilters.furnished)}
-                onChange={(e) =>
-                  setLocalFilters((prev) => ({
-                    ...prev,
-                    furnished: e.target.checked || undefined,
-                  }))
-                }
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                Imóvel Mobiliado
-              </span>
-            </label>
+              <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={Boolean(localFilters.furnished)}
+                  onChange={(e) =>
+                    setLocalFilters((prev) => ({
+                      ...prev,
+                      furnished: e.target.checked ? true : undefined,
+                    }))
+                  }
+                  className="h-4 w-4 rounded-sm border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">
+                  Mobiliado
+                </span>
+              </label>
 
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={Boolean(localFilters.acceptsExchange)}
-                onChange={(e) =>
-                  setLocalFilters((prev) => ({
-                    ...prev,
-                    acceptsExchange: e.target.checked || undefined,
-                  }))
-                }
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                Aceita Permuta / Troca
-              </span>
-            </label>
+              <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={Boolean(localFilters.acceptsExchange)}
+                  onChange={(e) =>
+                    setLocalFilters((prev) => ({
+                      ...prev,
+                      acceptsExchange: e.target.checked ? true : undefined,
+                    }))
+                  }
+                  className="h-4 w-4 rounded-sm border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">
+                  Aceita Permuta
+                </span>
+              </label>
+            </div>
           </div>
         </div>
 
-        {/* RODAPÉ DO DRAWER: LIMPAR E APLICAR */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-850">
+        {/* RODAPÉ STICKY COM BOTÃO APLICAR */}
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-3">
           <Button
             type="button"
-            variant="ghost"
-            size="sm"
+            variant="outline"
             onClick={handleClear}
-            className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+            className="flex-1 h-11 rounded-xl text-xs font-bold cursor-pointer"
           >
             Limpar Filtros
           </Button>
-
           <Button
             type="button"
             onClick={handleApply}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-6 cursor-pointer"
+            className="flex-1 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer shadow-md"
           >
-            Aplicar Filtros
+            {total !== undefined ? `Ver ${total} imóveis` : "Aplicar Filtros"}
           </Button>
         </div>
       </div>

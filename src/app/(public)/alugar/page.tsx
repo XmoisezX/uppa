@@ -79,9 +79,9 @@ export async function generateMetadata({ searchParams }: AlugarPageProps): Promi
     (filters.page && filters.page > 1)
   );
 
-  const title = "Imóveis para Alugar no Brasil | Portal Imobiliário";
+  const title = "Imóveis para Alugar no Brasil | UPPA";
   const description =
-    "Pesquise apartamentos, casas e salas comerciais para alugar. Negocie diretamente com imobiliárias parceiras credenciadas.";
+    "Pesquise apartamentos, casas e salas comerciais para alugar. Negocie diretamente com imobiliárias parceiras credenciadas na UPPA.";
 
   return {
     title,
