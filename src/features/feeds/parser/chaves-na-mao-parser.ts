@@ -130,9 +130,11 @@ export class ChavesNaMaoParser {
     const rawType2 = this.getTagValue(xml, "tipo2") || "";
     const propertyType = this.normalizePropertyType(rawType || rawType2);
 
-    // 6. Dimensões e Áreas
-    const usableArea = this.parseOptionalDecimal(this.getTagValue(xml, "area_util"));
-    const totalArea = this.parseOptionalDecimal(this.getTagValue(xml, "area_total"));
+    // 6. Dimensões e Áreas (com limite seguro para colunas numeric(10,2) do banco)
+    let usableArea = this.parseOptionalDecimal(this.getTagValue(xml, "area_util"));
+    if (usableArea && usableArea > 99999999) usableArea = 99999999;
+    let totalArea = this.parseOptionalDecimal(this.getTagValue(xml, "area_total"));
+    if (totalArea && totalArea > 99999999) totalArea = 99999999;
 
     // 7. Cômodos e Vagas
     const bedrooms = this.parseOptionalInteger(this.getTagValue(xml, "quartos"));
@@ -226,13 +228,13 @@ export class ChavesNaMaoParser {
 
     return {
       country: "Brasil",
-      state,
-      city,
-      neighborhood,
-      street,
-      number,
-      complement,
-      postalCode,
+      state: state || undefined,
+      city: city || undefined,
+      neighborhood: neighborhood || undefined,
+      street: street || undefined,
+      number: number || undefined,
+      complement: complement || undefined,
+      postalCode: postalCode || undefined,
       latitude,
       longitude,
     };

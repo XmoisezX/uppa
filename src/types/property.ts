@@ -34,7 +34,7 @@ export type PropertyType =
   | "rural"
   | "other";
 
-export type ListingSource = "manual" | "vrsync" | "api" | "csv" | "partner";
+export type ListingSource = "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao";
 
 export type MediaType = "image" | "video" | "virtual_tour" | "floor_plan";
 

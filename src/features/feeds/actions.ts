@@ -8,7 +8,7 @@ import {
   getFeedRunErrors,
 } from "./services";
 import type { SyncExecutionReport } from "./sync/feed-sync-manager";
-import type { Feed, FeedError } from "@/types/feed";
+import type { Feed, FeedError, FeedType } from "@/types/feed";
 
 export interface SyncFeedActionResult {
   success: boolean;

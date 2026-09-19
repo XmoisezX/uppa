@@ -276,7 +276,7 @@ export interface Database {
           agency_id: string;
           broker_id: string | null;
           external_id: string;
-          source: "manual" | "vrsync" | "api" | "csv" | "partner";
+          source: "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao";
           slug: string;
           title: string;
           description: string | null;
@@ -345,7 +345,7 @@ export interface Database {
           agency_id: string;
           broker_id?: string | null;
           external_id: string;
-          source?: "manual" | "vrsync" | "api" | "csv" | "partner";
+          source?: "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao";
           slug: string;
           title: string;
           description?: string | null;
@@ -414,7 +414,7 @@ export interface Database {
           agency_id?: string;
           broker_id?: string | null;
           external_id?: string;
-          source?: "manual" | "vrsync" | "api" | "csv" | "partner";
+          source?: "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao";
           slug?: string;
           title?: string;
           description?: string | null;
@@ -848,7 +848,7 @@ export interface Database {
         Row: {
           id: string;
           agency_id: string;
-          type: "vrsync" | "custom_xml" | "api";
+          type: "vrsync" | "custom_xml" | "chaves_na_mao" | "api";
           url: string;
           username_encrypted: string | null;
           password_encrypted: string | null;
@@ -865,7 +865,7 @@ export interface Database {
         Insert: {
           id?: string;
           agency_id: string;
-          type?: "vrsync" | "custom_xml" | "api";
+          type?: "vrsync" | "custom_xml" | "chaves_na_mao" | "api";
           url: string;
           username_encrypted?: string | null;
           password_encrypted?: string | null;
@@ -882,7 +882,7 @@ export interface Database {
         Update: {
           id?: string;
           agency_id?: string;
-          type?: "vrsync" | "custom_xml" | "api";
+          type?: "vrsync" | "custom_xml" | "chaves_na_mao" | "api";
           url?: string;
           username_encrypted?: string | null;
           password_encrypted?: string | null;
@@ -1048,7 +1048,7 @@ export interface Database {
         | "condo_house"
         | "rural"
         | "other";
-      listing_source: "manual" | "vrsync" | "api" | "csv" | "partner";
+      listing_source: "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao";
       media_type: "image" | "video" | "virtual_tour" | "floor_plan";
       lead_source: "whatsapp" | "form" | "phone" | "email" | "financing";
     };

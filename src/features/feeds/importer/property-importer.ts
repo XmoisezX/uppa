@@ -254,9 +254,9 @@ export class PropertyImporter {
           bathrooms: prop.bathrooms || 0,
           suites: prop.suites || 0,
           parking_spaces: prop.parkingSpaces || 0,
-          usable_area: prop.usableArea || null,
-          total_area: prop.totalArea || null,
-          lot_area: prop.lotArea || null,
+          usable_area: this.safeArea(prop.usableArea),
+          total_area: this.safeArea(prop.totalArea),
+          lot_area: this.safeArea(prop.lotArea),
           street: prop.address.street || null,
           number: prop.address.number || null,
           complement: prop.address.complement || null,
@@ -309,9 +309,9 @@ export class PropertyImporter {
           bathrooms: prop.bathrooms || 0,
           suites: prop.suites || 0,
           parking_spaces: prop.parkingSpaces || 0,
-          usable_area: prop.usableArea || null,
-          total_area: prop.totalArea || null,
-          lot_area: prop.lotArea || null,
+          usable_area: this.safeArea(prop.usableArea),
+          total_area: this.safeArea(prop.totalArea),
+          lot_area: this.safeArea(prop.lotArea),
           street: prop.address.street || null,
           number: prop.address.number || null,
           complement: prop.address.complement || null,
@@ -573,5 +573,11 @@ export class PropertyImporter {
       .replace(/--+/g, "-")
       .replace(/^-+|-+$/g, "")
       .trim();
+  }
+
+  private safeArea(val?: number): number | null {
+    if (val === undefined || val === null || isNaN(val)) return null;
+    if (val <= 0) return null;
+    return Math.min(val, 99999999.99);
   }
 }

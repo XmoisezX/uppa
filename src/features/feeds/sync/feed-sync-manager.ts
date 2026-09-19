@@ -11,14 +11,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import type { NormalizedProperty } from "@/types/feed";
-import { VRSyncParser } from "../parser/vrsync-parser.ts";
-import { ChavesNaMaoParser } from "../parser/chaves-na-mao-parser.ts";
-import { detectFeedFormat } from "../parser/feed-detector.ts";
+import { VRSyncParser } from "../parser/vrsync-parser";
+import { ChavesNaMaoParser } from "../parser/chaves-na-mao-parser";
+import { detectFeedFormat } from "../parser/feed-detector";
 import {
   PropertyImporter,
   type ImportResult,
   type ImportProgressData,
-} from "../importer/property-importer.ts";
+} from "../importer/property-importer";
 
 export interface FeedSyncOptions {
   customXmlPayload?: string;
