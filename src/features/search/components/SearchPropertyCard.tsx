@@ -87,7 +87,7 @@ export function SearchPropertyCard({
   const handleWhatsAppClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const agencyAny = property.agency as any;
+    const agencyAny = property.agency;
     const phoneNumber = agencyAny?.phone || "";
     if (phoneNumber) {
       const cleanPhone = phoneNumber.replace(/\D/g, "");
@@ -102,18 +102,17 @@ export function SearchPropertyCard({
     window.location.href = "/imovel/" + property.slug + "#contato";
   };
 
-  const hasPhone = Boolean((property.agency as any)?.phone);
+  const hasPhone = Boolean(property.agency?.phone);
 
   return (
     <article
       onMouseEnter={() => onHover && onHover(property.id)}
       onMouseLeave={() => onHover && onHover(null)}
-      className={
-        "group relative bg-white rounded-xl border transition-all duration-200 overflow-hidden flex flex-col sm:flex-row " +
-        (isHovered
+      className={`group relative bg-white rounded-xl border transition-all duration-200 overflow-hidden flex flex-col sm:flex-row min-h-[180px] ${
+        isHovered
           ? "border-indigo-500 shadow-md"
-          : "border-slate-200 hover:border-slate-300 hover:shadow-sm")
-      }
+          : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
+      }`}
     >
       <div className="relative sm:w-[260px] md:w-[280px] aspect-[4/3] sm:aspect-auto overflow-hidden bg-slate-100 shrink-0 self-stretch">
         {coverImage && !imageError ? (

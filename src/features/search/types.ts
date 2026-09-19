@@ -75,6 +75,7 @@ export interface SearchPropertyItem {
     logoUrl?: string | null;
     creci?: string | null;
     verifiedAt?: string | null;
+    phone?: string | null;
   } | null;
   media?: {
     id: string;

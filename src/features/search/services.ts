@@ -92,7 +92,8 @@ const SEARCH_PROPERTIES_SELECT = `
     slug,
     logo_url,
     creci,
-    verified_at
+    verified_at,
+    phone
   ),
   media:property_media (
     id,
@@ -333,6 +334,7 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
             logoUrl: row.agency.logo_url,
             creci: row.agency.creci,
             verifiedAt: row.agency.verified_at,
+            phone: row.agency.phone,
           }
         : null,
       media: sortedMedia,
