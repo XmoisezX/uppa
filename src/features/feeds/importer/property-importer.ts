@@ -525,7 +525,35 @@ export class PropertyImporter {
       .ilike("name", clean)
       .maybeSingle();
 
-    const id = data?.id || null;
+    let id = data?.id || null;
+
+    // Se o bairro ainda não existe no catálogo da cidade, cria dinamicamente
+    if (!id) {
+      const slug = this.slugify(clean) || `bairro-${Math.random().toString(36).substring(2, 6)}`;
+      const { data: newRow } = await this.supabase
+        .from("neighborhoods")
+        .insert({
+          city_id: cityId,
+          name: clean,
+          slug,
+        })
+        .select("id")
+        .maybeSingle();
+
+      if (newRow?.id) {
+        id = newRow.id;
+      } else {
+        // Em caso de concorrência com a chave única (city_id, slug)
+        const { data: existing } = await this.supabase
+          .from("neighborhoods")
+          .select("id")
+          .eq("city_id", cityId)
+          .eq("slug", slug)
+          .maybeSingle();
+        id = existing?.id || null;
+      }
+    }
+
     if (id) {
       this.neighborhoodCache.set(cacheKey, id);
     }

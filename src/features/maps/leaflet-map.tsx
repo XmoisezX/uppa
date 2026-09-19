@@ -104,14 +104,17 @@ export function LeafletMap({
           attributionControl: false,
         });
 
-        // Camada de mapas CartoDB Voyager / Positron - Visual limpo e profissional
-        L.tileLayer(
-          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-          {
-            maxZoom: 19,
-            subdomains: "abcd",
-          }
-        ).addTo(map);
+        const cartoKey =
+          process.env.NEXT_PUBLIC_CARTO_API_KEY || "cb1_3qa9_1_431f37359957466841c5e31b";
+        const tileUrl = cartoKey
+          ? `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${cartoKey}`
+          : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+
+        // Camada de mapas CartoDB Voyager - Visual profissional sem marca d'água
+        L.tileLayer(tileUrl, {
+          maxZoom: 19,
+          subdomains: "abcd",
+        }).addTo(map);
 
         const markersGroup = L.layerGroup().addTo(map);
         markersLayerRef.current = markersGroup;
