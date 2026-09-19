@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
-import { Map, List, SlidersHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { Map, List, Loader2 } from "lucide-react";
 import { SearchFilterBar } from "./SearchFilterBar";
 import { SearchPropertyList } from "./SearchPropertyList";
 import { SearchMap } from "./SearchMap";
+import type { MapViewport } from "@/features/maps/types";
 import type { SearchResult } from "../types";
 
 interface SearchLayoutViewProps {
@@ -13,13 +14,64 @@ interface SearchLayoutViewProps {
 }
 
 export function SearchLayoutView({ result }: SearchLayoutViewProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [currentResult, setCurrentResult] = useState<SearchResult>(result);
   const [hoveredPropertyId, setHoveredPropertyId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
+  const [isSearchingArea, setIsSearchingArea] = useState(false);
+
+  // Sincroniza quando os filtros de servidor mudarem (ex: alteração na SearchFilterBar)
+  useEffect(() => {
+    setCurrentResult(result);
+  }, [result]);
+
+  // Handler para busca de viewport acionada pelo botão "Buscar nesta área"
+  const handleSearchThisArea = async (viewport: MapViewport) => {
+    setIsSearchingArea(true);
+
+    try {
+      // Monta query params herdando os filtros já ativos
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("north", viewport.north.toFixed(6));
+      params.set("south", viewport.south.toFixed(6));
+      params.set("east", viewport.east.toFixed(6));
+      params.set("west", viewport.west.toFixed(6));
+      params.set("zoom", String(viewport.zoom));
+      params.set("page", "1");
+
+      // Atualiza a URL suavemente no navegador sem recarregar a tela
+      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+
+      // Executa consulta rápida no endpoint especializado de mapa
+      const response = await fetch(`/api/search/map?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentResult((prev) => ({
+          ...prev,
+          properties: data.properties || [],
+          total: data.total ?? data.properties?.length ?? 0,
+          page: 1,
+          totalPages: Math.ceil((data.total || data.properties?.length || 1) / (prev.limit || 12)),
+          filters: {
+            ...prev.filters,
+            bbox: viewport,
+          },
+        }));
+      }
+    } catch (err) {
+      console.error("Erro ao buscar imóveis no viewport:", err);
+    } finally {
+      setIsSearchingArea(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       {/* BARRA SUPERIOR DE FILTROS */}
-      <SearchFilterBar currentFilters={result.filters} />
+      <SearchFilterBar currentFilters={currentResult.filters} />
 
       {/* LAYOUT PRINCIPAL: DESKTOP SPLIT (LISTA ESQUERDA + MAPA DIREITA) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -29,8 +81,15 @@ export function SearchLayoutView({ result }: SearchLayoutViewProps) {
             mobileView === "map" ? "hidden lg:block" : "block"
           }`}
         >
+          {isSearchingArea && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold text-indigo-700 dark:text-indigo-300 animate-in fade-in duration-150">
+              <Loader2 className="h-4 w-4 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span>Atualizando imóveis dentro da área do mapa selecionada...</span>
+            </div>
+          )}
+
           <SearchPropertyList
-            result={result}
+            result={currentResult}
             hoveredPropertyId={hoveredPropertyId}
             onHoverProperty={setHoveredPropertyId}
           />
@@ -44,9 +103,11 @@ export function SearchLayoutView({ result }: SearchLayoutViewProps) {
         >
           <div className="h-[550px] lg:h-[calc(100vh-110px)] w-full">
             <SearchMap
-              properties={result.properties}
+              properties={currentResult.properties}
               hoveredPropertyId={hoveredPropertyId}
               onHoverProperty={setHoveredPropertyId}
+              onSearchThisArea={handleSearchThisArea}
+              isSearchingArea={isSearchingArea}
             />
           </div>
         </div>
@@ -67,7 +128,7 @@ export function SearchLayoutView({ result }: SearchLayoutViewProps) {
           ) : (
             <>
               <List className="h-4 w-4" />
-              <span>Ver em Lista</span>
+              <span>Ver em Lista ({currentResult.properties.length})</span>
             </>
           )}
         </button>

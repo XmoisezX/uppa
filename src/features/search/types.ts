@@ -19,6 +19,13 @@ export interface SearchFilters {
   page?: number;
   limit?: number;
   orderBy?: "recent" | "price_asc" | "price_desc";
+  bbox?: {
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+    zoom?: number;
+  };
 }
 
 export interface SearchPropertyItem {

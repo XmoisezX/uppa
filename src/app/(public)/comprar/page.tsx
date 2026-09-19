@@ -15,6 +15,23 @@ interface ComprarPageProps {
 function parseSearchParams(params: Record<string, string | string[] | undefined>): SearchFilters {
   const getSingle = (val: string | string[] | undefined) => (Array.isArray(val) ? val[0] : val);
 
+  const north = getSingle(params.north);
+  const south = getSingle(params.south);
+  const east = getSingle(params.east);
+  const west = getSingle(params.west);
+  const zoom = getSingle(params.zoom);
+
+  const bbox =
+    north && south && east && west
+      ? {
+          north: Number(north),
+          south: Number(south),
+          east: Number(east),
+          west: Number(west),
+          zoom: zoom ? Number(zoom) : undefined,
+        }
+      : undefined;
+
   return {
     transactionType: "sale",
     propertyType: getSingle(params.propertyType) as PropertyType | undefined,
@@ -33,6 +50,7 @@ function parseSearchParams(params: Record<string, string | string[] | undefined>
     acceptsExchange: getSingle(params.acceptsExchange) === "true" ? true : undefined,
     page: getSingle(params.page) ? Number(getSingle(params.page)) : 1,
     orderBy: getSingle(params.orderBy) as any,
+    bbox,
   };
 }
 
@@ -47,7 +65,7 @@ export async function generateMetadata({ searchParams }: ComprarPageProps): Prom
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://portalimobiliario.com.br";
   const canonicalUrl = `${siteUrl}/comprar`;
 
-  // Detecta se existem filtros arbitrários (preço, quartos, paginação, etc.)
+  // Detecta se existem filtros arbitrários (preço, quartos, paginação, viewport do mapa, etc.)
   const hasArbitraryFilters = Boolean(
     filters.priceMin ||
     filters.priceMax ||
@@ -59,6 +77,7 @@ export async function generateMetadata({ searchParams }: ComprarPageProps): Prom
     filters.financiable ||
     filters.furnished ||
     filters.acceptsExchange ||
+    filters.bbox ||
     (filters.page && filters.page > 1)
   );
 

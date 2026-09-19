@@ -1026,6 +1026,49 @@ export interface Database {
         Args: { p_feed_id: string };
         Returns: void;
       };
+      search_properties_bbox: {
+        Args: {
+          p_min_lat: number;
+          p_max_lat: number;
+          p_min_lng: number;
+          p_max_lng: number;
+          p_transaction_type?: string | null;
+          p_property_types?: string[] | null;
+          p_price_min?: number | null;
+          p_price_max?: number | null;
+          p_bedrooms?: number | null;
+          p_bathrooms?: number | null;
+          p_parking_spaces?: number | null;
+          p_area_min?: number | null;
+          p_area_max?: number | null;
+          p_financiable?: boolean | null;
+          p_furnished?: boolean | null;
+          p_accepts_exchange?: boolean | null;
+          p_limit?: number | null;
+        };
+        Returns: {
+          id: string;
+          slug: string;
+          title: string;
+          price: number | null;
+          rent_price: number | null;
+          transaction_type: Database["public"]["Enums"]["transaction_type"];
+          property_type: Database["public"]["Enums"]["property_type"];
+          bedrooms: number;
+          usable_area: number | null;
+          latitude: number;
+          longitude: number;
+          address_visible: boolean;
+          street: string | null;
+          neighborhood_name: string | null;
+          city_name: string | null;
+          city_slug: string | null;
+          state_code: string | null;
+          agency_name: string | null;
+          agency_logo_url: string | null;
+          cover_image_url: string | null;
+        }[];
+      };
     };
     Enums: {
       user_role: "consumer" | "broker" | "agency_member" | "agency_admin" | "platform_admin";
