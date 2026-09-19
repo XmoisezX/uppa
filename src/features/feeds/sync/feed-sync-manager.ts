@@ -10,12 +10,15 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
-import { VRSyncParser } from "../parser/vrsync-parser";
+import type { NormalizedProperty } from "@/types/feed";
+import { VRSyncParser } from "../parser/vrsync-parser.ts";
+import { ChavesNaMaoParser } from "../parser/chaves-na-mao-parser.ts";
+import { detectFeedFormat } from "../parser/feed-detector.ts";
 import {
   PropertyImporter,
   type ImportResult,
   type ImportProgressData,
-} from "../importer/property-importer";
+} from "../importer/property-importer.ts";
 
 export interface FeedSyncOptions {
   customXmlPayload?: string;
@@ -125,9 +128,40 @@ export class FeedSyncManager {
         xmlContent = await this.fetchFeedWithRetry(feed.url, maxRetries, timeoutMs);
       }
 
-      // 5. Parser puro em memória (VRSyncParser - Seção 27)
-      const parser = new VRSyncParser();
-      const { properties, parseErrors } = parser.parse(xmlContent);
+      // 5. Detecção automática de formato e Parser puro em memória (Seção 27)
+      const feedFormat = detectFeedFormat(xmlContent);
+
+      let properties: NormalizedProperty[] = [];
+      let parseErrors: Array<{
+        externalId?: string;
+        errorType: string;
+        message: string;
+        payload?: any;
+      }> = [];
+
+      if (feedFormat === "vrsync") {
+        const parser = new VRSyncParser();
+        const result = parser.parse(xmlContent);
+        properties = result.properties;
+        parseErrors = result.parseErrors;
+      } else if (feedFormat === "chaves_na_mao") {
+        const parser = new ChavesNaMaoParser();
+        const result = parser.parse(xmlContent);
+        properties = result.properties;
+        parseErrors = result.parseErrors;
+
+        // Se o tipo do feed no banco não estiver como chaves_na_mao, atualiza automaticamente
+        if (feed.type !== "chaves_na_mao") {
+          await this.supabase
+            .from("feeds")
+            .update({ type: "chaves_na_mao", updated_at: new Date().toISOString() })
+            .eq("id", feed.id);
+        }
+      } else {
+        throw new Error(
+          "Formato de feed XML não reconhecido. O conteúdo não corresponde aos padrões suportados (VRSync ou Chaves na Mão)."
+        );
+      }
 
       // 6. Persistência idempotente (PropertyImporter - Seção 28)
       const importer = new PropertyImporter(this.supabase, {
@@ -244,10 +278,15 @@ export class FeedSyncManager {
     timeoutMs: number
   ): Promise<string> {
     let lastError: any;
+    let fetchUrl = url;
+    if (url.includes("chavereserva.com") && !url.includes("_t=")) {
+      const separator = url.includes("?") ? "&" : "?";
+      fetchUrl = `${url}${separator}_t=${Date.now()}`;
+    }
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const response = await fetch(url, {
+        const response = await fetch(fetchUrl, {
           headers: {
             "User-Agent": "PortalImobiliario-AutoSync/1.0",
             Accept: "application/xml, text/xml, */*",

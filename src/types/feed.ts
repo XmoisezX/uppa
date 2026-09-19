@@ -4,7 +4,7 @@
 
 import type { PropertyType, TransactionType, MediaType } from "./property";
 
-export type FeedType = "vrsync" | "custom_xml" | "api";
+export type FeedType = "vrsync" | "custom_xml" | "chaves_na_mao" | "api";
 export type FeedStatus = "active" | "paused" | "error";
 export type FeedRunStatus = "running" | "completed" | "completed_with_errors" | "failed";
 
@@ -79,6 +79,8 @@ export interface NormalizedMedia {
 
 export interface NormalizedProperty {
   externalId: string;
+  code?: string; // Código interno / codigo_cliente opcional
+  sourceUrl?: string; // link_cliente / URL de origem
   title: string;
   description?: string;
 

@@ -57,6 +57,7 @@ export async function runManualFeedImportAction(
 export async function saveFeedAction(input: {
   id?: string;
   url: string;
+  type?: FeedType;
   syncIntervalMinutes?: number;
 }): Promise<SaveFeedActionResult> {
   try {
@@ -72,7 +73,7 @@ export async function saveFeedAction(input: {
     const feed = await createOrUpdateFeed(membership.agency.id, {
       id: input.id,
       url: input.url,
-      type: "vrsync",
+      type: input.type || "vrsync",
       syncIntervalMinutes: input.syncIntervalMinutes || 360,
     });
 

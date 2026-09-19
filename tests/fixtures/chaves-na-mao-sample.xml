@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document>
+  <imoveis>
+    <imovel>
+      <referencia>CNM-57655</referencia>
+      <codigo_cliente>57655</codigo_cliente>
+      <link_cliente>https://app.chavereserva.com/public/imperialparis/properties/739f5956-fc0c-455b-8699-8bbd7666f0ab</link_cliente>
+      <titulo>Casa Nova 2 dormitórios com piscina e churrasqueira</titulo>
+      <descritivo><![CDATA[Excelente casa com ótimo acabamento, ampla área de lazer e churrasqueira.]]></descritivo>
+      <transacao>V</transacao>
+      <transacao2></transacao2>
+      <finalidade>RE</finalidade>
+      <tipo>Casa / Sobrado</tipo>
+      <valor>450000</valor>
+      <valor_locacao></valor_locacao>
+      <valor_iptu>320</valor_iptu>
+      <valor_condominio>0</valor_condominio>
+      <area_total>429</area_total>
+      <area_util>180</area_util>
+      <quartos>2</quartos>
+      <suites>1</suites>
+      <garagem>3</garagem>
+      <banheiro>2</banheiro>
+      <estado>RI</estado>
+      <cidade>Pelotas</cidade>
+      <bairro>Laranjal</bairro>
+      <cep>96095140</cep>
+      <endereco>Rua das Acácias</endereco>
+      <numero>729</numero>
+      <complemento></complemento>
+      <latitude>-31.7314644</latitude>
+      <longitude>-52.2166812</longitude>
+      <piscina>1</piscina>
+      <churrasqueira>1</churrasqueira>
+      <aceita_pet>1</aceita_pet>
+      <aceita_troca>1</aceita_troca>
+      <fotos_imovel>
+        <foto>
+          <url>https://app.chavereserva.com/images/foto1.jpg</url>
+        </foto>
+        <foto>
+          <url>https://app.chavereserva.com/images/foto2.jpg</url>
+        </foto>
+      </fotos_imovel>
+      <data_atualizacao>2026-09-18T12:00:00Z</data_atualizacao>
+    </imovel>
+    <imovel>
+      <referencia>CNM-91491</referencia>
+      <codigo_cliente>91491</codigo_cliente>
+      <link_cliente>https://app.chavereserva.com/public/imperialparis/properties/e641891a-c41b-4ebd-aa61-7f095c61a3c8</link_cliente>
+      <titulo>Apartamento Alto Padrão no Centro</titulo>
+      <descritivo><![CDATA[Apartamento moderno e sofisticado com sacada gourmet.]]></descritivo>
+      <transacao>L</transacao>
+      <transacao2></transacao2>
+      <tipo>Apartamento</tipo>
+      <valor></valor>
+      <valor_locacao>3500</valor_locacao>
+      <valor_iptu>180</valor_iptu>
+      <valor_condominio>650</valor_condominio>
+      <area_total>110</area_total>
+      <area_util>87</area_util>
+      <quartos>3</quartos>
+      <suites>1</suites>
+      <garagem>2</garagem>
+      <banheiro>2</banheiro>
+      <estado>RS</estado>
+      <cidade>Pelotas</cidade>
+      <bairro>Areal</bairro>
+      <cep>96085000</cep>
+      <endereco>Avenida Ferreira Viana</endereco>
+      <numero>2777</numero>
+      <complemento>210</complemento>
+      <latitude>-31.7565079</latitude>
+      <longitude>-52.3065973</longitude>
+      <varanda>1</varanda>
+      <area_comum>
+        <item>Portaria 24h</item>
+        <item>Salão Gourmet</item>
+      </area_comum>
+      <fotos_imovel>
+        <foto>
+          <url>https://app.chavereserva.com/images/foto3.jpg</url>
+        </foto>
+      </fotos_imovel>
+    </imovel>
+    <imovel>
+      <referencia>CNM-DualTx</referencia>
+      <titulo>Conjunto Comercial para Venda ou Locação</titulo>
+      <transacao>V</transacao>
+      <transacao2>L</transacao2>
+      <tipo>Conjunto Comercial / Sala</tipo>
+      <valor>600000</valor>
+      <valor_locacao>4500</valor_locacao>
+      <estado>RS</estado>
+      <cidade>Pelotas</cidade>
+      <bairro>Centro</bairro>
+      <quartos>0</quartos>
+      <banheiro>2</banheiro>
+      <garagem>1</garagem>
+    </imovel>
+    <imovel>
+      <!-- Imóvel inválido de propósito: sem referencia -->
+      <titulo>Imóvel Inválido Sem Referência</titulo>
+      <transacao>V</transacao>
+      <tipo>Casa / Sobrado</tipo>
+      <valor>200000</valor>
+    </imovel>
+  </imoveis>
+</Document>

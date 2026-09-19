@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListingDataFeed xmlns="http://www.vivareal.com.br/schemas/1.0/VRSync">
+  <Header>
+    <Provider>Imobiliária Exemplo</Provider>
+    <Email>contato@exemplo.com.br</Email>
+  </Header>
+  <Listings>
+    <Listing>
+      <ListingID>VR-1001</ListingID>
+      <Title>Apartamento Moderno no Centro</Title>
+      <Description>Lindo apartamento reformado com 2 quartos e 1 vaga.</Description>
+      <TransactionType>For Sale</TransactionType>
+      <PropertyType>Residential / Apartment</PropertyType>
+      <ListPrice>350000</ListPrice>
+      <PropertyAdministrationFee>450</PropertyAdministrationFee>
+      <YearlyTax>1200</YearlyTax>
+      <LivingArea>68</LivingArea>
+      <TotalArea>85</TotalArea>
+      <Bedrooms>2</Bedrooms>
+      <Bathrooms>2</Bathrooms>
+      <Suites>1</Suites>
+      <Garage>1</Garage>
+      <Location>
+        <Country>Brasil</Country>
+        <State abbreviation="SP">São Paulo</State>
+        <City>São Paulo</City>
+        <Neighborhood>Bela Vista</Neighborhood>
+        <Address>Rua dos Imigrantes</Address>
+        <StreetNumber>100</StreetNumber>
+        <Complement>Apto 42</Complement>
+        <PostalCode>01310100</PostalCode>
+        <Latitude>-23.561684</Latitude>
+        <Longitude>-46.655981</Longitude>
+      </Location>
+      <Media>
+        <Item medium="image" caption="Fachada" primary="true">https://exemplo.com/fotos/1001-1.jpg</Item>
+        <Item medium="image" caption="Sala">https://exemplo.com/fotos/1001-2.jpg</Item>
+      </Media>
+      <Features>
+        <Feature>Piscina</Feature>
+        <Feature>Academia</Feature>
+        <Feature>Churrasqueira</Feature>
+      </Features>
+      <LastUpdate>2026-09-18T10:00:00Z</LastUpdate>
+    </Listing>
+    <Listing>
+      <ListingID>VR-1002</ListingID>
+      <Title>Casa em Condomínio Fechado</Title>
+      <Description>Casa ampla com 4 suítes e quintal espaçoso.</Description>
+      <TransactionType>For Rent</TransactionType>
+      <PropertyType>Residential / Condo House</PropertyType>
+      <RentalPrice>6500</RentalPrice>
+      <PropertyAdministrationFee>950</PropertyAdministrationFee>
+      <YearlyTax>2800</YearlyTax>
+      <LivingArea>240</LivingArea>
+      <TotalArea>360</TotalArea>
+      <Bedrooms>4</Bedrooms>
+      <Bathrooms>5</Bathrooms>
+      <Suites>4</Suites>
+      <Garage>3</Garage>
+      <Location>
+        <Country>Brasil</Country>
+        <State abbreviation="SP">São Paulo</State>
+        <City>Campinas</City>
+        <Neighborhood>Barão Geraldo</Neighborhood>
+        <Address>Avenida das Palmeiras</Address>
+        <StreetNumber>500</StreetNumber>
+        <PostalCode>13083000</PostalCode>
+        <Latitude>-22.825123</Latitude>
+        <Longitude>-47.068456</Longitude>
+      </Location>
+      <Media>
+        <Item medium="image" primary="true">https://exemplo.com/fotos/1002-1.jpg</Item>
+      </Media>
+      <Features>
+        <Feature>Piscina Privativa</Feature>
+        <Feature>Portaria 24h</Feature>
+      </Features>
+      <LastUpdate>2026-09-18T11:00:00Z</LastUpdate>
+    </Listing>
+  </Listings>
+</ListingDataFeed>
