@@ -17,11 +17,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Portal Imobiliário Nacional | Encontre o Imóvel Ideal",
-    template: "%s | Portal Imobiliário",
+    default: "UPPA | Portal Imobiliário Nacional",
+    template: "%s | UPPA",
   },
   description:
-    "A infraestrutura nacional para busca, distribuição e negociação de imóveis. Conectamos compradores, locatários e as melhores imobiliárias do Brasil.",
+    "Encontre casas, apartamentos e terrenos à venda e para alugar no portal imobiliário UPPA. Anúncios diretos com imobiliárias e corretores credenciados em todo o Brasil.",
   keywords: [
     "imóveis",
     "apartamentos",
@@ -29,9 +29,12 @@ export const metadata: Metadata = {
     "aluguel",
     "imobiliárias",
     "portal imobiliário",
+    "UPPA",
   ],
-  authors: [{ name: "Portal Imobiliário Nacional" }],
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  authors: [{ name: "UPPA Portal Imobiliário" }],
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+  ),
 };
 
 export default function RootLayout({
@@ -44,7 +47,7 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white dark:bg-slate-950 dark:text-slate-100">
+      <body className="flex min-h-full flex-col bg-white text-slate-900 selection:bg-indigo-600 selection:text-white dark:bg-slate-950 dark:text-slate-100 font-sans">
         <Providers>
           <Header />
           <main className="flex-1 flex flex-col">{children}</main>
