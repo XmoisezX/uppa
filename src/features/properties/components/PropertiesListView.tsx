@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Building2,
   Plus,
@@ -15,11 +16,13 @@ import {
   Sparkles,
   AlertCircle,
   Filter,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import type { PropertyWithDetails, PropertyStatus } from "@/types/property";
+import { createDraftPropertyAction } from "@/features/properties/actions";
 
 interface PropertiesListViewProps {
   initialProperties: PropertyWithDetails[];
@@ -32,8 +35,28 @@ export function PropertiesListView({
   total,
   agencyName,
 }: PropertiesListViewProps) {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [isCreating, setIsCreating] = useState(false);
+  const [creationError, setCreationError] = useState<string | null>(null);
+
+  const handleCreateProperty = async () => {
+    setIsCreating(true);
+    setCreationError(null);
+    try {
+      const res = await createDraftPropertyAction();
+      if (res.success && res.propertyId) {
+        router.push(`/painel/imoveis/${res.propertyId}/editar`);
+      } else {
+        setCreationError(res.error || "Falha ao inicializar rascunho de imóvel.");
+        setIsCreating(false);
+      }
+    } catch (err: any) {
+      setCreationError(err?.message || "Erro inesperado ao criar imóvel.");
+      setIsCreating(false);
+    }
+  };
 
   const filteredProperties = initialProperties.filter((item) => {
     // Filtro de status
@@ -75,14 +98,42 @@ export function PropertiesListView({
         </div>
 
         <div className="flex items-center gap-3">
-          <Link href="/painel/imoveis/novo">
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer shadow-xs">
-              <Plus className="h-4 w-4 mr-1.5" />
-              Cadastrar Imóvel
-            </Button>
-          </Link>
+          <Button
+            onClick={handleCreateProperty}
+            disabled={isCreating}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer shadow-xs"
+          >
+            {isCreating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                Criando Rascunho...
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4 mr-1.5" />
+                Cadastrar Imóvel
+              </>
+            )}
+          </Button>
         </div>
       </div>
+
+      {/* ALERTA DE ERRO NA CRIAÇÃO DE RASCUNHO */}
+      {creationError && (
+        <div className="p-4 rounded-xl border border-red-200 bg-red-50 dark:border-red-900/30 dark:bg-red-950/20 text-red-700 dark:text-red-300 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+            <span>{creationError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCreationError(null)}
+            className="font-bold underline cursor-pointer ml-4"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
 
       {/* FILTROS E BUSCA */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -135,12 +186,23 @@ export function PropertiesListView({
             Comece a cadastrar o portfólio da sua imobiliária em 7 etapas rápidas com salvamento automático.
           </p>
           <div className="mt-6">
-            <Link href="/painel/imoveis/novo">
-              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer">
-                <Plus className="h-4 w-4 mr-1.5" />
-                Cadastrar Primeiro Imóvel
-              </Button>
-            </Link>
+            <Button
+              onClick={handleCreateProperty}
+              disabled={isCreating}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer"
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                  Criando Rascunho...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Cadastrar Primeiro Imóvel
+                </>
+              )}
+            </Button>
           </div>
         </div>
       ) : filteredProperties.length === 0 ? (
