@@ -114,6 +114,11 @@ export async function getRecentActiveProperties(
           name,
           slug
         ),
+        neighborhood:neighborhoods!neighborhood_id (
+          id,
+          name,
+          slug
+        ),
         state:states!state_id (
           id,
           code,
@@ -125,7 +130,8 @@ export async function getRecentActiveProperties(
           slug,
           logo_url,
           creci,
-          verified_at
+          verified_at,
+          phone
         ),
         media:property_media (
           id,
@@ -183,6 +189,7 @@ export async function getRecentActiveProperties(
         longitude: row.longitude,
         publishedAt: row.published_at,
         city: row.city,
+        neighborhood: row.neighborhood,
         state: row.state,
         agency: row.agency
           ? {
@@ -192,6 +199,7 @@ export async function getRecentActiveProperties(
               logoUrl: row.agency.logo_url,
               creci: row.agency.creci,
               verifiedAt: row.agency.verified_at,
+              phone: row.agency.phone,
             }
           : null,
         media: sortedMedia,

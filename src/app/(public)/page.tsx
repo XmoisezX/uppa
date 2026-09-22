@@ -8,16 +8,20 @@ import {
   PropertySearchHero,
   PropertyTypeLinks,
   FeatureSearches,
-  PopularCities,
   RecentProperties,
+  HomeAdBanner,
+  PopularCities,
+  PopularSearches,
+  HomeEditorialSection,
+  HomeToolsSection,
   AgencyCTA,
   PublicFAQ,
 } from "@/features/home/components";
 
 export const metadata: Metadata = {
-  title: "UPPA | Encontre seu Próximo Imóvel",
+  title: "UPPA | Encontre seu Próximo Imóvel | Portal Imobiliário Nacional",
   description:
-    "Compre ou alugue apartamentos, casas, terrenos e salas comerciais em todo o Brasil. Informações atualizadas direto com imobiliárias parceiras.",
+    "Compre ou alugue apartamentos, casas, terrenos e salas comerciais em todo o Brasil. Estoque real com contato direto no WhatsApp de imobiliárias e corretores parceiros.",
 };
 
 export default async function HomePage() {
@@ -29,25 +33,37 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-slate-950">
-      {/* 1. HERO COM BUSCA PROTAGONISTA (Comprar / Alugar, Tipo, Localização) */}
+      {/* 1. HERO VISUAL & BUSCA PRINCIPAL (Comprar, Alugar, Lançamentos, Tipos e Cidades) */}
       <PropertySearchHero suggestedCities={activeCities} />
 
-      {/* 2. ATALHOS POR TIPO DE IMÓVEL */}
+      {/* 2. ATALHOS DE DESCOBERTA POR TIPO DE IMÓVEL */}
       <PropertyTypeLinks />
 
-      {/* 3. BUSCAS POR CARACTERÍSTICAS E COMODIDADES */}
-      <FeatureSearches />
-
-      {/* 4. VITRINE DE IMÓVEIS RECÉM-PUBLICADOS (DADOS REAIS) */}
+      {/* 3. VITRINE DE IMÓVEIS RECÉM-PUBLICADOS (DADOS REAIS EM GRID COM PROPERTYCARD) */}
       <RecentProperties properties={recentProperties} />
+
+      {/* 4. BLOCO DE PUBLICIDADE RESERVADO */}
+      <HomeAdBanner />
 
       {/* 5. CIDADES COM ESTOQUE ATIVO REAL */}
       <PopularCities cities={activeCities} />
 
-      {/* 6. CTA OBJETIVO PARA IMOBILIÁRIAS E CORRETORES (SEM DASHBOARD MOCK) */}
+      {/* 6. BUSCAS POR CARACTERÍSTICAS E COMODIDADES */}
+      <FeatureSearches />
+
+      {/* 7. BUSCAS POPULARES & SEO DE DESCOBERTA */}
+      <PopularSearches cities={activeCities} />
+
+      {/* 8. CONTEÚDO EDITORIAL & GUIAS PRÁTICOS */}
+      <HomeEditorialSection />
+
+      {/* 9. FERRAMENTAS & SERVIÇOS DO PORTAL */}
+      <HomeToolsSection />
+
+      {/* 10. CTA DE ALTO IMPACTO PARA ANUNCIANTES E IMOBILIÁRIAS */}
       <AgencyCTA />
 
-      {/* 7. FAQ ACCORDION ACESSÍVEL */}
+      {/* 11. PERGUNTAS FREQUENTES (FAQ) */}
       <PublicFAQ />
     </div>
   );
