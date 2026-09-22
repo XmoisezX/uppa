@@ -62,7 +62,7 @@ export async function generateMetadata({ searchParams }: ComprarPageProps): Prom
   const rawParams = await searchParams;
   const filters = parseSearchParams(rawParams);
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://portalimobiliario.com.br";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://uppa.com.br";
   const canonicalUrl = `${siteUrl}/comprar`;
 
   // Detecta se existem filtros arbitrários (preço, quartos, paginação, viewport do mapa, etc.)

@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +29,7 @@ export const metadata: Metadata = {
     "portal imobiliário",
     "UPPA",
   ],
-  authors: [{ name: "UPPA Portal Imobiliário" }],
+  authors: [{ name: "UPPA" }],
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
   ),
@@ -49,9 +47,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col bg-white text-slate-900 selection:bg-indigo-600 selection:text-white dark:bg-slate-950 dark:text-slate-100 font-sans">
         <Providers>
-          <Header />
-          <main className="flex-1 flex flex-col">{children}</main>
-          <Footer />
+          {children}
         </Providers>
       </body>
     </html>

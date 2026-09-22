@@ -61,7 +61,7 @@ export async function generateMetadata({ searchParams }: AlugarPageProps): Promi
   const rawParams = await searchParams;
   const filters = parseSearchParams(rawParams);
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://portalimobiliario.com.br";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://uppa.com.br";
   const canonicalUrl = `${siteUrl}/alugar`;
 
   const hasArbitraryFilters = Boolean(

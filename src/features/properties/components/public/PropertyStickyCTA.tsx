@@ -30,7 +30,7 @@ export function PropertyStickyCTA({ property }: PropertyStickyCTAProps) {
     property.transactionType === "rent" ? property.rentPrice : property.price;
 
   // Mensagem personalizada do WhatsApp
-  const messageText = `Olá! Vi o anúncio do imóvel "${property.title}" (Código: ${property.externalId}) no Portal Imobiliário e gostaria de mais informações.`;
+  const messageText = `Olá! Vi o anúncio do imóvel "${property.title}" (Código: ${property.externalId}) na UPPA e gostaria de mais informações.`;
   const whatsappUrl = `https://wa.me/${cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`}?text=${encodeURIComponent(messageText)}`;
 
   const handleWhatsAppClick = (e: React.MouseEvent) => {

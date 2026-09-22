@@ -105,7 +105,7 @@ export function StepDescription({ property, onChange }: StepDescriptionProps) {
           </Label>
         </div>
         <p className="text-xs text-slate-500 font-mono break-all mt-1">
-          portalimobiliario.com.br/imovel/<span className="text-indigo-600 dark:text-indigo-400 font-bold">{property.slug}</span>
+          uppa.com.br/imovel/<span className="text-indigo-600 dark:text-indigo-400 font-bold">{property.slug}</span>
         </p>
       </div>
 

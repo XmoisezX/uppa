@@ -27,12 +27,12 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
 
   if (!property || property.status !== "active") {
     return {
-      title: "Imóvel não encontrado | Portal Imobiliário",
+      title: "Imóvel não encontrado | UPPA",
       description: "O imóvel solicitado não está ativo ou não foi encontrado.",
     };
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://portalimobiliario.com.br";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://uppa.com.br";
   const canonicalUrl = `${siteUrl}/imovel/${property.slug}`;
   const coverImage = property.media?.find((m) => m.isCover)?.url || property.media?.[0]?.url;
 
@@ -41,10 +41,10 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
   const priceVal = property.transactionType === "rent" ? property.rentPrice : property.price;
   const priceFormatted = priceVal ? ` - R$ ${priceVal.toLocaleString("pt-BR")}` : "";
 
-  const title = `${property.title}${priceFormatted} | Portal Imobiliário`;
+  const title = `${property.title}${priceFormatted} | UPPA`;
   const description = property.description
     ? property.description.slice(0, 160).trim() + "..."
-    : `${property.title} em ${city} - ${state}. Confira fotos, valores e comodidades no Portal Imobiliário.`;
+    : `${property.title} em ${city} - ${state}. Confira fotos, valores e comodidades na UPPA.`;
 
   return {
     title,
@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
       title,
       description,
       url: canonicalUrl,
-      siteName: "Portal Imobiliário",
+      siteName: "UPPA",
       locale: "pt_BR",
       type: "article",
       images: coverImage ? [{ url: coverImage, alt: property.title }] : [],
@@ -83,7 +83,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
   }
 
   // Schema Estruturado JSON-LD (schema.org) para indexação rica no Google
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://portalimobiliario.com.br";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://uppa.com.br";
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "RealEstateListing",

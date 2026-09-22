@@ -288,7 +288,7 @@ export class FeedSyncManager {
       try {
         const response = await fetch(fetchUrl, {
           headers: {
-            "User-Agent": "PortalImobiliario-AutoSync/1.0",
+            "User-Agent": "UPPA-AutoSync/1.0",
             Accept: "application/xml, text/xml, */*",
           },
           signal: AbortSignal.timeout(timeoutMs),

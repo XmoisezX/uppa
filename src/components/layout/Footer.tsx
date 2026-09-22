@@ -6,31 +6,14 @@ export function Footer() {
   return (
     <footer className="border-t border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-5">
-          {/* Coluna 1: Marca e Visão */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-                UPPA
-              </span>
-            </div>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
-              O portal imobiliário nacional para encontrar, comprar e alugar
-              imóveis de forma simples, objetiva e transparente. Conectamos quem
-              busca às melhores imobiliárias e corretores credenciados do país.
-            </p>
-            <div className="flex items-center gap-2 text-xs text-slate-500 pt-1">
-              <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Plataforma segura com anúncios de fontes auditadas</span>
-            </div>
-          </div>
-
-          {/* Coluna 2: Comprar */}
+        {/* Grid Principal com as 6 Seções do Portal Nacional */}
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-6">
+          {/* Seção 1: Comprar */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
               Comprar
             </h3>
-            <ul className="mt-4 space-y-2 text-xs">
+            <ul className="mt-4 space-y-2.5 text-xs">
               <li>
                 <Link
                   href="/comprar?propertyType=apartment"
@@ -44,7 +27,7 @@ export function Footer() {
                   href="/comprar?propertyType=house"
                   className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                 >
-                  Casas
+                  Casas à venda
                 </Link>
               </li>
               <li>
@@ -52,7 +35,7 @@ export function Footer() {
                   href="/comprar?propertyType=condo_house"
                   className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                 >
-                  Casas em condomínio
+                  Em condomínio
                 </Link>
               </li>
               <li>
@@ -68,26 +51,26 @@ export function Footer() {
                   href="/comprar?propertyType=commercial"
                   className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                 >
-                  Imóveis Comerciais
+                  Comerciais
                 </Link>
               </li>
               <li className="pt-1">
                 <Link
                   href="/comprar"
-                  className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+                  className="font-bold text-indigo-600 hover:underline dark:text-indigo-400"
                 >
-                  Ver todos à venda
+                  Ver todos à venda &rarr;
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Coluna 3: Alugar */}
+          {/* Seção 2: Alugar */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
               Alugar
             </h3>
-            <ul className="mt-4 space-y-2 text-xs">
+            <ul className="mt-4 space-y-2.5 text-xs">
               <li>
                 <Link
                   href="/alugar?propertyType=apartment"
@@ -101,7 +84,7 @@ export function Footer() {
                   href="/alugar?propertyType=house"
                   className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                 >
-                  Casas
+                  Casas para alugar
                 </Link>
               </li>
               <li>
@@ -123,20 +106,102 @@ export function Footer() {
               <li className="pt-1">
                 <Link
                   href="/alugar"
-                  className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+                  className="font-bold text-indigo-600 hover:underline dark:text-indigo-400"
                 >
-                  Ver todos para alugar
+                  Ver todos para alugar &rarr;
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Coluna 4: Para Profissionais */}
+          {/* Seção 3: Explorar */}
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Explorar
+            </h3>
+            <ul className="mt-4 space-y-2.5 text-xs">
+              <li>
+                <Link
+                  href="/#cidades"
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  Cidades com estoque
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/comprar"
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  Busca no mapa
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/comprar?propertyType=condo_house"
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  Lançamentos
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/#recentes"
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  Imóveis recentes
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Seção 4: Conteúdo */}
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Conteúdo
+            </h3>
+            <ul className="mt-4 space-y-2.5 text-xs">
+              <li>
+                <Link
+                  href="/#faq"
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  Dúvidas Frequentes
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/#faq"
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  Como funciona a UPPA
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/#faq"
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  Guia para Compradores
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/#faq"
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  Guia para Inquilinos
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Seção 5: Anunciantes */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
               Anunciantes
             </h3>
-            <ul className="mt-4 space-y-2 text-xs">
+            <ul className="mt-4 space-y-2.5 text-xs">
               <li>
                 <Link
                   href="/cadastrar"
@@ -147,10 +212,10 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/entrar"
+                  href="/cadastrar"
                   className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                 >
-                  Acessar Painel
+                  Anunciar Imóveis
                 </Link>
               </li>
               <li>
@@ -163,24 +228,75 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/cadastrar"
+                  href="/entrar"
                   className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                 >
-                  Seja nosso parceiro
+                  Acessar Painel
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Seção 6: Institucional */}
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Institucional
+            </h3>
+            <ul className="mt-4 space-y-2.5 text-xs">
+              <li>
+                <Link
+                  href="/#faq"
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  Sobre a UPPA
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/#faq"
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  Central de Ajuda
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/#faq"
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  Termos de Uso
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/#faq"
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  Privacidade
                 </Link>
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Linha Inferior com Copyright e Menção */}
-        <div className="mt-10 border-t border-slate-200 pt-6 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <p>
-            &copy; {new Date().getFullYear()} UPPA — Portal Imobiliário Nacional.
-            Todos os direitos reservados.
-          </p>
-          <div className="flex items-center gap-1 text-[11px]">
-            <span>Feito para conectar pessoas ao seu próximo imóvel</span>
+        {/* Linha Inferior com Marca, Proposta de Valor e Copyright */}
+        <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+            <span className="text-lg font-black tracking-tight text-slate-950 dark:text-white">
+              UPPA
+            </span>
+            <span className="hidden sm:inline text-slate-300 dark:text-slate-700">|</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              O portal imobiliário nacional para encontrar, comprar e alugar imóveis diretamente com anunciantes credenciados.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4 text-[11px] shrink-0">
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Anúncios de fontes auditadas</span>
+            </div>
+            <span>&copy; {new Date().getFullYear()} UPPA</span>
           </div>
         </div>
       </div>

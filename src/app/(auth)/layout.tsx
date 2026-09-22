@@ -14,8 +14,8 @@ export default function AuthLayout({
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 group-hover:scale-105 transition-transform">
             <Building2 className="h-6 w-6" />
           </div>
-          <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            PORTAL<span className="text-indigo-600">IMO</span>
+          <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+            UPPA
           </span>
         </Link>
       </div>
