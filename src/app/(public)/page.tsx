@@ -14,6 +14,7 @@ import {
   PopularCities,
   PopularSearches,
   HomeEditorialSection,
+  HomeCityGuidesSection,
   HomeToolsSection,
   AgencyCTA,
   PublicFAQ,
@@ -61,7 +62,10 @@ export default async function HomePage() {
       {/* 8. CONTEÚDO EDITORIAL & GUIAS PRÁTICOS */}
       <HomeEditorialSection />
 
-      {/* 9. FERRAMENTAS & SERVIÇOS DO PORTAL */}
+      {/* 9. GUIAS DE CIDADES COM ESTOQUE REAL */}
+      <HomeCityGuidesSection cities={activeCities} />
+
+      {/* 10. FERRAMENTAS & SERVIÇOS DO PORTAL */}
       <HomeToolsSection />
 
       {/* 10. CTA DE ALTO IMPACTO PARA ANUNCIANTES E IMOBILIÁRIAS */}

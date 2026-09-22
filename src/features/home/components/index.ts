@@ -6,6 +6,7 @@ export * from "./RecentProperties";
 export * from "./HomeAdBanner";
 export * from "./PopularSearches";
 export * from "./HomeEditorialSection";
+export * from "./HomeCityGuidesSection";
 export * from "./HomeToolsSection";
 export * from "./AgencyCTA";
 export * from "./PublicFAQ";
