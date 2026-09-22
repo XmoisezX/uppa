@@ -97,6 +97,7 @@ export async function getPropertyBySlug(slug: string): Promise<PropertyWithDetai
     sourceUpdatedAt: data.source_updated_at,
     missingFromFeedAt: data.missing_from_feed_at,
     createdAt: data.created_at,
+    updatedAt: data.updated_at,
     agency: data.agency
       ? {
           id: (data.agency as any).id,
