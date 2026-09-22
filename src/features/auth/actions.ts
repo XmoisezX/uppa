@@ -35,7 +35,12 @@ export async function loginAction(
   }
 
   revalidatePath("/", "layout");
-  redirect("/painel");
+  const emailLower = email?.trim().toLowerCase() || "";
+  if (emailLower === "moiseztorres100@gmail.com") {
+    redirect("/admin");
+  } else {
+    redirect("/painel");
+  }
 }
 
 /**

@@ -18,6 +18,7 @@ import {
   Key,
   Briefcase,
   Layers,
+  Shield,
 } from "lucide-react";
 
 export function Header() {
@@ -26,6 +27,7 @@ export function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const { user, signOut } = useAuth();
+  const isSuperAdmin = user?.email?.toLowerCase() === "moiseztorres100@gmail.com";
 
   // Fecha dropdown ao clicar fora
   useEffect(() => {
@@ -196,10 +198,22 @@ export function Header() {
           {/* Autenticação */}
           {user ? (
             <div className="flex items-center gap-2">
+              {isSuperAdmin && (
+                <Link href="/admin">
+                  <Button
+                    size="sm"
+                    className="gap-1.5 bg-slate-900 text-amber-300 hover:bg-slate-800 border border-amber-500/40 text-xs font-bold rounded-xl shadow-xs"
+                    title="Administração Geral do Portal (Master)"
+                  >
+                    <Shield className="h-3.5 w-3.5 text-amber-400" />
+                    Painel Admin
+                  </Button>
+                </Link>
+              )}
               <Link href="/painel">
-                <Button variant="outline" size="sm" className="gap-2 text-xs font-bold rounded-xl">
+                <Button variant="outline" size="sm" className="gap-2 text-xs font-bold rounded-xl" title="Painel da sua Imobiliária">
                   <LayoutDashboard className="h-3.5 w-3.5" />
-                  Painel
+                  Painel Imobiliária
                 </Button>
               </Link>
               <Button
@@ -262,30 +276,45 @@ export function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-8 dark:border-slate-800 dark:bg-slate-950 animate-in slide-in-from-top duration-200">
           {/* Ações de Usuário no Topo do Drawer */}
-          <div className="pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="pb-4 mb-4 border-b border-slate-100 dark:border-slate-800 space-y-2">
             {user ? (
-              <div className="flex items-center justify-between">
-                <Link
-                  href="/painel"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
-                    <UserIcon className="h-4 w-4" />
-                  </div>
-                  <span>Acessar Painel</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    signOut();
-                  }}
-                  className="text-xs font-semibold text-rose-600 hover:underline p-2"
-                >
-                  Sair
-                </button>
-              </div>
+              <>
+                {isSuperAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-between px-3 py-2 text-xs font-bold text-amber-700 bg-amber-50 rounded-xl border border-amber-200 dark:bg-amber-950/40 dark:border-amber-900/40 dark:text-amber-300"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      <span>Painel Administrativo Master</span>
+                    </div>
+                    <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-amber-200/60 dark:bg-amber-900/60 rounded">/admin</span>
+                  </Link>
+                )}
+                <div className="flex items-center justify-between">
+                  <Link
+                    href="/painel"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+                      <UserIcon className="h-4 w-4" />
+                    </div>
+                    <span>Painel da Imobiliária</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      signOut();
+                    }}
+                    className="text-xs font-semibold text-rose-600 hover:underline p-2"
+                  >
+                    Sair
+                  </button>
+                </div>
+              </>
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 <Link

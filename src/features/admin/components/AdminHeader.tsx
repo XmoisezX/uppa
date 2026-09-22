@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Menu, LogOut, Shield, ExternalLink } from 'lucide-react';
+import { Menu, LogOut, Shield, ExternalLink, Building2 } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
 import type { AdminUser } from '@/types/admin';
 
@@ -81,6 +82,16 @@ export function AdminHeader({ adminUser, onMobileOpen }: HeaderProps) {
             {adminUser.role?.name || 'Admin'}
           </span>
         </div>
+
+        {/* Ir para Painel Imobiliária */}
+        <Link
+          href="/painel"
+          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-300 hover:text-white hover:bg-indigo-950/60 border border-indigo-700/50 transition-colors"
+          title="Alternar para o Painel da sua Imobiliária"
+        >
+          <Building2 className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Painel Imobiliária</span>
+        </Link>
 
         {/* View Portal */}
         <a

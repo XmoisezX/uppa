@@ -12,9 +12,16 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      let destination = next;
+      if (
+        next === "/painel" &&
+        data.session?.user?.email?.trim().toLowerCase() === "moiseztorres100@gmail.com"
+      ) {
+        destination = "/admin";
+      }
+      return NextResponse.redirect(`${origin}${destination}`);
     }
   }
 

@@ -96,8 +96,22 @@ export async function updateSession(request: NextRequest) {
 
   // Redireciona usuários já logados que acessarem páginas de login/cadastro
   if (user && (pathname === "/entrar" || pathname === "/cadastrar")) {
+    const redirectTo = request.nextUrl.searchParams.get("redirectTo");
     const url = request.nextUrl.clone();
-    url.pathname = "/painel";
+    
+    if (redirectTo && !redirectTo.startsWith("/entrar") && !redirectTo.startsWith("/cadastrar")) {
+      url.pathname = redirectTo;
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    const email = user.email?.toLowerCase() || "";
+    if (email === "moiseztorres100@gmail.com") {
+      url.pathname = "/admin";
+    } else {
+      url.pathname = "/painel";
+    }
+    url.search = "";
     return NextResponse.redirect(url);
   }
 
