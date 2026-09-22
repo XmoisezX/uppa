@@ -17,15 +17,57 @@ import {
   getEditorialArticleBySlug,
   getRelatedArticles,
 } from "@/features/editorial";
+import { getArticleBySlug } from "@/features/admin/services/articles";
+import type { EditorialArticle } from "@/features/editorial/types";
 import { ArticleGrid } from "@/features/editorial/components";
 
 interface ArticlePageProps {
   params: Promise<{ slug: string }>;
 }
 
+async function resolveArticle(slug: string): Promise<EditorialArticle | undefined> {
+  try {
+    const dbArticle = await getArticleBySlug(slug);
+    if (dbArticle) {
+      const validCats = ['compra', 'aluguel', 'financiamento', 'documentacao', 'mercado', 'decoracao', 'reforma', 'cidades', 'bairros'];
+      const catKey = validCats.includes(dbArticle.category.toLowerCase())
+        ? dbArticle.category.toLowerCase()
+        : 'mercado';
+
+      return {
+        id: dbArticle.id,
+        slug: dbArticle.slug,
+        title: dbArticle.title,
+        summary: dbArticle.summary || '',
+        category: catKey as any,
+        categoryLabel: dbArticle.category,
+        tags: dbArticle.tags,
+        author: {
+          name: dbArticle.author_name,
+          role: dbArticle.author_role,
+        },
+        readTime: dbArticle.read_time || '4 min de leitura',
+        publishedAt: dbArticle.published_at || new Date().toISOString(),
+        updatedAt: dbArticle.updated_at || new Date().toISOString(),
+        featured: dbArticle.featured,
+        sections: [
+          {
+            title: 'Conteúdo do Guia',
+            content: dbArticle.content.split('\n\n').filter(Boolean),
+          },
+        ],
+      };
+    }
+  } catch {
+    // fallback
+  }
+
+  return getEditorialArticleBySlug(slug);
+}
+
 export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
-  const article = getEditorialArticleBySlug(slug);
+  const article = await resolveArticle(slug);
 
   if (!article) {
     return {
@@ -64,7 +106,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
 
 export default async function ArticlePage({ params }: ArticlePageProps) {
   const { slug } = await params;
-  const article = getEditorialArticleBySlug(slug);
+  const article = await resolveArticle(slug);
 
   if (!article) {
     notFound();

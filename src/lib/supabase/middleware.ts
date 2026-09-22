@@ -37,8 +37,11 @@ export async function updateSession(request: NextRequest) {
     (c) => c.name.includes("auth-token") || c.name.startsWith("sb-")
   );
 
-  // Se for rota privada (/painel) e não tem nenhum cookie de autenticação, redireciona de imediato
-  if (!hasAuthCookie && pathname.startsWith("/painel")) {
+  // Se for rota privada (/painel ou /admin) e não tem nenhum cookie de autenticação, redireciona de imediato
+  if (
+    !hasAuthCookie &&
+    (pathname.startsWith("/painel") || pathname.startsWith("/admin"))
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/entrar";
     url.searchParams.set("redirectTo", pathname);
@@ -49,6 +52,7 @@ export async function updateSession(request: NextRequest) {
   if (
     !hasAuthCookie &&
     !pathname.startsWith("/painel") &&
+    !pathname.startsWith("/admin") &&
     pathname !== "/entrar" &&
     pathname !== "/cadastrar"
   ) {
@@ -79,8 +83,11 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Proteção da rota /painel: exige autenticação
-  if (!user && pathname.startsWith("/painel")) {
+  // Proteção das rotas privadas (/painel e /admin): exige autenticação
+  if (
+    !user &&
+    (pathname.startsWith("/painel") || pathname.startsWith("/admin"))
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/entrar";
     url.searchParams.set("redirectTo", pathname);

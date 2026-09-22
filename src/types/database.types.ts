@@ -1007,6 +1007,330 @@ export interface Database {
           }
         ];
       };
+      banners: {
+        Row: {
+          id: string;
+          title: string;
+          image_url_desktop: string;
+          image_url_mobile: string | null;
+          destination_url: string;
+          position: "home_hero" | "home_after_featured" | "home_editorial" | "search_top" | "search_middle" | "property_bottom";
+          status: "active" | "inactive" | "archived";
+          start_at: string | null;
+          end_at: string | null;
+          priority: number;
+          advertiser_id: string | null;
+          campaign_id: string | null;
+          impressions: number;
+          clicks: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          image_url_desktop: string;
+          image_url_mobile?: string | null;
+          destination_url: string;
+          position?: "home_hero" | "home_after_featured" | "home_editorial" | "search_top" | "search_middle" | "property_bottom";
+          status?: "active" | "inactive" | "archived";
+          start_at?: string | null;
+          end_at?: string | null;
+          priority?: number;
+          advertiser_id?: string | null;
+          campaign_id?: string | null;
+          impressions?: number;
+          clicks?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          image_url_desktop?: string;
+          image_url_mobile?: string | null;
+          destination_url?: string;
+          position?: "home_hero" | "home_after_featured" | "home_editorial" | "search_top" | "search_middle" | "property_bottom";
+          status?: "active" | "inactive" | "archived";
+          start_at?: string | null;
+          end_at?: string | null;
+          priority?: number;
+          advertiser_id?: string | null;
+          campaign_id?: string | null;
+          impressions?: number;
+          clicks?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      articles: {
+        Row: {
+          id: string;
+          slug: string;
+          title: string;
+          summary: string | null;
+          content: string;
+          category: string;
+          tags: string[];
+          cover_image: string | null;
+          author_name: string;
+          author_role: string;
+          status: "draft" | "published" | "archived";
+          featured: boolean;
+          seo_title: string | null;
+          seo_description: string | null;
+          read_time: string | null;
+          published_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          title: string;
+          summary?: string | null;
+          content: string;
+          category?: string;
+          tags?: string[];
+          cover_image?: string | null;
+          author_name?: string;
+          author_role?: string;
+          status?: "draft" | "published" | "archived";
+          featured?: boolean;
+          seo_title?: string | null;
+          seo_description?: string | null;
+          read_time?: string | null;
+          published_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          slug?: string;
+          title?: string;
+          summary?: string | null;
+          content?: string;
+          category?: string;
+          tags?: string[];
+          cover_image?: string | null;
+          author_name?: string;
+          author_role?: string;
+          status?: "draft" | "published" | "archived";
+          featured?: boolean;
+          seo_title?: string | null;
+          seo_description?: string | null;
+          read_time?: string | null;
+          published_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      admin_roles: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          description: string | null;
+          is_system: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          description?: string | null;
+          is_system?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          description?: string | null;
+          is_system?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      admin_permissions: {
+        Row: {
+          id: string;
+          code: string;
+          module: string;
+          name: string;
+          description: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          module: string;
+          name: string;
+          description?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          code?: string;
+          module?: string;
+          name?: string;
+          description?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      admin_role_permissions: {
+        Row: {
+          role_id: string;
+          permission_code: string;
+          created_at: string;
+        };
+        Insert: {
+          role_id: string;
+          permission_code: string;
+          created_at?: string;
+        };
+        Update: {
+          role_id?: string;
+          permission_code?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      admin_users: {
+        Row: {
+          id: string;
+          role_id: string;
+          status: "active" | "suspended";
+          name: string | null;
+          email: string;
+          phone: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          role_id: string;
+          status?: "active" | "suspended";
+          name?: string | null;
+          email: string;
+          phone?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          role_id?: string;
+          status?: "active" | "suspended";
+          name?: string | null;
+          email?: string;
+          phone?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      admin_audit_logs: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          user_email: string | null;
+          user_name: string | null;
+          action: string;
+          module: string;
+          record_id: string | null;
+          record_title: string | null;
+          changes: Record<string, any> | null;
+          ip_address: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          user_email?: string | null;
+          user_name?: string | null;
+          action: string;
+          module: string;
+          record_id?: string | null;
+          record_title?: string | null;
+          changes?: Record<string, any> | null;
+          ip_address?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          user_email?: string | null;
+          user_name?: string | null;
+          action?: string;
+          module?: string;
+          record_id?: string | null;
+          record_title?: string | null;
+          changes?: Record<string, any> | null;
+          ip_address?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      site_settings: {
+        Row: {
+          key: string;
+          value: Record<string, any>;
+          description: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          key: string;
+          value: Record<string, any>;
+          description?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          key?: string;
+          value?: Record<string, any>;
+          description?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      site_faqs: {
+        Row: {
+          id: string;
+          question: string;
+          answer: string;
+          category: string;
+          position: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          question: string;
+          answer: string;
+          category?: string;
+          position?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          question?: string;
+          answer?: string;
+          category?: string;
+          position?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
