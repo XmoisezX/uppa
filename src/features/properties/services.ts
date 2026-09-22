@@ -97,8 +97,27 @@ export async function getPropertyBySlug(slug: string): Promise<PropertyWithDetai
     sourceUpdatedAt: data.source_updated_at,
     missingFromFeedAt: data.missing_from_feed_at,
     createdAt: data.created_at,
-    updatedAt: data.updated_at,
-    agency: data.agency as any,
+    agency: data.agency
+      ? {
+          id: (data.agency as any).id,
+          name: (data.agency as any).name,
+          slug: (data.agency as any).slug,
+          legalName: (data.agency as any).legal_name,
+          document: (data.agency as any).document,
+          creci: (data.agency as any).creci,
+          phone: (data.agency as any).phone,
+          whatsapp: (data.agency as any).whatsapp,
+          email: (data.agency as any).email,
+          website: (data.agency as any).website,
+          logoUrl: (data.agency as any).logo_url,
+          description: (data.agency as any).description,
+          cityId: (data.agency as any).city_id,
+          verifiedAt: (data.agency as any).verified_at,
+          status: (data.agency as any).status,
+          createdAt: (data.agency as any).created_at,
+          updatedAt: (data.agency as any).updated_at,
+        }
+      : undefined,
     state: data.state as any,
     city: data.city as any,
     neighborhood: data.neighborhood as any,
@@ -1015,3 +1034,233 @@ export async function savePropertyAsDraft(propertyId: string): Promise<Property>
     updatedAt: data.updated_at,
   };
 }
+
+/**
+ * Retorna até 4 imóveis semelhantes para exibir no final da página do imóvel.
+ *
+ * Critério: mesmo transaction_type + property_type + cidade, excluindo o imóvel atual.
+ * Cumpre MASTER_PLAN seção 14 (item 14: imóveis semelhantes) e seção 23 (sem SELECT *).
+ */
+export async function getSimilarProperties(
+  currentId: string,
+  transactionType: Database["public"]["Enums"]["transaction_type"],
+  propertyType: Database["public"]["Enums"]["property_type"],
+  cityId: string | null,
+  limit = 4
+): Promise<import("@/features/search/types").SearchPropertyItem[]> {
+  if (!cityId) return [];
+
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("properties")
+      .select(`
+        id,
+        slug,
+        external_id,
+        title,
+        transaction_type,
+        property_type,
+        price,
+        rent_price,
+        condominium_fee,
+        usable_area,
+        total_area,
+        bedrooms,
+        suites,
+        bathrooms,
+        parking_spaces,
+        financiable,
+        furnished,
+        accepts_exchange,
+        address_visible,
+        street,
+        number,
+        latitude,
+        longitude,
+        published_at,
+        city:cities!city_id (
+          id,
+          name,
+          slug
+        ),
+        neighborhood:neighborhoods!neighborhood_id (
+          id,
+          name,
+          slug
+        ),
+        state:states!state_id (
+          id,
+          code,
+          name
+        ),
+        agency:agencies!agency_id (
+          id,
+          name,
+          slug,
+          logo_url,
+          creci,
+          verified_at,
+          phone
+        ),
+        media:property_media (
+          id,
+          url,
+          is_cover,
+          position
+        )
+      `)
+      .eq("status", "active")
+      .eq("transaction_type", transactionType)
+      .eq("property_type", propertyType)
+      .eq("city_id", cityId)
+      .neq("id", currentId)
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .limit(limit);
+
+    let results = (data as any[]) || [];
+
+    // Fallback inteligente: se houver menos resultados que o limite na mesma categoria,
+    // busca outros imóveis ativos da mesma cidade para não deixar espaço vazio
+    if (results.length < limit) {
+      const alreadyIds = [currentId, ...results.map((r) => r.id)];
+      const needed = limit - results.length;
+
+      const { data: fallbackData } = await supabase
+        .from("properties")
+        .select(`
+          id,
+          slug,
+          external_id,
+          title,
+          transaction_type,
+          property_type,
+          price,
+          rent_price,
+          condominium_fee,
+          usable_area,
+          total_area,
+          bedrooms,
+          suites,
+          bathrooms,
+          parking_spaces,
+          financiable,
+          furnished,
+          accepts_exchange,
+          address_visible,
+          street,
+          number,
+          latitude,
+          longitude,
+          published_at,
+          city:cities!city_id (
+            id,
+            name,
+            slug
+          ),
+          neighborhood:neighborhoods!neighborhood_id (
+            id,
+            name,
+            slug
+          ),
+          state:states!state_id (
+            id,
+            code,
+            name
+          ),
+          agency:agencies!agency_id (
+            id,
+            name,
+            slug,
+            logo_url,
+            creci,
+            verified_at,
+            phone
+          ),
+          media:property_media (
+            id,
+            url,
+            is_cover,
+            position
+          )
+        `)
+        .eq("status", "active")
+        .eq("transaction_type", transactionType)
+        .eq("city_id", cityId)
+        .not("id", "in", `(${alreadyIds.join(",")})`)
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .limit(needed);
+
+      if (fallbackData && fallbackData.length > 0) {
+        results = [...results, ...fallbackData];
+      }
+    }
+
+    if (results.length === 0) {
+      return [];
+    }
+
+    return results.map((row) => {
+      const rawMedia = (row.media as any[]) || [];
+      const sortedMedia = rawMedia
+        .map((m) => ({
+          id: m.id,
+          url: m.url,
+          isCover: Boolean(m.is_cover),
+          position: m.position || 0,
+        }))
+        .sort((a, b) => {
+          if (a.isCover) return -1;
+          if (b.isCover) return 1;
+          return a.position - b.position;
+        });
+
+      return {
+        id: row.id,
+        slug: row.slug,
+        externalId: row.external_id,
+        title: row.title,
+        transactionType: row.transaction_type,
+        propertyType: row.property_type,
+        price: row.price,
+        rentPrice: row.rent_price,
+        condominiumFee: row.condominium_fee,
+        usableArea: row.usable_area,
+        totalArea: row.total_area,
+        bedrooms: row.bedrooms || 0,
+        suites: row.suites || 0,
+        bathrooms: row.bathrooms || 0,
+        parkingSpaces: row.parking_spaces || 0,
+        financiable: Boolean(row.financiable),
+        furnished: Boolean(row.furnished),
+        acceptsExchange: Boolean(row.accepts_exchange),
+        addressVisible: Boolean(row.address_visible),
+        street: row.address_visible ? row.street : null,
+        number: row.address_visible ? row.number : null,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        publishedAt: row.published_at,
+        city: row.city,
+        neighborhood: row.neighborhood,
+        state: row.state,
+        agency: row.agency
+          ? {
+              id: row.agency.id,
+              name: row.agency.name,
+              slug: row.agency.slug,
+              logoUrl: row.agency.logo_url,
+              creci: row.agency.creci,
+              verifiedAt: row.agency.verified_at,
+              phone: row.agency.phone,
+            }
+          : null,
+        media: sortedMedia,
+      };
+    });
+  } catch (err) {
+    console.error("[getSimilarProperties] Erro:", err);
+    return [];
+  }
+}
+

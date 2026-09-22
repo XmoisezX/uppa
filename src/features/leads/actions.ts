@@ -1,7 +1,7 @@
 "use server";
 
-import { recordWhatsAppLead } from "./services";
-import type { CreateWhatsAppLeadInput, Lead } from "@/types/lead";
+import { recordWhatsAppLead, recordFormLead } from "./services";
+import type { CreateWhatsAppLeadInput, CreateFormLeadInput, Lead } from "@/types/lead";
 
 export interface TrackLeadResult {
   success: boolean;
@@ -28,6 +28,34 @@ export async function trackWhatsAppLeadAction(
     return {
       success: false,
       error: err?.message || "Erro inesperado ao registrar lead",
+    };
+  }
+}
+
+/**
+ * Server Action para enviar mensagem de contato/proposta através de formulário na página do imóvel
+ */
+export async function submitLeadFormAction(
+  input: CreateFormLeadInput
+): Promise<TrackLeadResult> {
+  try {
+    if (!input.propertyId || !input.agencyId) {
+      return { success: false, error: "Imóvel e imobiliária são obrigatórios." };
+    }
+    if (!input.name || input.name.trim().length < 2) {
+      return { success: false, error: "Por favor, informe seu nome." };
+    }
+    if (!input.phone || input.phone.trim().length < 8) {
+      return { success: false, error: "Por favor, informe um telefone ou WhatsApp válido." };
+    }
+
+    const lead = await recordFormLead(input);
+    return { success: true, lead };
+  } catch (err: any) {
+    console.error("[submitLeadFormAction] Erro ao enviar mensagem:", err);
+    return {
+      success: false,
+      error: err?.message || "Não foi possível enviar a mensagem no momento. Tente via WhatsApp.",
     };
   }
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { ChevronRight, MapPin, Calendar } from "lucide-react";
+import { ChevronRight, MapPin, Calendar, Building2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { PropertyWithDetails } from "@/types/property";
 
@@ -28,7 +28,12 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
 
 export function PropertyHeader({ property }: PropertyHeaderProps) {
   const typeLabel = PROPERTY_TYPE_LABELS[property.propertyType] || "Imóvel";
-  const transactionLabel = property.transactionType === "rent" ? "Locação" : "Venda";
+  const transactionLabel =
+    property.transactionType === "rent"
+      ? "Locação"
+      : property.transactionType === "sale_or_rent"
+      ? "Venda e Locação"
+      : "Venda";
 
   // Respeito à visibilidade de endereço (Seção 44 do MASTER_PLAN)
   const displayAddress = property.addressVisible && property.street
@@ -41,16 +46,19 @@ export function PropertyHeader({ property }: PropertyHeaderProps) {
 
   return (
     <div className="space-y-4">
-      {/* BREADCRUMBS */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-500 overflow-x-auto scrollbar-none py-1">
-        <Link href="/" className="hover:text-indigo-600 transition-colors">
+      {/* BREADCRUMBS com links funcionais */}
+      <nav
+        aria-label="Localização do imóvel"
+        className="flex items-center gap-1.5 text-xs text-slate-500 overflow-x-auto scrollbar-none py-1"
+      >
+        <Link href="/" className="hover:text-indigo-600 transition-colors whitespace-nowrap">
           Início
         </Link>
         <ChevronRight className="h-3 w-3 shrink-0 text-slate-400" />
 
         <Link
           href={property.transactionType === "rent" ? "/alugar" : "/comprar"}
-          className="hover:text-indigo-600 transition-colors"
+          className="hover:text-indigo-600 transition-colors whitespace-nowrap"
         >
           {property.transactionType === "rent" ? "Alugar" : "Comprar"}
         </Link>
@@ -58,19 +66,37 @@ export function PropertyHeader({ property }: PropertyHeaderProps) {
 
         {property.state && (
           <>
-            <span className="hover:text-indigo-600 transition-colors cursor-pointer">
-              {property.state.name}
-            </span>
+            <Link
+              href={`${property.transactionType === "rent" ? "/alugar" : "/comprar"}?state=${property.state.code?.toLowerCase()}`}
+              className="hover:text-indigo-600 transition-colors whitespace-nowrap"
+            >
+              {property.state.name || property.state.code}
+            </Link>
             <ChevronRight className="h-3 w-3 shrink-0 text-slate-400" />
           </>
         )}
 
         {property.city && (
-          <span className="font-semibold text-slate-800 dark:text-slate-200">
-            {property.city.name}
-          </span>
+          <>
+            <Link
+              href={`${property.transactionType === "rent" ? "/alugar" : "/comprar"}?state=${property.state?.code?.toLowerCase()}&city=${property.city.slug || property.city.name?.toLowerCase()}`}
+              className="hover:text-indigo-600 transition-colors whitespace-nowrap"
+            >
+              {property.city.name}
+            </Link>
+          </>
+        )}
+
+        {property.neighborhood && (
+          <>
+            <ChevronRight className="h-3 w-3 shrink-0 text-slate-400" />
+            <span className="font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+              {property.neighborhood.name}
+            </span>
+          </>
         )}
       </nav>
+
 
       {/* BADGES & METADADOS */}
       <div className="flex flex-wrap items-center gap-2">
@@ -110,6 +136,25 @@ export function PropertyHeader({ property }: PropertyHeaderProps) {
           </div>
         )}
       </div>
+
+      {/* IDENTIFICAÇÃO DO ANUNCIANTE (UPPA como Portal Nacional) */}
+      {property.agency && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800/60">
+          <Building2 className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+          <span>Anunciado por:</span>
+          <Link
+            href={`/imobiliaria/${property.agency.slug}`}
+            className="font-bold text-slate-800 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors underline-offset-2 hover:underline"
+          >
+            {property.agency.name}
+          </Link>
+          {property.agency.creci && (
+            <span className="font-mono text-slate-400 text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+              CRECI {property.agency.creci}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import React from "react";
 import type { Metadata } from "next";
 import { searchProperties } from "@/features/search/services";
 import { SearchLayoutView } from "@/features/search/components";
+import { BannerSlot } from "@/features/banners/components/BannerSlot";
 import type { SearchFilters } from "@/features/search/types";
 import type { PropertyType } from "@/types/property";
 
@@ -116,6 +117,9 @@ export default async function ComprarPage({ searchParams }: ComprarPageProps) {
 
   return (
     <main className="min-h-screen bg-slate-50/50 dark:bg-slate-950 py-6">
+      {/* Banner search_top — colapsa se não houver banner ativo */}
+      <BannerSlot position="search_top" />
+
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SearchLayoutView result={result} />
       </div>

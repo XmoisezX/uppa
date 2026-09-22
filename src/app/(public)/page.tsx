@@ -4,6 +4,7 @@ import {
   getActiveCitiesWithCounts,
   getRecentActiveProperties,
 } from "@/features/home/services";
+import { BannerSlot } from "@/features/banners/components/BannerSlot";
 import {
   PropertySearchHero,
   PropertyTypeLinks,
@@ -36,7 +37,10 @@ export default async function HomePage() {
       {/* 1. HERO VISUAL & BUSCA PRINCIPAL (Comprar, Alugar, Lançamentos, Tipos e Cidades) */}
       <PropertySearchHero suggestedCities={activeCities} />
 
-      {/* 2. ATALHOS DE DESCOBERTA POR TIPO DE IMÓVEL */}
+      {/* 2. BANNER PUBLICITÁRIO — HOME HERO (colapsa se não houver banner ativo) */}
+      <BannerSlot position="home_hero" />
+
+      {/* 3. ATALHOS DE DESCOBERTA POR TIPO DE IMÓVEL */}
       <PropertyTypeLinks />
 
       {/* 3. VITRINE DE IMÓVEIS RECÉM-PUBLICADOS (DADOS REAIS EM GRID COM PROPERTYCARD) */}

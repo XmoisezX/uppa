@@ -10,10 +10,14 @@ export function PropertyLocationView({ property }: PropertyLocationViewProps) {
   const isAddressVisible = property.addressVisible;
   const hasCoordinates = Boolean(property.latitude && property.longitude);
 
-  const googleMapsUrl = hasCoordinates
+  const googleMapsUrl = isAddressVisible && hasCoordinates
     ? `https://www.google.com/maps?q=${property.latitude},${property.longitude}`
+    : isAddressVisible
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        `${property.street || ""} ${property.number || ""} ${property.neighborhood?.name || ""} ${property.city?.name || ""} ${property.state?.code || ""}`
+      )}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-        `${property.street || ""} ${property.city?.name || ""} ${property.state?.code || ""}`
+        `${property.neighborhood?.name ? `${property.neighborhood.name}, ` : ""}${property.city?.name || ""} - ${property.state?.code || ""}`
       )}`;
 
   return (
@@ -32,7 +36,7 @@ export function PropertyLocationView({ property }: PropertyLocationViewProps) {
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
         >
-          <span>Abrir no Google Maps</span>
+          <span>{isAddressVisible ? "Abrir no Google Maps" : "Ver região no Google Maps"}</span>
           <ExternalLink className="h-3 w-3" />
         </a>
       </div>
@@ -86,9 +90,15 @@ export function PropertyLocationView({ property }: PropertyLocationViewProps) {
             {property.city?.name} - {property.state?.code || "Brasil"}
           </span>
 
-          {hasCoordinates && (
+          {hasCoordinates && isAddressVisible && (
             <span className="text-[10px] font-mono text-slate-400 mt-2 bg-white/80 dark:bg-slate-900/80 px-2 py-0.5 rounded">
               WGS84: {property.latitude?.toFixed(5)}, {property.longitude?.toFixed(5)}
+            </span>
+          )}
+
+          {!isAddressVisible && (
+            <span className="text-[11px] font-medium text-slate-500 mt-2 bg-white/80 dark:bg-slate-900/80 px-2.5 py-1 rounded-full border border-slate-200/60 dark:border-slate-800">
+              Região do anúncio: {property.neighborhood?.name || property.city?.name}
             </span>
           )}
         </div>

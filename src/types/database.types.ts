@@ -1026,6 +1026,10 @@ export interface Database {
         Args: { p_feed_id: string };
         Returns: void;
       };
+      increment_banner_counter: {
+        Args: { banner_id: string; counter_field: string };
+        Returns: void;
+      };
       search_properties_bbox: {
         Args: {
           p_min_lat: number;

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
-import type { Lead, LeadWithDetails, CreateWhatsAppLeadInput, LeadSource } from "@/types/lead";
+import type { Lead, LeadWithDetails, CreateWhatsAppLeadInput, CreateFormLeadInput, LeadSource } from "@/types/lead";
 
 type LeadInsert = Database["public"]["Tables"]["leads"]["Insert"];
 
@@ -53,6 +53,71 @@ export async function recordWhatsAppLead(input: CreateWhatsAppLeadInput): Promis
     agencyId: input.agencyId,
     source: "whatsapp",
     message: input.message || null,
+    utmSource: input.utmSource || null,
+    utmMedium: input.utmMedium || null,
+    utmCampaign: input.utmCampaign || null,
+    utmContent: input.utmContent || null,
+    sessionId: input.sessionId || null,
+    createdAt: nowIso,
+  };
+}
+
+/**
+ * Registra um lead gerado por formulário de contato/proposta no anúncio do imóvel
+ */
+export async function recordFormLead(input: CreateFormLeadInput): Promise<Lead> {
+  const supabase = await createClient();
+
+  const leadId = crypto.randomUUID();
+  const nowIso = new Date().toISOString();
+
+  const insertData: LeadInsert = {
+    id: leadId,
+    property_id: input.propertyId,
+    agency_id: input.agencyId,
+    source: "form",
+    name: input.name.trim(),
+    phone: input.phone.trim(),
+    email: input.email?.trim() || null,
+    message: input.message.trim(),
+    utm_source: input.utmSource || null,
+    utm_medium: input.utmMedium || null,
+    utm_campaign: input.utmCampaign || null,
+    utm_content: input.utmContent || null,
+    session_id: input.sessionId || null,
+    created_at: nowIso,
+  };
+
+  const { error: leadError } = await supabase
+    .from("leads")
+    .insert(insertData);
+
+  if (leadError) {
+    throw new Error(leadError.message || "Falha ao enviar mensagem de contato.");
+  }
+
+  // Registra evento de criação do lead em lead_events
+  await supabase.from("lead_events").insert({
+    lead_id: leadId,
+    event: "created",
+    metadata: {
+      source: "form",
+      propertyId: input.propertyId,
+      name: input.name.trim(),
+      phone: input.phone.trim(),
+      email: input.email?.trim() || null,
+    },
+  });
+
+  return {
+    id: leadId,
+    propertyId: input.propertyId,
+    agencyId: input.agencyId,
+    source: "form",
+    name: input.name.trim(),
+    phone: input.phone.trim(),
+    email: input.email?.trim() || null,
+    message: input.message.trim(),
     utmSource: input.utmSource || null,
     utmMedium: input.utmMedium || null,
     utmCampaign: input.utmCampaign || null,

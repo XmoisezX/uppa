@@ -1,7 +1,8 @@
 import React from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPropertyBySlug } from "@/features/properties/services";
+import { getPropertyBySlug, getSimilarProperties } from "@/features/properties/services";
+import { BannerSlot } from "@/features/banners/components/BannerSlot";
 import {
   PropertyGallery,
   PropertyHeader,
@@ -12,6 +13,7 @@ import {
   PropertyLocationView,
   PropertyAgencyCard,
   PropertyStickyCTA,
+  SimilarProperties,
 } from "@/features/properties/components/public";
 
 interface PropertyPageProps {
@@ -82,6 +84,14 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
     notFound();
   }
 
+  // Carrega imóveis semelhantes em paralelo (não bloqueia se falhar)
+  const similarProperties = await getSimilarProperties(
+    property.id,
+    property.transactionType,
+    property.propertyType,
+    property.cityId ?? null
+  );
+
   // Schema Estruturado JSON-LD (schema.org) para indexação rica no Google
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://uppa.com.br";
   const jsonLd = {
@@ -105,13 +115,19 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
       streetAddress: property.addressVisible ? property.street : undefined,
       addressLocality: property.city?.name,
       addressRegion: property.state?.code,
-      postalCode: property.zipcode,
+      postalCode: property.addressVisible ? property.zipcode : undefined,
       addressCountry: "BR",
     },
-    geo: property.latitude && property.longitude ? {
+    geo: property.addressVisible && property.latitude && property.longitude ? {
       "@type": "GeoCoordinates",
       latitude: property.latitude,
       longitude: property.longitude,
+    } : undefined,
+    seller: property.agency ? {
+      "@type": "RealEstateAgent",
+      name: property.agency.name,
+      url: `${siteUrl}/imobiliaria/${property.agency.slug}`,
+      telephone: property.agency.phone || property.agency.whatsapp,
     } : undefined,
   };
 
@@ -162,6 +178,17 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
 
             {/* Perfil da Imobiliária Anunciante */}
             <PropertyAgencyCard agency={property.agency} />
+
+            <div className="h-px bg-slate-200 dark:bg-slate-800" />
+
+            {/* Banner property_bottom — colapsa se não houver banner ativo */}
+            <BannerSlot position="property_bottom" />
+
+            {/* Imóveis Semelhantes — colapsa se não houver similares */}
+            <SimilarProperties
+              properties={similarProperties}
+              transactionType={property.transactionType}
+            />
           </div>
 
           {/* Coluna Direita: Sidebar Sticky com CTA de WhatsApp */}

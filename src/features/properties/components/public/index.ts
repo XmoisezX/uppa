@@ -7,3 +7,5 @@ export * from "./PropertyFeaturesList";
 export * from "./PropertyLocationView";
 export * from "./PropertyAgencyCard";
 export * from "./PropertyStickyCTA";
+export * from "./SimilarProperties";
+

@@ -62,3 +62,17 @@ export interface CreateWhatsAppLeadInput {
   utmContent?: string;
   sessionId?: string;
 }
+
+export interface CreateFormLeadInput {
+  propertyId: string;
+  agencyId: string;
+  name: string;
+  phone: string;
+  email?: string;
+  message: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  sessionId?: string;
+}
