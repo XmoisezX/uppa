@@ -13,6 +13,7 @@ import type {
   CrawlRun,
   PreviewReport,
   CrawlResult,
+  WebsiteCrawlOptions,
 } from "./types";
 import { WebsiteCrawler } from "./crawler/website-crawler";
 import { WebsiteSourceDetector } from "./detector/website-source-detector";
@@ -220,12 +221,13 @@ export async function previewWebsiteImport(
  */
 export async function confirmAndRunWebsiteImport(
   agencyId: string,
-  websiteSourceId: string
+  websiteSourceId: string,
+  options?: WebsiteCrawlOptions
 ): Promise<CrawlResult> {
   const adminClient = createAdminClient();
   const crawler = new WebsiteCrawler(adminClient);
 
-  return crawler.runFullCrawlAndSync(agencyId, websiteSourceId);
+  return crawler.runFullCrawlAndSync(agencyId, websiteSourceId, options);
 }
 
 /**

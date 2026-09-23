@@ -33,6 +33,13 @@ export class WebsitePropertyImporter {
   private neighborhoodCache = new Map<string, string>();
   private featureCache = new Map<string, string>();
 
+  private _itemsCreated = 0;
+  private _itemsUpdated = 0;
+  private _itemsFailed = 0;
+  private _processedExternalIds: string[] = [];
+  private _startTime = Date.now();
+  private _initialized = false;
+
   constructor(
     supabase: SupabaseClient<Database>,
     context: WebsiteImporterContext
@@ -41,61 +48,76 @@ export class WebsitePropertyImporter {
     this.context = context;
   }
 
+  public get itemsCreated(): number {
+    return this._itemsCreated;
+  }
+
+  public get itemsUpdated(): number {
+    return this._itemsUpdated;
+  }
+
+  public get itemsFailed(): number {
+    return this._itemsFailed;
+  }
+
+  public get processedExternalIds(): string[] {
+    return this._processedExternalIds;
+  }
+
   /**
-   * Executa a importação idempotente da lista de imóveis normalizados
+   * Inicializa e pré-carrega caches necessários
    */
-  public async importProperties(
-    properties: NormalizedProperty[],
-    initialErrors: {
-      url?: string;
-      externalId?: string;
-      errorType: string;
-      message: string;
-      payload?: any;
-    }[] = [],
-    pagesCrawled = 1
-  ): Promise<CrawlResult> {
-    const startTime = Date.now();
-    const { agencyId, websiteSourceId, crawlRunId } = this.context;
-
-    let itemsCreated = 0;
-    let itemsUpdated = 0;
-    let itemsFailed = initialErrors.length;
-
-    // 1. Registra erros iniciais de descoberta / parsing em crawl_errors
-    for (const err of initialErrors) {
-      await this.recordCrawlError(
-        err.url || null,
-        err.externalId || null,
-        err.errorType,
-        err.message,
-        err.payload
-      );
-    }
-
-    // 2. Pré-carrega caches geográficos e de features para otimizar tempo
+  public async init(): Promise<void> {
+    if (this._initialized) return;
     await this.preloadCaches();
+    this._initialized = true;
+  }
 
-    // 3. Processamento concorrente controlado dos imóveis normalizados
-    const concurrency = 4;
-    const processedExternalIds: string[] = [];
+  /**
+   * Registra falha granular em crawl_errors
+   */
+  public async recordError(
+    url: string | null,
+    externalId: string | null,
+    errorType: string,
+    message: string,
+    payload?: any
+  ): Promise<void> {
+    this._itemsFailed++;
+    await this.recordCrawlError(url, externalId, errorType, message, payload);
+  }
 
-    for (let i = 0; i < properties.length; i += concurrency) {
-      const chunk = properties.slice(i, i + concurrency);
+  /**
+   * Persiste um lote de anúncios normalizados de forma progressiva
+   */
+  public async importBatch(
+    chunk: NormalizedProperty[],
+    concurrency = 4
+  ): Promise<{ created: number; updated: number; failed: number }> {
+    await this.init();
+
+    let batchCreated = 0;
+    let batchUpdated = 0;
+    let batchFailed = 0;
+
+    for (let i = 0; i < chunk.length; i += concurrency) {
+      const subChunk = chunk.slice(i, i + concurrency);
 
       await Promise.all(
-        chunk.map(async (prop) => {
+        subChunk.map(async (prop) => {
           try {
             const outcome = await this.persistSingleProperty(prop);
             if (outcome === "created") {
-              itemsCreated++;
+              this._itemsCreated++;
+              batchCreated++;
             } else if (outcome === "updated") {
-              itemsUpdated++;
+              this._itemsUpdated++;
+              batchUpdated++;
             }
-            // "skipped" (content hash idêntico) não incrementa updated nem created
-            processedExternalIds.push(prop.externalId);
+            this._processedExternalIds.push(prop.externalId);
           } catch (err: any) {
-            itemsFailed++;
+            this._itemsFailed++;
+            batchFailed++;
             console.error(
               `[WebsitePropertyImporter] Falha no imóvel ${prop.externalId}:`,
               err?.message
@@ -113,39 +135,52 @@ export class WebsitePropertyImporter {
       );
     }
 
-    // 4. Desativação segura em duas etapas de imóveis ausentes
+    return { created: batchCreated, updated: batchUpdated, failed: batchFailed };
+  }
+
+  /**
+   * Finaliza o ciclo de crawling:
+   * - Executa verificação em 2 etapas para desativação de ausentes
+   * - Atualiza crawl_runs com os números finais consolidados
+   * - Atualiza timestamp de last_crawl_at em website_sources
+   */
+  public async finalize(
+    itemsFound: number,
+    pagesCrawled = 1
+  ): Promise<CrawlResult> {
+    const { agencyId, websiteSourceId, crawlRunId } = this.context;
+
+    // Desativação segura em duas etapas de imóveis ausentes
     const itemsDeactivated = await this.handleMissingProperties(
       agencyId,
-      processedExternalIds
+      this._processedExternalIds
     );
 
-    // 5. Determinação de status final e duração
-    const itemsFound = properties.length + initialErrors.length;
-    const durationMs = Date.now() - startTime;
+    const durationMs = Date.now() - this._startTime;
 
     let finalStatus: CrawlRunStatus = "completed";
-    if (itemsFailed > 0) {
+    if (this._itemsFailed > 0) {
       finalStatus =
-        itemsCreated + itemsUpdated > 0 ? "completed_with_errors" : "failed";
+        this._itemsCreated + this._itemsUpdated > 0
+          ? "completed_with_errors"
+          : "failed";
     }
 
-    // 6. Atualiza registro em crawl_runs
     await this.supabase
       .from("crawl_runs")
       .update({
         finished_at: new Date().toISOString(),
         status: finalStatus,
         items_found: itemsFound,
-        items_created: itemsCreated,
-        items_updated: itemsUpdated,
+        items_created: this._itemsCreated,
+        items_updated: this._itemsUpdated,
         items_deactivated: itemsDeactivated,
-        items_failed: itemsFailed,
+        items_failed: this._itemsFailed,
         pages_crawled: pagesCrawled,
         duration_ms: durationMs,
       })
       .eq("id", crawlRunId);
 
-    // 7. Atualiza timestamp de última varredura em website_sources
     await this.supabase
       .from("website_sources")
       .update({
@@ -158,14 +193,48 @@ export class WebsitePropertyImporter {
       success: finalStatus !== "failed",
       crawlRunId,
       itemsFound,
-      itemsCreated,
-      itemsUpdated,
+      itemsCreated: this._itemsCreated,
+      itemsUpdated: this._itemsUpdated,
       itemsDeactivated,
-      itemsFailed,
+      itemsFailed: this._itemsFailed,
       pagesCrawled,
       durationMs,
       status: finalStatus,
     };
+  }
+
+  /**
+   * Executa a importação idempotente da lista completa de imóveis normalizados
+   */
+  public async importProperties(
+    properties: NormalizedProperty[],
+    initialErrors: {
+      url?: string;
+      externalId?: string;
+      errorType: string;
+      message: string;
+      payload?: any;
+    }[] = [],
+    pagesCrawled = 1
+  ): Promise<CrawlResult> {
+    await this.init();
+
+    // 1. Registra erros iniciais de descoberta / parsing em crawl_errors
+    for (const err of initialErrors) {
+      await this.recordError(
+        err.url || null,
+        err.externalId || null,
+        err.errorType,
+        err.message,
+        err.payload
+      );
+    }
+
+    // 2. Persiste imóveis
+    await this.importBatch(properties);
+
+    // 3. Finaliza com desativação e registro em banco
+    return this.finalize(properties.length + initialErrors.length, pagesCrawled);
   }
 
   /**

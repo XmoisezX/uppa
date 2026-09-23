@@ -12,6 +12,8 @@ import type {
   CrawlResult,
   ListingReference,
   PreviewReport,
+  WebsiteCrawlOptions,
+  WebsiteCrawlProgress,
 } from "../types";
 import { defaultConnectorRegistry } from "../connectors/connector-registry";
 import { DomainRateLimiter } from "../utils/rate-limiter";
@@ -33,7 +35,7 @@ export class WebsiteCrawler {
 
   constructor(
     supabase: SupabaseClient<Database>,
-    rateLimiterOptions = { maxConcurrency: 2, delayBetweenRequestsMs: 350 }
+    rateLimiterOptions = { maxConcurrency: 3, delayBetweenRequestsMs: 200 }
   ) {
     this.supabase = supabase;
     this.rateLimiter = new DomainRateLimiter(rateLimiterOptions);
@@ -188,14 +190,22 @@ export class WebsiteCrawler {
   }
 
   /**
-   * Executa a varredura completa, coleta e sincronização no banco de dados
+   * Executa a varredura completa, coleta e sincronização progressiva em banco de dados
    */
   public async runFullCrawlAndSync(
     agencyId: string,
     websiteSourceId: string,
-    customMaxListings = 2000
+    options?: number | WebsiteCrawlOptions
   ): Promise<CrawlResult> {
     const startTime = Date.now();
+    const crawlOpts: WebsiteCrawlOptions =
+      typeof options === "number"
+        ? { customMaxListings: options }
+        : options || {};
+
+    const customMaxListings = crawlOpts.customMaxListings || 2000;
+    const batchSize = Math.max(1, crawlOpts.batchSize || 10);
+    const onProgress = crawlOpts.onProgress;
 
     // 1. Busca dados da fonte de website
     const { data: source, error: sourceErr } = await this.supabase
@@ -251,47 +261,109 @@ export class WebsiteCrawler {
       );
 
       // 5. Descoberta de URLs de imóveis
-      const references: ListingReference[] = await connector.discoverListings(context);
+      const allReferences: ListingReference[] = await connector.discoverListings(context);
+      const references = allReferences.slice(0, customMaxListings);
+      const totalToCrawl = references.length;
 
-      const properties: NormalizedProperty[] = [];
-      const itemErrors: {
-        url?: string;
-        externalId?: string;
-        errorType: string;
-        message: string;
-        payload?: any;
-      }[] = [];
-
-      // 6. Coleta e Parsing individual com Rate Limiting e Isolamento de Falhas
-      // UM IMÓVEL RUIM NÃO PODE PARAR O CRAWL!
-      for (const ref of references) {
-        try {
-          const prop = await this.rateLimiter.execute(() =>
-            connector.fetchListing(ref, context)
-          );
-          properties.push(prop);
-        } catch (itemErr: any) {
-          itemErrors.push({
-            url: ref.url,
-            externalId: ref.externalIdHint,
-            errorType: "fetch_listing_error",
-            message: itemErr?.message || "Falha ao extrair anúncio",
-          });
-        }
-      }
-
-      // 7. Persistência idempotente via WebsitePropertyImporter (NormalizedProperty[])
+      // 6. Inicializa WebsitePropertyImporter
       const importer = new WebsitePropertyImporter(this.supabase, {
         agencyId,
         websiteSourceId: source.id,
         crawlRunId,
       });
+      await importer.init();
 
-      const importResult = await importer.importProperties(
-        properties,
-        itemErrors,
-        references.length
-      );
+      // Notifica início com contagem total de referências
+      if (onProgress) {
+        await onProgress({
+          current: 0,
+          total: totalToCrawl,
+          created: 0,
+          updated: 0,
+          failed: 0,
+          currentProperty: "Iniciando download dos anúncios...",
+        });
+      }
+
+      // 7. Coleta e Persistência Progressiva em Lotes
+      // Cada lote é extraído, normalizado e persistido imediatamente no banco
+      for (let i = 0; i < totalToCrawl; i += batchSize) {
+        const refBatch = references.slice(i, Math.min(i + batchSize, totalToCrawl));
+
+        // Extrai lote em paralelo controlado via DomainRateLimiter
+        const fetchResults = await Promise.all(
+          refBatch.map(async (ref) => {
+            try {
+              const prop = await this.rateLimiter.execute(() =>
+                connector.fetchListing(ref, context)
+              );
+              return { success: true as const, prop, ref };
+            } catch (itemErr: any) {
+              return {
+                success: false as const,
+                ref,
+                error: itemErr?.message || "Falha ao extrair anúncio",
+              };
+            }
+          })
+        );
+
+        const successfulProps: NormalizedProperty[] = [];
+
+        for (const res of fetchResults) {
+          if (res.success) {
+            successfulProps.push(res.prop);
+          } else {
+            await importer.recordError(
+              res.ref.url,
+              res.ref.externalIdHint || null,
+              "fetch_listing_error",
+              res.error
+            );
+          }
+        }
+
+        // Persiste lote de imóveis normalizados no banco imediatamente
+        if (successfulProps.length > 0) {
+          await importer.importBatch(successfulProps);
+        }
+
+        const processedCount = Math.min(i + refBatch.length, totalToCrawl);
+        const lastPropTitle =
+          successfulProps[successfulProps.length - 1]?.title ||
+          refBatch[refBatch.length - 1]?.url;
+
+        // Atualização intermediária do registro em crawl_runs para visibilidade em tempo real
+        try {
+          await this.supabase
+            .from("crawl_runs")
+            .update({
+              items_found: totalToCrawl,
+              items_created: importer.itemsCreated,
+              items_updated: importer.itemsUpdated,
+              items_failed: importer.itemsFailed,
+              pages_crawled: processedCount,
+            })
+            .eq("id", crawlRunId);
+        } catch {
+          // Ignora falha de atualização intermediária
+        }
+
+        // Notifica progresso em tempo real (para SSE)
+        if (onProgress) {
+          await onProgress({
+            current: processedCount,
+            total: totalToCrawl,
+            created: importer.itemsCreated,
+            updated: importer.itemsUpdated,
+            failed: importer.itemsFailed,
+            currentProperty: lastPropTitle,
+          });
+        }
+      }
+
+      // 8. Finalização segura com desativação em 2 etapas de imóveis ausentes
+      const importResult = await importer.finalize(totalToCrawl, totalToCrawl);
 
       return importResult;
     } catch (criticalErr: any) {
@@ -312,3 +384,4 @@ export class WebsiteCrawler {
     }
   }
 }
+

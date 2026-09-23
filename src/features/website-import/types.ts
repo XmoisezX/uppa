@@ -147,3 +147,19 @@ export interface CrawlResult {
   status: CrawlRunStatus;
   error?: string;
 }
+
+export interface WebsiteCrawlProgress {
+  current: number;
+  total: number;
+  created: number;
+  updated: number;
+  failed: number;
+  currentProperty?: string;
+}
+
+export interface WebsiteCrawlOptions {
+  customMaxListings?: number;
+  batchSize?: number;
+  onProgress?: (progress: WebsiteCrawlProgress) => void | Promise<void>;
+}
+
