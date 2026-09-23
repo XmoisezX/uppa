@@ -150,15 +150,19 @@ export class WebsitePropertyImporter {
    */
   public async finalize(
     itemsFound: number,
-    pagesCrawled = 1
+    pagesCrawled = 1,
+    skipDeactivation = false
   ): Promise<CrawlResult> {
     const { agencyId, websiteSourceId, crawlRunId } = this.context;
 
     // Desativação segura em duas etapas de imóveis ausentes
-    const itemsDeactivated = await this.handleMissingProperties(
-      agencyId,
-      this._processedExternalIds
-    );
+    // Ignora quando for continuação parcial (skipDeactivation = true) para proteger imóveis anteriores
+    const itemsDeactivated = skipDeactivation
+      ? 0
+      : await this.handleMissingProperties(
+          agencyId,
+          this._processedExternalIds
+        );
 
     const durationMs = Date.now() - this._startTime;
 

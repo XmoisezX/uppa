@@ -6,6 +6,7 @@ import {
 } from "@/features/website-import/services";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 900; // Permite execuções de até 15 minutos em ambientes compatíveis
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,6 +70,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const startIndex: number | undefined =
+      typeof body.startIndex === "number" && body.startIndex >= 0
+        ? body.startIndex
+        : undefined;
+
     const wantsStream =
       body.stream === true ||
       request.headers.get("accept")?.includes("text/event-stream");
@@ -89,16 +95,29 @@ export async function POST(request: NextRequest) {
             }
           };
 
+          // Heartbeat periódico (a cada 10 segundos) para manter o canal SSE aberto
+          // e evitar timeouts agressivos de proxies (Cloudflare, Nginx, browser)
+          const keepAliveTimer = setInterval(() => {
+            try {
+              controller.enqueue(encoder.encode(`: keepalive\n\n`));
+            } catch {}
+          }, 10000);
+
           try {
             sendEvent("init", {
-              message: "Iniciando varredura e importação...",
+              message:
+                startIndex && startIndex > 0
+                  ? `Retomando sincronização a partir do anúncio #${startIndex + 1}...`
+                  : "Iniciando varredura e importação...",
               websiteSourceId: targetWebsiteSourceId,
+              startIndex: startIndex || 0,
             });
 
             const result = await confirmAndRunWebsiteImport(
               targetAgencyId,
               targetWebsiteSourceId,
               {
+                startIndex,
                 onProgress: (progress) => {
                   sendEvent("progress", progress);
                 },
@@ -115,7 +134,10 @@ export async function POST(request: NextRequest) {
               message: err?.message || "Erro inesperado durante a importação.",
             });
           } finally {
-            controller.close();
+            clearInterval(keepAliveTimer);
+            try {
+              controller.close();
+            } catch {}
           }
         },
       });

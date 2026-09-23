@@ -35,7 +35,7 @@ export class WebsiteCrawler {
 
   constructor(
     supabase: SupabaseClient<Database>,
-    rateLimiterOptions = { maxConcurrency: 3, delayBetweenRequestsMs: 200 }
+    rateLimiterOptions = { maxConcurrency: 6, delayBetweenRequestsMs: 50 }
   ) {
     this.supabase = supabase;
     this.rateLimiter = new DomainRateLimiter(rateLimiterOptions);
@@ -204,7 +204,8 @@ export class WebsiteCrawler {
         : options || {};
 
     const customMaxListings = crawlOpts.customMaxListings || 2000;
-    const batchSize = Math.max(1, crawlOpts.batchSize || 10);
+    const batchSize = Math.max(1, crawlOpts.batchSize || 15);
+    const startIndex = Math.max(0, crawlOpts.startIndex || 0);
     const onProgress = crawlOpts.onProgress;
 
     // 1. Busca dados da fonte de website
@@ -273,21 +274,24 @@ export class WebsiteCrawler {
       });
       await importer.init();
 
-      // Notifica início com contagem total de referências
+      // Notifica início com contagem total de referências e ponto de partida
       if (onProgress) {
         await onProgress({
-          current: 0,
+          current: startIndex,
           total: totalToCrawl,
           created: 0,
           updated: 0,
           failed: 0,
-          currentProperty: "Iniciando download dos anúncios...",
+          currentProperty:
+            startIndex > 0
+              ? `Continuando sincronização a partir do anúncio #${startIndex + 1}...`
+              : "Iniciando download dos anúncios...",
         });
       }
 
       // 7. Coleta e Persistência Progressiva em Lotes
       // Cada lote é extraído, normalizado e persistido imediatamente no banco
-      for (let i = 0; i < totalToCrawl; i += batchSize) {
+      for (let i = startIndex; i < totalToCrawl; i += batchSize) {
         const refBatch = references.slice(i, Math.min(i + batchSize, totalToCrawl));
 
         // Extrai lote em paralelo controlado via DomainRateLimiter
@@ -363,7 +367,9 @@ export class WebsiteCrawler {
       }
 
       // 8. Finalização segura com desativação em 2 etapas de imóveis ausentes
-      const importResult = await importer.finalize(totalToCrawl, totalToCrawl);
+      // Desativação apenas ocorre se o ciclo foi executado desde o início (startIndex === 0)
+      const skipDeactivation = startIndex > 0;
+      const importResult = await importer.finalize(totalToCrawl, totalToCrawl, skipDeactivation);
 
       return importResult;
     } catch (criticalErr: any) {

@@ -22,6 +22,12 @@ export class SSRFError extends Error {
 export const UPPA_USER_AGENT =
   "UPPA-Bot/1.0 (+https://uppa.com.br/bot; contato@uppa.com.br)";
 
+// Cache em memória de resolução DNS para evitar saturação do threadpool libuv em crawling intensivo
+const dnsResolutionCache = new Map<
+  string,
+  { records: dns.LookupAddress[]; expiresAt: number }
+>();
+
 /**
  * Verifica se um endereço IP (IPv4 ou IPv6) pertence a faixas privadas,
  * loopback, link-local, reservadas ou metadados de nuvem.
@@ -194,9 +200,23 @@ export async function validateSafeUrl(
       throw new SSRFError(`Endereço IP privado ou reservado bloqueado: ${hostname}`);
     }
   } else if (!options?.skipDnsValidation) {
-    // 4. Resolução DNS e verificação de IP de destino
+    // 4. Resolução DNS e verificação de IP de destino com cache
     try {
-      const records = await dns.lookup(hostname, { all: true });
+      const now = Date.now();
+      let records: dns.LookupAddress[];
+      const cached = dnsResolutionCache.get(hostname);
+
+      if (cached && cached.expiresAt > now) {
+        records = cached.records;
+      } else {
+        records = await dns.lookup(hostname, { all: true });
+        if (records && records.length > 0) {
+          dnsResolutionCache.set(hostname, {
+            records,
+            expiresAt: now + 5 * 60 * 1000, // 5 minutos de TTL
+          });
+        }
+      }
 
       if (!records || records.length === 0) {
         throw new SSRFError(`Falha ao resolver DNS para o domínio: ${hostname}`);
