@@ -34,7 +34,14 @@ export type PropertyType =
   | "rural"
   | "other";
 
-export type ListingSource = "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao";
+export type ListingSource =
+  | "manual"
+  | "vrsync"
+  | "api"
+  | "csv"
+  | "partner"
+  | "chaves_na_mao"
+  | "website";
 
 export type MediaType = "image" | "video" | "virtual_tour" | "floor_plan";
 
@@ -80,6 +87,9 @@ export interface Property {
   publishedAt?: string | null;
   sourceUpdatedAt?: string | null;
   missingFromFeedAt?: string | null;
+  sourceUrl?: string | null;
+  contentHash?: string | null;
+  lastSeenAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

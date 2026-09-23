@@ -6,9 +6,12 @@ import { getAgencyFeeds, getFeedRuns } from "@/features/feeds/services";
 import { FeedsDashboardView } from "@/features/feeds/components/FeedsDashboardView";
 import { Button } from "@/components/ui/button";
 
+import { getAgencyWebsiteSources } from "@/features/website-import/services";
+import { WebsiteSourcesSection } from "@/features/website-import/components/WebsiteSourcesSection";
+
 export const metadata = {
-  title: "Integrações & Feeds XML | Painel da Imobiliária",
-  description: "Gerencie a sincronização de imóveis via feeds VRSync e CRMs parceiros.",
+  title: "Integrações, Website Import & Feeds | Painel da Imobiliária",
+  description: "Gerencie a importação via website próprio e sincronização de imóveis via feeds VRSync.",
 };
 
 export default async function PanelIntegrationsPage() {
@@ -30,10 +33,10 @@ export default async function PanelIntegrationsPage() {
             <Building2 className="h-6 w-6" />
           </div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-            Vincule sua Imobiliária para Configurar Feeds
+            Vincule sua Imobiliária para Configurar Integrações
           </h2>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-            A integração de feeds XML/VRSync permite sincronizar seu portfólio completo diretamente do seu CRM para o portal.
+            A integração permite sincronizar seu portfólio completo automaticamente a partir do seu site oficial ou feeds de CRM.
           </p>
           <div className="mt-6">
             <Link href="/painel/configuracoes">
@@ -49,25 +52,38 @@ export default async function PanelIntegrationsPage() {
 
   const agencyId = membership.agency.id;
   const feeds = await getAgencyFeeds(agencyId);
+  const websiteSources = await getAgencyWebsiteSources(agencyId);
 
   // Carrega histórico das últimas execuções
   const allRuns = feeds.length > 0 && feeds[0].id ? await getFeedRuns(feeds[0].id, 15) : [];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
       <Link
         href="/painel"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 mb-6"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
         Voltar para o Painel
       </Link>
 
-      <FeedsDashboardView
-        initialFeeds={feeds}
-        initialRuns={allRuns}
-        agencyName={membership.agency.name}
-      />
+      {/* SEÇÃO 1: WEBSITE IMPORT (NOVO MÉTODO DE AQUISIÇÃO POR DOMÍNIO) */}
+      <div className="p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+        <WebsiteSourcesSection
+          agencyId={agencyId}
+          agencyName={membership.agency.name}
+          initialSources={websiteSources}
+        />
+      </div>
+
+      {/* SEÇÃO 2: FEEDS XML & VRSYNC */}
+      <div className="border-t border-slate-200 dark:border-slate-800 pt-8">
+        <FeedsDashboardView
+          initialFeeds={feeds}
+          initialRuns={allRuns}
+          agencyName={membership.agency.name}
+        />
+      </div>
     </div>
   );
 }

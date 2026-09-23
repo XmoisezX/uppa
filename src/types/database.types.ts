@@ -276,7 +276,7 @@ export interface Database {
           agency_id: string;
           broker_id: string | null;
           external_id: string;
-          source: "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao";
+          source: "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao" | "website";
           slug: string;
           title: string;
           description: string | null;
@@ -337,6 +337,9 @@ export interface Database {
           published_at: string | null;
           source_updated_at: string | null;
           missing_from_feed_at: string | null;
+          source_url: string | null;
+          content_hash: string | null;
+          last_seen_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -345,7 +348,7 @@ export interface Database {
           agency_id: string;
           broker_id?: string | null;
           external_id: string;
-          source?: "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao";
+          source?: "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao" | "website";
           slug: string;
           title: string;
           description?: string | null;
@@ -406,6 +409,9 @@ export interface Database {
           published_at?: string | null;
           source_updated_at?: string | null;
           missing_from_feed_at?: string | null;
+          source_url?: string | null;
+          content_hash?: string | null;
+          last_seen_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -414,7 +420,7 @@ export interface Database {
           agency_id?: string;
           broker_id?: string | null;
           external_id?: string;
-          source?: "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao";
+          source?: "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao" | "website";
           slug?: string;
           title?: string;
           description?: string | null;
@@ -475,6 +481,9 @@ export interface Database {
           published_at?: string | null;
           source_updated_at?: string | null;
           missing_from_feed_at?: string | null;
+          source_url?: string | null;
+          content_hash?: string | null;
+          last_seen_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1331,6 +1340,216 @@ export interface Database {
         };
         Relationships: [];
       };
+      website_authorizations: {
+        Row: {
+          id: string;
+          agency_id: string;
+          domain: string;
+          authorized_by_user_id: string;
+          authorized_at: string;
+          status: string;
+          terms_version: string;
+          declaration_text: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          agency_id: string;
+          domain: string;
+          authorized_by_user_id: string;
+          authorized_at?: string;
+          status?: string;
+          terms_version?: string;
+          declaration_text: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          agency_id?: string;
+          domain?: string;
+          authorized_by_user_id?: string;
+          authorized_at?: string;
+          status?: string;
+          terms_version?: string;
+          declaration_text?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "website_authorizations_agency_id_fkey";
+            columns: ["agency_id"];
+            isOneToOne: false;
+            referencedRelation: "agencies";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      website_sources: {
+        Row: {
+          id: string;
+          agency_id: string;
+          base_url: string;
+          domain: string;
+          status: string;
+          connector_type: string;
+          crawl_interval_hours: number;
+          metadata: Json;
+          last_crawl_at: string | null;
+          next_crawl_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          agency_id: string;
+          base_url: string;
+          domain: string;
+          status?: string;
+          connector_type?: string;
+          crawl_interval_hours?: number;
+          metadata?: Json;
+          last_crawl_at?: string | null;
+          next_crawl_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          agency_id?: string;
+          base_url?: string;
+          domain?: string;
+          status?: string;
+          connector_type?: string;
+          crawl_interval_hours?: number;
+          metadata?: Json;
+          last_crawl_at?: string | null;
+          next_crawl_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "website_sources_agency_id_fkey";
+            columns: ["agency_id"];
+            isOneToOne: false;
+            referencedRelation: "agencies";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      crawl_runs: {
+        Row: {
+          id: string;
+          website_source_id: string;
+          agency_id: string;
+          started_at: string;
+          finished_at: string | null;
+          status: string;
+          items_found: number;
+          items_created: number;
+          items_updated: number;
+          items_deactivated: number;
+          items_failed: number;
+          pages_crawled: number;
+          duration_ms: number | null;
+          error_message: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          website_source_id: string;
+          agency_id: string;
+          started_at?: string;
+          finished_at?: string | null;
+          status?: string;
+          items_found?: number;
+          items_created?: number;
+          items_updated?: number;
+          items_deactivated?: number;
+          items_failed?: number;
+          pages_crawled?: number;
+          duration_ms?: number | null;
+          error_message?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          website_source_id?: string;
+          agency_id?: string;
+          started_at?: string;
+          finished_at?: string | null;
+          status?: string;
+          items_found?: number;
+          items_created?: number;
+          items_updated?: number;
+          items_deactivated?: number;
+          items_failed?: number;
+          pages_crawled?: number;
+          duration_ms?: number | null;
+          error_message?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "crawl_runs_website_source_id_fkey";
+            columns: ["website_source_id"];
+            isOneToOne: false;
+            referencedRelation: "website_sources";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "crawl_runs_agency_id_fkey";
+            columns: ["agency_id"];
+            isOneToOne: false;
+            referencedRelation: "agencies";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      crawl_errors: {
+        Row: {
+          id: string;
+          crawl_run_id: string;
+          url: string | null;
+          external_id: string | null;
+          error_type: string;
+          message: string;
+          payload: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          crawl_run_id: string;
+          url?: string | null;
+          external_id?: string | null;
+          error_type: string;
+          message: string;
+          payload?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          crawl_run_id?: string;
+          url?: string | null;
+          external_id?: string | null;
+          error_type?: string;
+          message?: string;
+          payload?: Json | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "crawl_errors_crawl_run_id_fkey";
+            columns: ["crawl_run_id"];
+            isOneToOne: false;
+            referencedRelation: "crawl_runs";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -1419,7 +1638,7 @@ export interface Database {
         | "condo_house"
         | "rural"
         | "other";
-      listing_source: "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao";
+      listing_source: "manual" | "vrsync" | "api" | "csv" | "partner" | "chaves_na_mao" | "website";
       media_type: "image" | "video" | "virtual_tour" | "floor_plan";
       lead_source: "whatsapp" | "form" | "phone" | "email" | "financing";
     };
