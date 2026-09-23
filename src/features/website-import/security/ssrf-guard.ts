@@ -22,10 +22,15 @@ export class SSRFError extends Error {
 export const UPPA_USER_AGENT =
   "UPPA-Bot/1.0 (+https://uppa.com.br/bot; contato@uppa.com.br)";
 
+interface CachedDnsRecord {
+  address: string;
+  family: number;
+}
+
 // Cache em memória de resolução DNS para evitar saturação do threadpool libuv em crawling intensivo
 const dnsResolutionCache = new Map<
   string,
-  { records: dns.LookupAddress[]; expiresAt: number }
+  { records: CachedDnsRecord[]; expiresAt: number }
 >();
 
 /**
@@ -203,7 +208,7 @@ export async function validateSafeUrl(
     // 4. Resolução DNS e verificação de IP de destino com cache
     try {
       const now = Date.now();
-      let records: dns.LookupAddress[];
+      let records: CachedDnsRecord[];
       const cached = dnsResolutionCache.get(hostname);
 
       if (cached && cached.expiresAt > now) {

@@ -49,6 +49,7 @@ export function WebsiteImportModal({
   const [authChecked, setAuthChecked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isInterrupted, setIsInterrupted] = useState(false);
 
   const [previewReport, setPreviewReport] = useState<PreviewReport | null>(null);
   const [syncResult, setSyncResult] = useState<CrawlResult | null>(null);
@@ -142,25 +143,47 @@ export function WebsiteImportModal({
     }
   };
 
-  // Executa o streaming SSE para sincronização do website
-  const startSyncStream = async (targetSourceId?: string, targetDomain?: string) => {
+  // Executa o streaming SSE para sincronização do website com suporte a retomada
+  const startSyncStream = async (
+    targetSourceId?: string,
+    targetDomain?: string,
+    resumeFromIndex?: number
+  ) => {
     const domainToSync = targetDomain || previewReport?.domain || url;
     if (!domainToSync && !targetSourceId) return;
 
+    const isResuming = typeof resumeFromIndex === "number" && resumeFromIndex > 0;
+
     setIsLoading(true);
+    setIsInterrupted(false);
     setErrorMessage(null);
     setStep("syncing");
 
-    const totalExpected = previewReport?.listingsFound || 0;
-    setImportProgress({
-      current: 0,
-      total: totalExpected,
-      created: 0,
-      updated: 0,
-      failed: 0,
-      currentProperty: "Conectando ao crawler...",
-      logs: ["Conexão estabelecida. Iniciando análise e normalização dos imóveis..."],
-    });
+    const totalExpected =
+      previewReport?.listingsFound || importProgress.total || 0;
+
+    if (!isResuming) {
+      setImportProgress({
+        current: 0,
+        total: totalExpected,
+        created: 0,
+        updated: 0,
+        failed: 0,
+        currentProperty: "Conectando ao crawler...",
+        logs: ["Conexão estabelecida. Iniciando análise e normalização dos imóveis..."],
+      });
+    } else {
+      setImportProgress((prev) => ({
+        ...prev,
+        currentProperty: `Retomando a partir do anúncio #${resumeFromIndex + 1}...`,
+        logs: [
+          `Retomando sincronização a partir do anúncio #${resumeFromIndex + 1} de ${totalExpected}...`,
+          ...prev.logs.slice(0, 8),
+        ],
+      }));
+    }
+
+    let receivedComplete = false;
 
     try {
       const response = await fetch("/api/website-import/sync", {
@@ -173,6 +196,7 @@ export function WebsiteImportModal({
           agencyId,
           websiteSourceId: targetSourceId,
           url: domainToSync,
+          startIndex: isResuming ? resumeFromIndex : undefined,
           stream: true,
         }),
       });
@@ -239,6 +263,7 @@ export function WebsiteImportModal({
                 };
               });
             } else if (eventType === "complete") {
+              receivedComplete = true;
               setSyncResult(data.result);
               setStep("completed");
               if (onSuccess) onSuccess();
@@ -251,9 +276,14 @@ export function WebsiteImportModal({
           }
         }
       }
+
+      // Se a conexão encerrou sem emitir o evento "complete", indica que houve interrupção (ex: timeout de rede aos 5min)
+      if (!receivedComplete) {
+        setIsInterrupted(true);
+      }
     } catch (err: any) {
       setErrorMessage(err?.message || "Erro inesperado durante a importação.");
-      setStep(previewReport ? "preview" : "input");
+      setIsInterrupted(true);
     } finally {
       setIsLoading(false);
     }
@@ -568,14 +598,32 @@ export function WebsiteImportModal({
           {step === "syncing" && (
             <div className="py-6 space-y-6">
               <div className="text-center space-y-2">
-                <div className="inline-flex p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 mb-1">
-                  <Loader2 className="h-8 w-8 animate-spin" />
+                <div
+                  className={`inline-flex p-3 rounded-2xl ${
+                    isInterrupted
+                      ? "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400"
+                      : "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400"
+                  } mb-1`}
+                >
+                  {isInterrupted ? (
+                    <AlertTriangle className="h-8 w-8" />
+                  ) : (
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  )}
                 </div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Sincronizando Anúncios do Website...
+                  {isInterrupted
+                    ? "Sincronização em Pausa"
+                    : "Sincronizando Anúncios do Website..."}
                 </h3>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Baixando, normalizando e gravando imóveis com persistência idempotente e content hash.
+                  {isInterrupted
+                    ? `A conexão com o servidor foi pausada após o limite de tempo da requisição. Seus dados já processados (${importProgress.current.toLocaleString(
+                        "pt-BR"
+                      )} de ${importProgress.total.toLocaleString(
+                        "pt-BR"
+                      )} imóveis) estão salvos com total segurança.`
+                    : "Baixando, normalizando e gravando imóveis com persistência idempotente e content hash."}
                 </p>
               </div>
 
@@ -665,6 +713,37 @@ export function WebsiteImportModal({
                       › {log}
                     </p>
                   ))}
+                </div>
+              )}
+
+              {/* Botões de Ação para Continuação em Caso de Pausa */}
+              {isInterrupted && (
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setStep("completed");
+                      if (onSuccess) onSuccess();
+                    }}
+                    className="rounded-xl h-11 px-5 text-xs font-semibold cursor-pointer"
+                  >
+                    Ver Imóveis Sincronizados ({importProgress.current})
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      startSyncStream(
+                        initialSourceId,
+                        previewReport?.domain || initialDomain,
+                        importProgress.current
+                      )
+                    }
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-11 px-6 text-xs font-bold gap-2 cursor-pointer shadow-md shadow-indigo-500/20"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                    Continuar Sincronização (a partir de {importProgress.current})
+                  </Button>
                 </div>
               )}
             </div>
