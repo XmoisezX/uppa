@@ -16,6 +16,7 @@ import {
   extractInteger,
   inferTransactionType,
   inferPropertyType,
+  isListingDetailUrl,
 } from "../utils/html-parser-utils";
 import { filterListingImages } from "../utils/media-filter";
 import { resolveWebsiteExternalId } from "../utils/external-id-resolver";
@@ -45,9 +46,11 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
       sitemapsToVisit.add(`${context.baseUrl}/sitemap_index.xml`);
     }
 
+    const sitemapQueue: string[] = Array.from(sitemapsToVisit);
     const visitedSitemaps = new Set<string>();
 
-    for (const smUrl of Array.from(sitemapsToVisit)) {
+    while (sitemapQueue.length > 0 && discovered.size < maxListings) {
+      const smUrl = sitemapQueue.shift()!;
       if (visitedSitemaps.has(smUrl)) continue;
       visitedSitemaps.add(smUrl);
 
@@ -61,7 +64,7 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
         for (const entry of entries) {
           // Se for sub-sitemap, enfileira para visita
           if (entry.url.endsWith(".xml") && !visitedSitemaps.has(entry.url)) {
-            sitemapsToVisit.add(entry.url);
+            sitemapQueue.push(entry.url);
           } else if (this.isPropertyUrl(entry.url)) {
             if (!discovered.has(entry.url)) {
               discovered.set(entry.url, {
@@ -77,8 +80,6 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
       } catch (err: any) {
         console.warn(`[UniversalStructuredDataConnector] Falha ao processar sitemap ${smUrl}:`, err?.message);
       }
-
-      if (discovered.size >= maxListings) break;
     }
 
     return Array.from(discovered.values());
@@ -274,17 +275,7 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
   }
 
   private isPropertyUrl(url: string): boolean {
-    const lower = url.toLowerCase();
-    return (
-      lower.includes("/imovel/") ||
-      lower.includes("/imoveis/") ||
-      lower.includes("/imovel-") ||
-      lower.includes("/venda/") ||
-      lower.includes("/aluguel/") ||
-      lower.includes("/propriedade/") ||
-      lower.includes("/comprar/") ||
-      lower.includes("/alugar/")
-    );
+    return isListingDetailUrl(url);
   }
 
   private findBestJsonLdBlock(blocks: any[]): any {

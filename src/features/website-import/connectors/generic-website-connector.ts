@@ -16,6 +16,9 @@ import {
   extractInteger,
   inferTransactionType,
   inferPropertyType,
+  parseSitemapXml,
+  isListingDetailUrl,
+  extractAddressFromUrl,
 } from "../utils/html-parser-utils";
 import { filterListingImages } from "../utils/media-filter";
 import { resolveWebsiteExternalId } from "../utils/external-id-resolver";
@@ -34,10 +37,60 @@ export class GenericWebsiteConnector implements WebsiteConnector {
   public async discoverListings(
     context: ConnectorContext
   ): Promise<ListingReference[]> {
-    const maxListings = context.maxListings ?? 1000;
+    const maxListings = context.maxListings ?? 5000;
     const maxPages = context.maxPages ?? 30;
-
     const discoveredListings = new Map<string, ListingReference>();
+
+    // 1. Prioridade 1: Verifica sitemaps disponíveis (muito mais rápido, completo e confiável)
+    const sitemaps = new Set<string>(context.sitemaps || []);
+    if (sitemaps.size === 0) {
+      sitemaps.add(`${context.baseUrl}/sitemap.xml`);
+      sitemaps.add(`${context.baseUrl}/sitemap_index.xml`);
+    }
+
+    const sitemapQueue = Array.from(sitemaps);
+    const visitedSitemaps = new Set<string>();
+
+    while (sitemapQueue.length > 0 && discoveredListings.size < maxListings) {
+      const smUrl = sitemapQueue.shift()!;
+      if (visitedSitemaps.has(smUrl)) continue;
+      visitedSitemaps.add(smUrl);
+
+      try {
+        const response = await safeFetch(smUrl, { timeoutMs: 12000 });
+        if (!response.ok) continue;
+
+        const xml = await response.text();
+        const entries = parseSitemapXml(xml);
+
+        for (const entry of entries) {
+          if (entry.url.endsWith(".xml")) {
+            if (!visitedSitemaps.has(entry.url)) {
+              sitemapQueue.push(entry.url);
+            }
+          } else if (isListingDetailUrl(entry.url)) {
+            if (!discoveredListings.has(entry.url)) {
+              discoveredListings.set(entry.url, {
+                url: entry.url,
+                lastmod: entry.lastmod,
+                sourceUpdatedAtHint: entry.lastmod,
+              });
+            }
+          }
+
+          if (discoveredListings.size >= maxListings) break;
+        }
+      } catch {
+        // Ignora falha de sitemap e continua busca
+      }
+    }
+
+    // Se sitemaps já forneceram anúncios, retorna imediatamente
+    if (discoveredListings.size > 0) {
+      return Array.from(discoveredListings.values());
+    }
+
+    // 2. Prioridade 2: Fallback para rastreamento HTML via paginação
     const visitedPages = new Set<string>();
     const pagesToCrawl: string[] = [
       `${context.baseUrl}/imoveis`,
@@ -120,12 +173,12 @@ export class GenericWebsiteConnector implements WebsiteConnector {
       ? this.stripHtmlTags(descMatch[1])
       : meta["og:description"] || meta["description"] || "";
 
-    // 3. Preços (Regex para R$ ...)
-    const { price, rentPrice } = this.extractPricesFromHtml(html, title);
-
-    // 4. Tipo de transação e Tipo do imóvel
+    // 3. Tipo de transação e Tipo do imóvel
     const transactionType = inferTransactionType(`${title} ${description}`);
     const propertyType = inferPropertyType(`${title} ${description}`);
+
+    // 4. Preços (Regex para R$ ...)
+    const { price, rentPrice } = this.extractPricesFromHtml(html, title, transactionType);
 
     // 5. Especificações (Quartos, banheiros, vagas, área)
     // Suporta tanto "4 quartos" quanto "Quartos: 4"
@@ -135,8 +188,8 @@ export class GenericWebsiteConnector implements WebsiteConnector {
     const parkingSpaces = this.extractSpecificationMetric(html, ["vaga", "garagem"]);
     const usableArea = this.extractAreaFromHtml(html);
 
-    // 6. Endereço
-    const address = this.extractAddressFromHtml(html, meta);
+    // 6. Endereço (Extração precisa da URL com fallback para o HTML)
+    const address = this.extractAddressFromHtml(html, meta, reference.url);
 
     // 7. Mídias
     const rawImageUrls = extractImageUrls(html, reference.url);
@@ -156,6 +209,15 @@ export class GenericWebsiteConnector implements WebsiteConnector {
       canonicalUrl,
       pageUrl: reference.url,
     });
+
+    const lowerTitle = title.toLowerCase();
+    const isUnavailable =
+      lowerTitle.includes("indisponível") ||
+      lowerTitle.includes("indisponivel") ||
+      lowerTitle.includes("não está mais disponível") ||
+      lowerTitle.includes("nao esta mais disponivel") ||
+      lowerTitle.includes("não encontrado") ||
+      lowerTitle.includes("desativado");
 
     return {
       externalId,
@@ -180,15 +242,7 @@ export class GenericWebsiteConnector implements WebsiteConnector {
   }
 
   private isListingLink(url: string): boolean {
-    const lower = url.toLowerCase();
-    return (
-      lower.includes("/imovel/") ||
-      lower.includes("/imoveis/") ||
-      lower.includes("/imovel-") ||
-      lower.includes("/propriedade/") ||
-      lower.includes("/venda/") ||
-      lower.includes("/aluguel/")
-    );
+    return isListingDetailUrl(url);
   }
 
   private isPaginationLink(url: string, baseUrl: string): boolean {
@@ -215,10 +269,15 @@ export class GenericWebsiteConnector implements WebsiteConnector {
 
   private extractPricesFromHtml(
     html: string,
-    title: string
+    title: string,
+    transactionType?: string
   ): { price?: number; rentPrice?: number } {
     let price: number | undefined;
     let rentPrice: number | undefined;
+
+    const lower = `${title} ${transactionType || ""}`.toLowerCase();
+    const isExplicitRent = lower.includes("aluguel") || lower.includes("loca") || lower.includes("rent");
+    const isExplicitSale = lower.includes("venda") || lower.includes("compra") || lower.includes("sale");
 
     // Busca valores monetários no formato brasileiro
     const priceMatches = html.matchAll(/R\$\s*([\d.]+,\d{2}|\d+[\d.]*)/gi);
@@ -226,10 +285,16 @@ export class GenericWebsiteConnector implements WebsiteConnector {
       const val = parseCurrencyBrl(match[1]);
       if (!val || val < 100) continue;
 
-      if (title.toLowerCase().includes("aluguel") || val < 15000) {
+      if (isExplicitRent && !isExplicitSale) {
         if (!rentPrice) rentPrice = val;
+      } else if (isExplicitSale && !isExplicitRent) {
+        if (!price && val >= 1000) price = val;
       } else {
-        if (!price) price = val;
+        if (val >= 25000 && !price) {
+          price = val;
+        } else if (val < 25000 && !rentPrice) {
+          rentPrice = val;
+        }
       }
 
       if (price && rentPrice) break;
@@ -279,8 +344,23 @@ export class GenericWebsiteConnector implements WebsiteConnector {
 
   private extractAddressFromHtml(
     html: string,
-    meta: Record<string, string>
+    meta: Record<string, string>,
+    pageUrl?: string
   ): NormalizedAddress {
+    // 1. Tenta extrair a partir da URL estruturada (muito comum e precisa no Brasil)
+    if (pageUrl) {
+      const fromUrl = extractAddressFromUrl(pageUrl);
+      if (fromUrl.city || fromUrl.neighborhood || fromUrl.state) {
+        return {
+          country: "Brasil",
+          city: fromUrl.city,
+          state: fromUrl.state,
+          neighborhood: fromUrl.neighborhood,
+          postalCode: meta["postal_code"] || undefined,
+        };
+      }
+    }
+
     const cleanText = this.stripHtmlTags(html);
     // Procura por Bairro, Cidade - UF
     const locationMatch = /\b(?:bairro|localiza[cç][aã]o)[:\s]*([^<>\n,]+)(?:,\s*([^<>\n,-]+))?(?:\s*-\s*([a-zA-Z]{2}))?/i.exec(

@@ -45,11 +45,17 @@ export function resolveWebsiteExternalId(
   }
 
   // Prioridade 4: URL canônica estável ou URL da página
-  const urlToUse = input.canonicalUrl || input.pageUrl;
-  if (urlToUse) {
-    const stableSlug = extractStableSlugFromUrl(urlToUse);
-    if (stableSlug) {
-      return stableSlug;
+  if (input.canonicalUrl) {
+    const canonicalSlug = extractStableSlugFromUrl(input.canonicalUrl);
+    if (canonicalSlug && canonicalSlug !== "home" && canonicalSlug !== "index") {
+      return canonicalSlug;
+    }
+  }
+
+  if (input.pageUrl) {
+    const pageSlug = extractStableSlugFromUrl(input.pageUrl);
+    if (pageSlug && pageSlug !== "home" && pageSlug !== "index") {
+      return pageSlug;
     }
   }
 

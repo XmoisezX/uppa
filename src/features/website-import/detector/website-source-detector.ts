@@ -18,6 +18,7 @@ import {
   extractJsonLdBlocks,
   parseSitemapXml,
   extractMetaTags,
+  isListingDetailUrl,
 } from "../utils/html-parser-utils";
 import type { DetectionResult } from "../types";
 
@@ -62,19 +63,29 @@ export class WebsiteSourceDetector {
     detectedSitemaps.add(`${origin}/sitemap.xml`);
     detectedSitemaps.add(`${origin}/sitemap_index.xml`);
 
-    // Inspeciona os sitemaps encontrados para descobrir sub-sitemaps e URLs de imóveis
-    for (const sitemapUrl of Array.from(detectedSitemaps)) {
+    // Inspeciona os sitemaps encontrados para descobrir sub-sitemaps e URLs de imóveis (Fila recursiva)
+    const sitemapQueue: string[] = Array.from(detectedSitemaps);
+    const visitedSitemaps = new Set<string>();
+
+    while (sitemapQueue.length > 0 && listingUrlCandidates.size < 500) {
+      const sitemapUrl = sitemapQueue.shift()!;
+      if (visitedSitemaps.has(sitemapUrl)) continue;
+      visitedSitemaps.add(sitemapUrl);
+
       try {
-        const smRes = await safeFetch(sitemapUrl, { timeoutMs: 8000 });
+        const smRes = await safeFetch(sitemapUrl, { timeoutMs: 10000 });
         if (smRes.ok) {
           const smXml = await smRes.text();
           const entries = parseSitemapXml(smXml);
 
           for (const entry of entries) {
-            // Se for sub-sitemap (ex: sitemap-imoveis.xml ou sitemap-properties.xml)
+            // Se for sub-sitemap (ex: sitemap-imoveis.xml ou pelotas-rs-brasil.xml)
             if (entry.url.endsWith(".xml")) {
-              detectedSitemaps.add(entry.url);
-            } else if (this.isLikelyListingUrl(entry.url)) {
+              if (!visitedSitemaps.has(entry.url)) {
+                sitemapQueue.push(entry.url);
+                detectedSitemaps.add(entry.url);
+              }
+            } else if (isListingDetailUrl(entry.url)) {
               listingUrlCandidates.add(entry.url);
             }
           }
@@ -83,7 +94,7 @@ export class WebsiteSourceDetector {
         // Ignora sitemap inacessível
       }
 
-      if (listingUrlCandidates.size >= 100) break; // Amostra suficiente
+      if (listingUrlCandidates.size >= 500) break;
     }
 
     // =========================================================================
@@ -184,43 +195,7 @@ export class WebsiteSourceDetector {
    * Identifica se uma URL possui características de página de imóvel individual
    */
   public isLikelyListingUrl(url: string): boolean {
-    const lower = url.toLowerCase();
-
-    // Descarta páginas institucionais, estáticas, busca ou login
-    if (
-      lower.includes("/sobre") ||
-      lower.includes("/contato") ||
-      lower.includes("/politica") ||
-      lower.includes("/termos") ||
-      lower.includes("/trabalhe-conosco") ||
-      lower.includes("/login") ||
-      lower.includes("/admin") ||
-      lower.includes("/blog") ||
-      lower.includes("/noticias") ||
-      lower.includes("/feed") ||
-      lower.includes("/tag/") ||
-      lower.includes("/categoria/")
-    ) {
-      return false;
-    }
-
-    // Padrões clássicos de URL de imóveis no Brasil
-    const positivePatterns = [
-      /\/imovel\//i,
-      /\/imoveis\//i,
-      /\/imovel-/i,
-      /\/venda\//i,
-      /\/aluguel\//i,
-      /\/comprar\//i,
-      /\/alugar\//i,
-      /\/propriedade\//i,
-      /\/listing\//i,
-      /\/codigo[-_]/i,
-      /\/ref[-_]/i,
-      /[-_]id\d+/i,
-    ];
-
-    return positivePatterns.some((p) => p.test(lower));
+    return isListingDetailUrl(url);
   }
 
   /**

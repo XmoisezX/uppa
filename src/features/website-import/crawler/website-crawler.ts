@@ -87,8 +87,8 @@ export class WebsiteCrawler {
       domain: detection.domain,
       sitemaps: detection.sitemaps,
       listingPatterns: detection.listingPatterns,
-      maxListings: 15,
-      maxPages: 3,
+      maxListings: 10000,
+      maxPages: 10,
     };
 
     // 3. Resolução de Conector
@@ -97,16 +97,30 @@ export class WebsiteCrawler {
       detection.recommendedConnector
     );
 
-    // 4. Descoberta de amostra
+    // 4. Descoberta de catálogo
     const references = await connector.discoverListings(context);
-    const sampleRefs = references.slice(0, 10);
 
     const properties: NormalizedProperty[] = [];
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // 5. Coleta segura com Rate Limiting
-    for (const ref of sampleRefs) {
+    const isActiveProperty = (p: NormalizedProperty) => {
+      const lower = p.title.toLowerCase();
+      return (
+        !lower.includes("indisponível") &&
+        !lower.includes("indisponivel") &&
+        !lower.includes("não está mais disponível") &&
+        !lower.includes("nao esta mais disponivel") &&
+        !lower.includes("desativado") &&
+        Boolean(p.price || p.rentPrice || (p.images && p.images.length > 0))
+      );
+    };
+
+    // 5. Coleta segura com Rate Limiting (procura coletar até 5 imóveis ativos para a amostra)
+    const maxAttempts = Math.min(references.length, 25);
+    for (let i = 0; i < maxAttempts; i++) {
+      if (properties.filter(isActiveProperty).length >= 5) break;
+      const ref = references[i];
       try {
         const prop = await this.rateLimiter.execute(() =>
           connector.fetchListing(ref, context)
@@ -117,13 +131,28 @@ export class WebsiteCrawler {
       }
     }
 
-    // 6. Avaliação de Métricas de Qualidade
+    // Ordena para que os imóveis ativos com fotos e preço apareçam prioritariamente na amostra
+    const sampleProperties = properties
+      .sort((a, b) => {
+        const aScore =
+          (isActiveProperty(a) ? 10 : 0) +
+          (a.price || a.rentPrice ? 5 : 0) +
+          (a.images.length > 0 ? 3 : 0);
+        const bScore =
+          (isActiveProperty(b) ? 10 : 0) +
+          (b.price || b.rentPrice ? 5 : 0) +
+          (b.images.length > 0 ? 3 : 0);
+        return bScore - aScore;
+      })
+      .slice(0, 5);
+
+    // 6. Avaliação de Métricas de Qualidade da amostra exibida
     let withPrice = 0;
     let withPhotos = 0;
     let withCode = 0;
     let withLocation = 0;
 
-    for (const p of properties) {
+    for (const p of sampleProperties) {
       if ((p.price && p.price > 0) || (p.rentPrice && p.rentPrice > 0)) withPrice++;
       if (p.images && p.images.length > 0) withPhotos++;
       if (p.code && p.code.trim().length > 0) withCode++;
@@ -136,17 +165,17 @@ export class WebsiteCrawler {
         "Nenhum anúncio foi encontrado no domínio. Verifique se o sitemap está acessível."
       );
     }
-    if (properties.length > 0 && withPhotos === 0) {
+    if (sampleProperties.length > 0 && withPhotos === 0) {
       warnings.push("Atenção: Nenhum dos imóveis da amostra possui fotos identificadas.");
     }
-    if (properties.length > 0 && withPrice === 0) {
+    if (sampleProperties.length > 0 && withPrice === 0) {
       warnings.push("Atenção: Nenhum dos imóveis da amostra possui preço identificado.");
     }
 
     return {
       domain,
       detectedPlatform: detection.detectedCms || "Plataforma Genérica",
-      pagesVisited: Math.min(references.length, 10) + 1,
+      pagesVisited: Math.min(properties.length + 1, 15),
       listingsFound: references.length,
       withPrice,
       withPhotos,
@@ -154,7 +183,7 @@ export class WebsiteCrawler {
       withLocation,
       errors,
       warnings,
-      sampleProperties: properties.slice(0, 5), // Amostra de exatamente 5 imóveis
+      sampleProperties,
     };
   }
 
