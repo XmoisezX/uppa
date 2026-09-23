@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Globe,
   CheckCircle2,
@@ -29,6 +29,9 @@ interface WebsiteImportModalProps {
   agencyId: string;
   agencyName: string;
   onSuccess?: () => void;
+  initialSourceId?: string;
+  initialDomain?: string;
+  autoStartSync?: boolean;
 }
 
 export function WebsiteImportModal({
@@ -37,9 +40,12 @@ export function WebsiteImportModal({
   agencyId,
   agencyName,
   onSuccess,
+  initialSourceId,
+  initialDomain,
+  autoStartSync,
 }: WebsiteImportModalProps) {
   const [step, setStep] = useState<"input" | "preview" | "syncing" | "completed">("input");
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(initialDomain || "");
   const [authChecked, setAuthChecked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -65,12 +71,19 @@ export function WebsiteImportModal({
     logs: [],
   });
 
+  // Disparo automático quando o modal é aberto via "Sincronizar" direto de um card
+  useEffect(() => {
+    if (isOpen && autoStartSync && (initialSourceId || initialDomain)) {
+      startSyncStream(initialSourceId, initialDomain);
+    }
+  }, [isOpen, autoStartSync, initialSourceId, initialDomain]);
+
   if (!isOpen) return null;
 
   const handleClose = () => {
     if (isLoading) return;
     setStep("input");
-    setUrl("");
+    setUrl(initialDomain || "");
     setAuthChecked(false);
     setPreviewReport(null);
     setSyncResult(null);
@@ -129,15 +142,16 @@ export function WebsiteImportModal({
     }
   };
 
-  // Etapa 2: Confirmar e Importar com Streaming Server-Sent Events (SSE)
-  const handleConfirmImport = async () => {
-    if (!previewReport) return;
+  // Executa o streaming SSE para sincronização do website
+  const startSyncStream = async (targetSourceId?: string, targetDomain?: string) => {
+    const domainToSync = targetDomain || previewReport?.domain || url;
+    if (!domainToSync && !targetSourceId) return;
 
     setIsLoading(true);
     setErrorMessage(null);
     setStep("syncing");
 
-    const totalExpected = previewReport.listingsFound || 0;
+    const totalExpected = previewReport?.listingsFound || 0;
     setImportProgress({
       current: 0,
       total: totalExpected,
@@ -157,7 +171,8 @@ export function WebsiteImportModal({
         },
         body: JSON.stringify({
           agencyId,
-          url: previewReport.domain,
+          websiteSourceId: targetSourceId,
+          url: domainToSync,
           stream: true,
         }),
       });
@@ -238,10 +253,16 @@ export function WebsiteImportModal({
       }
     } catch (err: any) {
       setErrorMessage(err?.message || "Erro inesperado durante a importação.");
-      setStep("preview");
+      setStep(previewReport ? "preview" : "input");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Etapa 2: Confirmar e Importar
+  const handleConfirmImport = async () => {
+    if (!previewReport) return;
+    await startSyncStream(initialSourceId, previewReport.domain);
   };
 
   return (

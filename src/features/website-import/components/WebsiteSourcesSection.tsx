@@ -28,29 +28,19 @@ export function WebsiteSourcesSection({
 }: WebsiteSourcesSectionProps) {
   const [sources, setSources] = useState<WebsiteSource[]>(initialSources);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [syncingSourceId, setSyncingSourceId] = useState<string | null>(null);
+  const [selectedSourceForSync, setSelectedSourceForSync] = useState<{
+    id: string;
+    domain: string;
+  } | null>(null);
 
-  const handleManualSync = async (sourceId: string, domain: string) => {
-    setSyncingSourceId(sourceId);
-    try {
-      const res = await fetch("/api/website-import/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agencyId, websiteSourceId: sourceId }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        alert(data.error || "Erro ao sincronizar website.");
-      } else {
-        alert(
-          `Sincronização concluída!\nCriados: ${data.result.itemsCreated} | Atualizados: ${data.result.itemsUpdated} | Falhas: ${data.result.itemsFailed}`
-        );
-      }
-    } catch (err: any) {
-      alert(`Falha na sincronização: ${err?.message}`);
-    } finally {
-      setSyncingSourceId(null);
-    }
+  const handleManualSync = (sourceId: string, domain: string) => {
+    setSelectedSourceForSync({ id: sourceId, domain });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenNewWebsiteModal = () => {
+    setSelectedSourceForSync(null);
+    setIsModalOpen(true);
   };
 
   return (
@@ -67,7 +57,7 @@ export function WebsiteSourcesSection({
         </div>
 
         <Button
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenNewWebsiteModal}
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl h-9 gap-1.5 cursor-pointer"
         >
           <Plus className="h-3.5 w-3.5" />
@@ -86,9 +76,9 @@ export function WebsiteSourcesSection({
             imóveis automaticamente.
           </p>
           <Button
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenNewWebsiteModal}
             variant="outline"
-            className="mt-4 text-xs font-semibold rounded-xl"
+            className="mt-4 text-xs font-semibold rounded-xl cursor-pointer"
           >
             Configurar Website Agora
           </Button>
@@ -139,15 +129,10 @@ export function WebsiteSourcesSection({
                 <Button
                   size="sm"
                   onClick={() => handleManualSync(source.id, source.domain)}
-                  disabled={syncingSourceId === source.id}
                   className="rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 gap-1.5 cursor-pointer"
                 >
-                  <RefreshCw
-                    className={`h-3.5 w-3.5 ${
-                      syncingSourceId === source.id ? "animate-spin" : ""
-                    }`}
-                  />
-                  {syncingSourceId === source.id ? "Sincronizando..." : "Sincronizar"}
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Sincronizar
                 </Button>
               </div>
             </div>
@@ -155,12 +140,18 @@ export function WebsiteSourcesSection({
         </div>
       )}
 
-      {/* Modal de Importação com Preview */}
+      {/* Modal de Importação com Preview e Streaming em Tempo Real */}
       <WebsiteImportModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedSourceForSync(null);
+        }}
         agencyId={agencyId}
         agencyName={agencyName}
+        initialSourceId={selectedSourceForSync?.id}
+        initialDomain={selectedSourceForSync?.domain}
+        autoStartSync={Boolean(selectedSourceForSync)}
         onSuccess={async () => {
           // Recarrega lista
           try {
