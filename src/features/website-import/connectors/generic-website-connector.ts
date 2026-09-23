@@ -19,6 +19,7 @@ import {
   parseSitemapXml,
   isListingDetailUrl,
   extractAddressFromUrl,
+  extractFullPropertyDescription,
 } from "../utils/html-parser-utils";
 import { filterListingImages } from "../utils/media-filter";
 import { resolveWebsiteExternalId } from "../utils/external-id-resolver";
@@ -164,14 +165,8 @@ export class GenericWebsiteConnector implements WebsiteConnector {
       meta["page_title"] ||
       "Imóvel Anunciado";
 
-    // 2. Descrição
-    const descMatch =
-      /<div[^>]*class=["'][^"']*(?:descricao|description|detalhes)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i.exec(
-        html
-      );
-    const description = descMatch
-      ? this.stripHtmlTags(descMatch[1])
-      : meta["og:description"] || meta["description"] || "";
+    // 2. Descrição Completa (DOM, JSON embutido e fallbacks)
+    const description = extractFullPropertyDescription(html, meta);
 
     // 3. Tipo de transação e Tipo do imóvel
     const transactionType = inferTransactionType(`${title} ${description}`);

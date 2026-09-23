@@ -432,3 +432,91 @@ export function extractAddressFromUrl(rawUrl: string): Partial<NormalizedAddress
   return {};
 }
 
+/**
+ * Extrai a descrição completa do imóvel a partir do HTML, payloads embutidos
+ * (como Next.js __next_f, Nuxt, JSON inline) e blocos semânticos do DOM,
+ * evitando que meta tags cortadas de SEO (og:description de ~150 chars)
+ * sobreponham a descrição rica do anúncio.
+ */
+export function extractFullPropertyDescription(
+  html: string,
+  meta: Record<string, string> = {},
+  listingBlock?: Record<string, any>
+): string {
+  if (!html) return "";
+
+  const candidates: string[] = [];
+
+  // 1. Bloco de Schema.org explícito
+  if (
+    listingBlock?.description &&
+    typeof listingBlock.description === "string" &&
+    listingBlock.description.trim().length > 0
+  ) {
+    candidates.push(listingBlock.description.trim());
+  }
+
+  // 2. Extração de payloads JSON embutidos (Next.js __next_f, Nuxt, Redux store ou scripts inline)
+  // Exemplo real: \"descricao\":\"Localizado na Avenida São Francisco...\"
+  const jsonDescMatch =
+    html.match(/\\"[dD]escri(?:cao|ção|ption)\\"\s*:\s*\\"([^\"]{60,})\\"/i) ||
+    html.match(/"[dD]escri(?:cao|ção|ption)"\s*:\s*"([^"]{60,})"/i);
+  if (jsonDescMatch) {
+    const unescaped = jsonDescMatch[1]
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "")
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, "\\")
+      .trim();
+    if (unescaped.length > 50) {
+      candidates.push(unescaped);
+    }
+  }
+
+  // 3. Classes comuns de texto longo de descrição no DOM
+  const proseRegex =
+    /<(?:div|section|article|p)[^>]*class=["'][^"']*(?:whitespace-pre-wrap|prose|leading-relaxed|texto-descricao|descricao|description|property-description|property-details|imovel-detalhes)[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|section|article|p)>/gi;
+  let proseMatch: RegExpExecArray | null;
+  while ((proseMatch = proseRegex.exec(html)) !== null) {
+    const raw = proseMatch[1];
+    const text = raw
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n\s+\n/g, "\n\n")
+      .trim();
+    if (text.length > 80) {
+      candidates.push(text);
+    }
+  }
+
+  // 4. Bloco HTML após cabeçalhos típicos ("Descrição", "Sobre o Imóvel")
+  const headingRegex =
+    /<(?:h1|h2|h3|h4|strong|b|span|div)[^>]*>\s*(?:Descriç[aã]o|Sobre o Imóvel|Detalhes do Imóvel|Informações Gerais)\s*<\/(?:h1|h2|h3|h4|strong|b|span|div)>\s*<(?:div|p|section)[^>]*>([\s\S]*?)<\/(?:div|p|section)>/i;
+  const headingMatch = html.match(headingRegex);
+  if (headingMatch) {
+    const clean = headingMatch[1]
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/[ \t]+/g, " ")
+      .trim();
+    if (clean.length > 50) {
+      candidates.push(clean);
+    }
+  }
+
+  // 5. Fallback para meta tags (og:description, description)
+  if (meta["og:description"]) candidates.push(meta["og:description"].trim());
+  if (meta["description"]) candidates.push(meta["description"].trim());
+
+  if (candidates.length === 0) return "";
+
+  // Escolhe o candidato com maior conteúdo informativo real (maior comprimento útil)
+  candidates.sort((a, b) => b.length - a.length);
+
+  return candidates[0] || "";
+}
+
+

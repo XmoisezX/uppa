@@ -17,6 +17,7 @@ import {
   inferTransactionType,
   inferPropertyType,
   isListingDetailUrl,
+  extractFullPropertyDescription,
 } from "../utils/html-parser-utils";
 import { filterListingImages } from "../utils/media-filter";
 import { resolveWebsiteExternalId } from "../utils/external-id-resolver";
@@ -156,11 +157,7 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
       meta["page_title"] ||
       "Imóvel para Venda ou Locação";
 
-    const description =
-      listingBlock?.description ||
-      meta["og:description"] ||
-      meta["description"] ||
-      "";
+    const description = extractFullPropertyDescription(html, meta, listingBlock);
 
     // 4. Tipo de Transação e Tipo do Imóvel
     const transactionType = inferTransactionType(

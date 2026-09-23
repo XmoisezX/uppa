@@ -115,6 +115,10 @@ export class WebsitePropertyImporter {
               batchUpdated++;
             }
             this._processedExternalIds.push(prop.externalId);
+            const cleanCode = prop.externalId.replace(/_[A-Z0-9]+$/i, "");
+            if (cleanCode && cleanCode !== prop.externalId) {
+              this._processedExternalIds.push(cleanCode);
+            }
           } catch (err: any) {
             this._itemsFailed++;
             batchFailed++;
@@ -255,10 +259,10 @@ export class WebsitePropertyImporter {
       cityId
     );
 
-    // Verificação de identidade: agency_id + source ('website') + external_id
-    const { data: existing, error: searchError } = await this.supabase
+    // 1. Verificação de identidade: agency_id + source ('website') + external_id
+    let { data: existing, error: searchError } = await this.supabase
       .from("properties")
-      .select("id, content_hash, status")
+      .select("id, content_hash, status, source, external_id")
       .eq("agency_id", agencyId)
       .eq("source", "website")
       .eq("external_id", prop.externalId)
@@ -266,6 +270,26 @@ export class WebsitePropertyImporter {
 
     if (searchError) {
       throw new Error(`Falha na busca de idempotência: ${searchError.message}`);
+    }
+
+    // 2. Análise de duplicação cross-origem para a mesma imobiliária:
+    // Se o imóvel não foi encontrado com source 'website', verifica se a mesma imobiliária
+    // já o cadastrou via Feed XML ('vrsync', 'chaves_na_mao') ou manualmente ('manual')
+    if (!existing) {
+      const cleanCode = prop.externalId.replace(/_[A-Z0-9]+$/i, "");
+      const searchCodes = Array.from(new Set([prop.externalId, cleanCode]));
+
+      const { data: crossSource } = await this.supabase
+        .from("properties")
+        .select("id, content_hash, status, source, external_id")
+        .eq("agency_id", agencyId)
+        .in("external_id", searchCodes)
+        .limit(1)
+        .maybeSingle();
+
+      if (crossSource) {
+        existing = crossSource;
+      }
     }
 
     if (existing) {
