@@ -24,10 +24,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let agencyId: string | undefined;
-    let websiteSourceId: string | undefined;
-    let url: string | undefined;
-
     if (!isCronAuth) {
       const supabase = await createClient();
       const {
@@ -40,17 +36,18 @@ export async function POST(request: NextRequest) {
           { status: 401 }
         );
       }
-
-      const body = await request.json();
-      agencyId = body.agencyId;
-      websiteSourceId = body.websiteSourceId;
-      url = body.url;
-    } else {
-      const body = await request.json();
-      agencyId = body.agencyId;
-      websiteSourceId = body.websiteSourceId;
-      url = body.url;
     }
+
+    let body: any = {};
+    try {
+      body = await request.json();
+    } catch {
+      body = {};
+    }
+
+    const agencyId: string | undefined = body.agencyId;
+    let websiteSourceId: string | undefined = body.websiteSourceId;
+    const url: string | undefined = body.url;
 
     if (!agencyId) {
       return NextResponse.json(
@@ -72,7 +69,68 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Executa a importação completa
+    const wantsStream =
+      body.stream === true ||
+      request.headers.get("accept")?.includes("text/event-stream");
+
+    if (wantsStream) {
+      const encoder = new TextEncoder();
+      const targetAgencyId = agencyId;
+      const targetWebsiteSourceId = websiteSourceId;
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          const sendEvent = (event: string, data: any) => {
+            try {
+              const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+              controller.enqueue(encoder.encode(payload));
+            } catch (e) {
+              console.error("[/api/website-import/sync] Erro ao enviar evento no stream:", e);
+            }
+          };
+
+          try {
+            sendEvent("init", {
+              message: "Iniciando varredura e importação...",
+              websiteSourceId: targetWebsiteSourceId,
+            });
+
+            const result = await confirmAndRunWebsiteImport(
+              targetAgencyId,
+              targetWebsiteSourceId,
+              {
+                onProgress: (progress) => {
+                  sendEvent("progress", progress);
+                },
+              }
+            );
+
+            sendEvent("complete", {
+              success: result.success,
+              result,
+            });
+          } catch (err: any) {
+            console.error("[/api/website-import/sync] Erro durante streaming:", err);
+            sendEvent("error", {
+              message: err?.message || "Erro inesperado durante a importação.",
+            });
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+          "X-Accel-Buffering": "no",
+        },
+      });
+    }
+
+    // Execução síncrona tradicional para chamadas que não utilizam streaming
     const result = await confirmAndRunWebsiteImport(agencyId, websiteSourceId);
 
     return NextResponse.json({ success: true, result }, { status: 200 });

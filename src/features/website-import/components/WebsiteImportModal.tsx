@@ -17,6 +17,7 @@ import {
   Maximize2,
   Check,
   X,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,24 @@ export function WebsiteImportModal({
   const [previewReport, setPreviewReport] = useState<PreviewReport | null>(null);
   const [syncResult, setSyncResult] = useState<CrawlResult | null>(null);
 
+  const [importProgress, setImportProgress] = useState<{
+    current: number;
+    total: number;
+    created: number;
+    updated: number;
+    failed: number;
+    currentProperty?: string;
+    logs: string[];
+  }>({
+    current: 0,
+    total: 0,
+    created: 0,
+    updated: 0,
+    failed: 0,
+    currentProperty: "",
+    logs: [],
+  });
+
   if (!isOpen) return null;
 
   const handleClose = () => {
@@ -56,6 +75,15 @@ export function WebsiteImportModal({
     setPreviewReport(null);
     setSyncResult(null);
     setErrorMessage(null);
+    setImportProgress({
+      current: 0,
+      total: 0,
+      created: 0,
+      updated: 0,
+      failed: 0,
+      currentProperty: "",
+      logs: [],
+    });
     onClose();
   };
 
@@ -101,7 +129,7 @@ export function WebsiteImportModal({
     }
   };
 
-  // Etapa 2: Confirmar e Importar
+  // Etapa 2: Confirmar e Importar com Streaming Server-Sent Events (SSE)
   const handleConfirmImport = async () => {
     if (!previewReport) return;
 
@@ -109,24 +137,105 @@ export function WebsiteImportModal({
     setErrorMessage(null);
     setStep("syncing");
 
+    const totalExpected = previewReport.listingsFound || 0;
+    setImportProgress({
+      current: 0,
+      total: totalExpected,
+      created: 0,
+      updated: 0,
+      failed: 0,
+      currentProperty: "Conectando ao crawler...",
+      logs: ["Conexão estabelecida. Iniciando análise e normalização dos imóveis..."],
+    });
+
     try {
-      const res = await fetch("/api/website-import/sync", {
+      const response = await fetch("/api/website-import/sync", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
         body: JSON.stringify({
           agencyId,
           url: previewReport.domain,
+          stream: true,
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Falha ao executar a importação do website.");
+      if (!response.ok) {
+        let errorMsg = `Erro no servidor (HTTP ${response.status})`;
+        try {
+          const errData = await response.json();
+          if (errData?.error) errorMsg = errData.error;
+        } catch {
+          const text = await response.text().catch(() => "");
+          if (text.includes("504") || text.includes("Gateway Timeout")) {
+            errorMsg =
+              "O servidor demorou para responder (Gateway Timeout). A sincronização continua sendo processada em segundo plano.";
+          }
+        }
+        throw new Error(errorMsg);
       }
 
-      setSyncResult(data.result);
-      setStep("completed");
-      if (onSuccess) onSuccess();
+      if (!response.body) {
+        throw new Error("O servidor não iniciou o fluxo de streaming.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
+
+        for (const rawEvent of events) {
+          if (!rawEvent.trim()) continue;
+
+          const eventMatch = rawEvent.match(/^event:\s*(.+)$/m);
+          const dataMatch = rawEvent.match(/^data:\s*(.+)$/m);
+
+          const eventType = eventMatch ? eventMatch[1].trim() : "message";
+          const dataStr = dataMatch ? dataMatch[1].trim() : null;
+
+          if (!dataStr) continue;
+
+          try {
+            const data = JSON.parse(dataStr);
+
+            if (eventType === "progress") {
+              setImportProgress((prev) => {
+                const newLogs = data.currentProperty
+                  ? [data.currentProperty, ...prev.logs.slice(0, 9)]
+                  : prev.logs;
+
+                return {
+                  current: data.current ?? prev.current,
+                  total: data.total ?? prev.total,
+                  created: data.created ?? prev.created,
+                  updated: data.updated ?? prev.updated,
+                  failed: data.failed ?? prev.failed,
+                  currentProperty: data.currentProperty ?? prev.currentProperty,
+                  logs: newLogs,
+                };
+              });
+            } else if (eventType === "complete") {
+              setSyncResult(data.result);
+              setStep("completed");
+              if (onSuccess) onSuccess();
+            } else if (eventType === "error") {
+              throw new Error(data.message || "Erro durante a importação.");
+            }
+          } catch (parseErr: any) {
+            if (eventType === "error") throw parseErr;
+            console.warn("Falha ao analisar evento do stream:", parseErr);
+          }
+        }
+      }
     } catch (err: any) {
       setErrorMessage(err?.message || "Erro inesperado durante a importação.");
       setStep("preview");
@@ -433,18 +542,110 @@ export function WebsiteImportModal({
           )}
 
           {/* ========================================================================= */}
-          {/* ETAPA 3: PROCESSANDO IMPORTAÇÃO */}
+          {/* ETAPA 3: PROCESSANDO IMPORTAÇÃO (STREAMING EM TEMPO REAL) */}
           {/* ========================================================================= */}
           {step === "syncing" && (
-            <div className="py-12 text-center space-y-4">
-              <Loader2 className="h-10 w-10 text-indigo-600 animate-spin mx-auto" />
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Sincronizando Anúncios do Website...
-              </h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                Nosso crawler está baixando, normalizando e gravando os imóveis
-                com persistência idempotente e content hash.
-              </p>
+            <div className="py-6 space-y-6">
+              <div className="text-center space-y-2">
+                <div className="inline-flex p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 mb-1">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Sincronizando Anúncios do Website...
+                </h3>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Baixando, normalizando e gravando imóveis com persistência idempotente e content hash.
+                </p>
+              </div>
+
+              {/* Barra de Progresso em Tempo Real */}
+              <div className="space-y-2.5 p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-700 dark:text-slate-300">
+                    Progresso da Importação
+                  </span>
+                  <span className="font-black text-indigo-600 dark:text-indigo-400">
+                    {Math.min(
+                      100,
+                      Math.round(
+                        (importProgress.current / Math.max(1, importProgress.total)) * 100
+                      )
+                    )}
+                    %
+                  </span>
+                </div>
+
+                <div className="w-full h-3 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 transition-all duration-300 rounded-full"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.round(
+                          (importProgress.current / Math.max(1, importProgress.total)) * 100
+                        )
+                      )}%`,
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                  <span>
+                    {importProgress.current.toLocaleString("pt-BR")} de{" "}
+                    {importProgress.total.toLocaleString("pt-BR")} imóveis processados
+                  </span>
+                  {importProgress.currentProperty && (
+                    <span className="truncate max-w-[280px] font-medium text-slate-500 dark:text-slate-400">
+                      {importProgress.currentProperty}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Indicadores Dinâmicos de Status */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 text-center">
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                    Criados
+                  </span>
+                  <p className="mt-1 text-base font-black text-emerald-700 dark:text-emerald-300">
+                    {importProgress.created.toLocaleString("pt-BR")}
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 text-center">
+                  <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                    Atualizados
+                  </span>
+                  <p className="mt-1 text-base font-black text-indigo-700 dark:text-indigo-300">
+                    {importProgress.updated.toLocaleString("pt-BR")}
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-center">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Falhas
+                  </span>
+                  <p className="mt-1 text-base font-black text-slate-700 dark:text-slate-300">
+                    {importProgress.failed.toLocaleString("pt-BR")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Log de Atividade ao Vivo */}
+              {importProgress.logs.length > 0 && (
+                <div className="p-3.5 rounded-2xl bg-slate-900 text-slate-300 text-xs font-mono space-y-1 max-h-32 overflow-y-auto">
+                  <div className="flex items-center gap-1.5 text-indigo-400 font-bold mb-1.5">
+                    <Activity className="h-3.5 w-3.5 animate-pulse" />
+                    <span className="text-[10px] uppercase tracking-wider">
+                      Feed de Execução em Tempo Real
+                    </span>
+                  </div>
+                  {importProgress.logs.map((log, idx) => (
+                    <p key={idx} className="text-[11px] truncate text-slate-400">
+                      › {log}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
