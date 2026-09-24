@@ -199,7 +199,9 @@ export function WebsiteSourcesSection({
         agencyName={agencyName}
         initialSourceId={selectedSourceForSync?.id}
         initialDomain={selectedSourceForSync?.domain}
-        autoStartSync={Boolean(selectedSourceForSync)}
+        autoStartSync={Boolean(
+          selectedSourceForSync && !runningJobs[selectedSourceForSync.id]
+        )}
         onSuccess={async () => {
           // Recarrega lista
           try {

@@ -170,7 +170,7 @@ export class GenericWebsiteConnector implements WebsiteConnector {
       "Imóvel Anunciado";
 
     if (
-      /\b\d+\s+imóve/i.test(title) ||
+      /\b\d+\s+imóveis?\s+(?:encontrados?|disponíveis?|para\s+você|na\s+busca|em\s+destaque)/i.test(title) ||
       /\bimóve(?:is|l)\s+encontrado/i.test(title) ||
       /\bresultados?\s+da\s+busca/i.test(title) ||
       /\bbusca\s+de\s+imóve/i.test(title)

@@ -26,9 +26,50 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const websiteSourceId = searchParams.get("websiteSourceId");
+    const adminSupabase = createAdminClient();
+
+    // 1. Limpa jobs abandonados há mais de 15 minutos que não estão em execução ativa em memória
+    const staleCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    await adminSupabase
+      .from("crawl_runs")
+      .update({
+        status: "failed",
+        finished_at: new Date().toISOString(),
+        error_message: "Importação interrompida por inatividade ou timeout.",
+      })
+      .eq("status", "running")
+      .lt("started_at", staleCutoff);
 
     if (!websiteSourceId) {
-      const runningJobs = CrawlJobManager.getAllJobs();
+      const memoryJobs = CrawlJobManager.getAllJobs();
+      const memorySourceIds = new Set(memoryJobs.map((j) => j.websiteSourceId));
+
+      const { data: dbRunning } = await adminSupabase
+        .from("crawl_runs")
+        .select("id, website_source_id, agency_id, items_found, pages_crawled, items_created, items_updated, items_failed, started_at")
+        .eq("status", "running");
+
+      const runningJobs = [...memoryJobs];
+      if (dbRunning) {
+        for (const run of dbRunning) {
+          if (!memorySourceIds.has(run.website_source_id)) {
+            runningJobs.push({
+              websiteSourceId: run.website_source_id,
+              agencyId: run.agency_id,
+              startedAt: new Date(run.started_at).getTime(),
+              progress: {
+                current: run.pages_crawled || 0,
+                total: run.items_found || 0,
+                created: run.items_created || 0,
+                updated: run.items_updated || 0,
+                failed: run.items_failed || 0,
+                currentProperty: "Importando em 2º plano...",
+              },
+            });
+          }
+        }
+      }
+
       return NextResponse.json({
         runningJobs,
       });
@@ -37,7 +78,7 @@ export async function GET(request: NextRequest) {
     const isRunning = CrawlJobManager.isRunning(websiteSourceId);
     const job = CrawlJobManager.getJob(websiteSourceId);
 
-    const { data: latestRun } = await supabase
+    const { data: latestRun } = await adminSupabase
       .from("crawl_runs")
       .select("*")
       .eq("website_source_id", websiteSourceId)
@@ -45,9 +86,23 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
+    const isLatestRunning = latestRun?.status === "running";
+    const jobProgress =
+      job?.lastProgress ||
+      (isLatestRunning
+        ? {
+            current: latestRun.pages_crawled || 0,
+            total: latestRun.items_found || 0,
+            created: latestRun.items_created || 0,
+            updated: latestRun.items_updated || 0,
+            failed: latestRun.items_failed || 0,
+            currentProperty: "Importando em segundo plano...",
+          }
+        : null);
+
     return NextResponse.json({
-      running: isRunning || latestRun?.status === "running",
-      jobProgress: job?.lastProgress || null,
+      running: isRunning || isLatestRunning,
+      jobProgress,
       latestRun: latestRun || null,
     });
   } catch (err: any) {

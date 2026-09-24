@@ -123,7 +123,7 @@ export function WebsiteImportModal({
                 logs: ["Conectado ao processo de sincronização em segundo plano no servidor..."],
               }));
             }
-            startSyncStream(sourceId, initialDomain);
+            startSyncStream(sourceId, initialDomain, undefined, true);
             return;
           }
         }
@@ -309,7 +309,8 @@ export function WebsiteImportModal({
   const startSyncStream = async (
     targetSourceId?: string,
     targetDomain?: string,
-    resumeFromIndex?: number
+    resumeFromIndex?: number,
+    isAttaching = false
   ) => {
     const domainToSync = targetDomain || previewReport?.domain || url;
     if (!domainToSync && !targetSourceId) return;
@@ -324,7 +325,7 @@ export function WebsiteImportModal({
     const totalExpected =
       previewReport?.listingsFound || importProgress.total || 0;
 
-    if (!isResuming) {
+    if (!isResuming && !isAttaching) {
       setImportProgress({
         current: 0,
         total: totalExpected,
@@ -334,7 +335,7 @@ export function WebsiteImportModal({
         currentProperty: "Conectando ao crawler...",
         logs: ["Conexão estabelecida. Iniciando análise e normalização dos imóveis..."],
       });
-    } else {
+    } else if (isResuming) {
       setImportProgress((prev) => ({
         ...prev,
         currentProperty: `Retomando a partir do anúncio #${resumeFromIndex + 1}...`,

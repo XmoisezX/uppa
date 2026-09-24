@@ -111,7 +111,7 @@ export class WebsitePropertyImporter {
             if (outcome === "created") {
               this._itemsCreated++;
               batchCreated++;
-            } else if (outcome === "updated") {
+            } else if (outcome === "updated" || outcome === "skipped") {
               this._itemsUpdated++;
               batchUpdated++;
             }
@@ -297,7 +297,20 @@ export class WebsitePropertyImporter {
       }
     }
 
-    const targetStatus: PropertyStatus = prop.isUnavailable ? "inactive" : "active";
+    // Imóveis sem imagens válidas ou sem descrição devem ficar inativos como padrão
+    const hasValidImages =
+      Array.isArray(prop.images) &&
+      prop.images.some(
+        (img) => img && typeof img.url === "string" && img.url.trim().length > 0
+      );
+    const hasValidDescription = Boolean(
+      prop.description && prop.description.trim().length >= 10
+    );
+
+    let targetStatus: PropertyStatus = "active";
+    if (prop.isUnavailable || !hasValidImages || !hasValidDescription) {
+      targetStatus = "inactive";
+    }
 
     if (existing) {
       const propertyId = existing.id;
