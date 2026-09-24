@@ -94,7 +94,7 @@ export function BannersClient({ initialBanners }: Props) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
             Gerenciamento de Banners & Campanhas
           </h2>
           <p className="text-xs text-slate-400">
@@ -114,7 +114,7 @@ export function BannersClient({ initialBanners }: Props) {
               priority: 1,
             })
           }
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors shadow-lg shadow-blue-600/20"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors shadow-lg shadow-slate-200/60"
         >
           <Plus className="w-4 h-4" />
           Novo Banner
@@ -125,8 +125,8 @@ export function BannersClient({ initialBanners }: Props) {
         <div
           className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 border ${
             feedback.type === 'success'
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-              : 'bg-red-500/10 border-red-500/30 text-red-400'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+              : 'bg-red-50 border-red-200 text-red-600'
           }`}
         >
           {feedback.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -135,13 +135,13 @@ export function BannersClient({ initialBanners }: Props) {
       )}
 
       {/* Table */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         {banners.length === 0 ? (
           <div className="p-12 text-center space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-slate-800 text-slate-500 flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center mx-auto">
               <ImageIcon className="w-6 h-6" />
             </div>
-            <div className="text-sm font-semibold text-slate-300">Nenhum banner cadastrado</div>
+            <div className="text-sm font-semibold text-slate-600">Nenhum banner cadastrado</div>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
               Crie o primeiro anúncio publicitário para ser exibido nas páginas do portal UPPA.
             </p>
@@ -149,7 +149,7 @@ export function BannersClient({ initialBanners }: Props) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/60 border-b border-slate-800 text-slate-400 uppercase font-bold text-[10px] tracking-wider">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-400 uppercase font-bold text-[10px] tracking-wider">
                 <tr>
                   <th className="px-4 py-3">Banner / Anúncio</th>
                   <th className="px-4 py-3">Posição (Slot)</th>
@@ -159,7 +159,7 @@ export function BannersClient({ initialBanners }: Props) {
                   <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-slate-100/80">
                 {banners.map((banner) => {
                   const ctr =
                     banner.impressions && banner.impressions > 0
@@ -167,10 +167,10 @@ export function BannersClient({ initialBanners }: Props) {
                       : '0.0';
 
                   return (
-                    <tr key={banner.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={banner.id} className="hover:bg-slate-100/30 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-16 h-10 rounded-lg bg-slate-800 border border-slate-700/60 overflow-hidden shrink-0 relative">
+                          <div className="w-16 h-10 rounded-lg bg-slate-100 border border-slate-200/60 overflow-hidden shrink-0 relative">
                             {banner.imageUrlDesktop ? (
                               <img
                                 src={banner.imageUrlDesktop}
@@ -184,12 +184,12 @@ export function BannersClient({ initialBanners }: Props) {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <div className="font-bold text-white truncate max-w-xs">{banner.title}</div>
+                            <div className="font-bold text-slate-900 truncate max-w-xs">{banner.title}</div>
                             <a
                               href={banner.destinationUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[11px] text-blue-400 hover:underline inline-flex items-center gap-1 truncate max-w-xs"
+                              className="text-[11px] text-slate-500 hover:underline inline-flex items-center gap-1 truncate max-w-xs"
                             >
                               <span className="truncate">{banner.destinationUrl}</span>
                               <ExternalLink className="w-3 h-3 shrink-0" />
@@ -199,7 +199,7 @@ export function BannersClient({ initialBanners }: Props) {
                       </td>
 
                       <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-blue-400 border border-slate-700/60 uppercase">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200/60 uppercase">
                           {banner.position}
                         </span>
                       </td>
@@ -211,7 +211,7 @@ export function BannersClient({ initialBanners }: Props) {
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${
                             banner.status === 'active'
                               ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
-                              : 'bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700'
+                              : 'bg-slate-100 border border-slate-200 text-slate-400 hover:bg-slate-700'
                           }`}
                         >
                           {banner.status === 'active' ? (
@@ -224,14 +224,14 @@ export function BannersClient({ initialBanners }: Props) {
                       </td>
 
                       <td className="px-4 py-3">
-                        <span className="font-mono font-semibold text-slate-300">
+                        <span className="font-mono font-semibold text-slate-600">
                           {banner.priority || 0}
                         </span>
                       </td>
 
                       <td className="px-4 py-3">
                         <div className="space-y-0.5">
-                          <div className="flex items-center gap-3 text-slate-300 font-medium">
+                          <div className="flex items-center gap-3 text-slate-600 font-medium">
                             <span className="flex items-center gap-1" title="Impressões">
                               <Eye className="w-3 h-3 text-slate-400" />
                               {banner.impressions?.toLocaleString('pt-BR') || 0}
@@ -242,7 +242,7 @@ export function BannersClient({ initialBanners }: Props) {
                             </span>
                           </div>
                           <div className="text-[10px] text-slate-500 font-mono">
-                            CTR: <strong className="text-slate-300">{ctr}%</strong>
+                            CTR: <strong className="text-slate-600">{ctr}%</strong>
                           </div>
                         </div>
                       </td>
@@ -251,7 +251,7 @@ export function BannersClient({ initialBanners }: Props) {
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => setEditingBanner(banner)}
-                            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                            className="p-1.5 text-slate-400 hover:text-slate-900 rounded-lg hover:bg-slate-100"
                             title="Editar"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -277,38 +277,38 @@ export function BannersClient({ initialBanners }: Props) {
       {/* Modal Criar / Editar */}
       {editingBanner && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-base font-bold text-white">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-base font-bold text-slate-900">
               {editingBanner.id ? 'Editar Banner Publicitário' : 'Novo Banner Publicitário'}
             </h3>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">Título do Anúncio *</label>
+                <label className="font-semibold text-slate-600 block mb-1">Título do Anúncio *</label>
                 <input
                   type="text"
                   value={editingBanner.title || ''}
                   onChange={(e) => setEditingBanner({ ...editingBanner, title: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                   placeholder="Ex: Campanha Lançamentos Jardins"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">URL da Imagem Desktop *</label>
+                <label className="font-semibold text-slate-600 block mb-1">URL da Imagem Desktop *</label>
                 <input
                   type="text"
                   value={editingBanner.imageUrlDesktop || ''}
                   onChange={(e) =>
                     setEditingBanner({ ...editingBanner, imageUrlDesktop: e.target.value })
                   }
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                   placeholder="https://.../banner-desktop.webp"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">
+                <label className="font-semibold text-slate-600 block mb-1">
                   URL da Imagem Mobile (Opcional)
                 </label>
                 <input
@@ -317,27 +317,27 @@ export function BannersClient({ initialBanners }: Props) {
                   onChange={(e) =>
                     setEditingBanner({ ...editingBanner, imageUrlMobile: e.target.value })
                   }
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                   placeholder="https://.../banner-mobile.webp"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">URL de Destino (Link do Clique) *</label>
+                <label className="font-semibold text-slate-600 block mb-1">URL de Destino (Link do Clique) *</label>
                 <input
                   type="text"
                   value={editingBanner.destinationUrl || ''}
                   onChange={(e) =>
                     setEditingBanner({ ...editingBanner, destinationUrl: e.target.value })
                   }
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                   placeholder="https://anunciante.com.br ou /comprar?cidade=sao-paulo"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">Posição no Layout</label>
+                  <label className="font-semibold text-slate-600 block mb-1">Posição no Layout</label>
                   <select
                     value={editingBanner.position || 'home_editorial'}
                     onChange={(e) =>
@@ -346,7 +346,7 @@ export function BannersClient({ initialBanners }: Props) {
                         position: e.target.value as BannerPosition,
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                   >
                     {POSITIONS.map((pos) => (
                       <option key={pos.value} value={pos.value}>
@@ -357,7 +357,7 @@ export function BannersClient({ initialBanners }: Props) {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">Prioridade de Exibição</label>
+                  <label className="font-semibold text-slate-600 block mb-1">Prioridade de Exibição</label>
                   <input
                     type="number"
                     value={editingBanner.priority || 0}
@@ -367,7 +367,7 @@ export function BannersClient({ initialBanners }: Props) {
                         priority: parseInt(e.target.value, 10) || 0,
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                     placeholder="0"
                   />
                 </div>
@@ -375,7 +375,7 @@ export function BannersClient({ initialBanners }: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">Data de Início</label>
+                  <label className="font-semibold text-slate-600 block mb-1">Data de Início</label>
                   <input
                     type="date"
                     value={editingBanner.startAt ? editingBanner.startAt.slice(0, 10) : ''}
@@ -385,12 +385,12 @@ export function BannersClient({ initialBanners }: Props) {
                         startAt: e.target.value ? new Date(e.target.value).toISOString() : null,
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">Data de Término</label>
+                  <label className="font-semibold text-slate-600 block mb-1">Data de Término</label>
                   <input
                     type="date"
                     value={editingBanner.endAt ? editingBanner.endAt.slice(0, 10) : ''}
@@ -400,13 +400,13 @@ export function BannersClient({ initialBanners }: Props) {
                         endAt: e.target.value ? new Date(e.target.value).toISOString() : null,
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">Status Inicial</label>
+                <label className="font-semibold text-slate-600 block mb-1">Status Inicial</label>
                 <select
                   value={editingBanner.status || 'active'}
                   onChange={(e) =>
@@ -415,7 +415,7 @@ export function BannersClient({ initialBanners }: Props) {
                       status: e.target.value as 'active' | 'inactive',
                     })
                   }
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                 >
                   <option value="active">Ativo (Em Veiculação)</option>
                   <option value="inactive">Pausado (Inativo)</option>
@@ -423,17 +423,17 @@ export function BannersClient({ initialBanners }: Props) {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
               <button
                 onClick={() => setEditingBanner(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700"
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-700"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSave}
                 disabled={isPending}
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-500 disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-blue-500 disabled:opacity-50"
               >
                 Salvar Banner
               </button>

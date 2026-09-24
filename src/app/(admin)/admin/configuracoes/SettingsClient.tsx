@@ -23,7 +23,7 @@ export function SettingsClient({ initialSettings }: Props) {
     <div className="space-y-6 max-w-4xl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
             Configurações Gerais da Plataforma UPPA
           </h2>
           <p className="text-xs text-slate-400">
@@ -35,8 +35,8 @@ export function SettingsClient({ initialSettings }: Props) {
           <div
             className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border ${
               feedback.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                : 'bg-red-500/10 border-red-500/30 text-red-400'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                : 'bg-red-50 border-red-200 text-red-600'
             }`}
           >
             {feedback.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -47,36 +47,36 @@ export function SettingsClient({ initialSettings }: Props) {
 
       {/* System Status Indicators */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-            <Server className="w-4 h-4 text-blue-400" />
+            <Server className="w-4 h-4 text-slate-500" />
             Ambiente Next.js
           </div>
-          <div className="text-base font-bold text-white">Next.js 16 (App Router)</div>
+          <div className="text-base font-bold text-slate-900">Next.js 16 (App Router)</div>
           <div className="text-[11px] text-emerald-400 flex items-center gap-1 font-semibold">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             Servidor Operacional
           </div>
         </div>
 
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
             <Database className="w-4 h-4 text-indigo-400" />
             Banco de Dados
           </div>
-          <div className="text-base font-bold text-white">PostgreSQL + PostGIS</div>
+          <div className="text-base font-bold text-slate-900">PostgreSQL + PostGIS</div>
           <div className="text-[11px] text-emerald-400 flex items-center gap-1 font-semibold">
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
             Conectado ao Supabase
           </div>
         </div>
 
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
             <Shield className="w-4 h-4 text-amber-400" />
             Segurança RLS
           </div>
-          <div className="text-base font-bold text-white">Row Level Security</div>
+          <div className="text-base font-bold text-slate-900">Row Level Security</div>
           <div className="text-[11px] text-emerald-400 flex items-center gap-1 font-semibold">
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
             Políticas Ativas
@@ -85,12 +85,12 @@ export function SettingsClient({ initialSettings }: Props) {
       </div>
 
       {/* Security & Architecture Guidelines Card */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-4">
-        <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
           Diretrizes de Segurança do MASTER_PLAN
         </h3>
 
-        <div className="space-y-2 text-xs text-slate-300 leading-relaxed">
+        <div className="space-y-2 text-xs text-slate-600 leading-relaxed">
           <p>
             • <strong>Service Role Key</strong> é estritamente isolada no servidor (`createAdminClient()`) e nunca exposta em componentes cliente ou APIs públicas.
           </p>

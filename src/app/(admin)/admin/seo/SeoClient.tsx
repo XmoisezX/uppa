@@ -48,7 +48,7 @@ export function SeoClient({ initialSettings }: Props) {
     <div className="space-y-6 max-w-4xl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
             SEO & Indexação nos Mecanismos de Busca
           </h2>
           <p className="text-xs text-slate-400">
@@ -60,8 +60,8 @@ export function SeoClient({ initialSettings }: Props) {
           <div
             className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border ${
               feedback.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                : 'bg-red-500/10 border-red-500/30 text-red-400'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                : 'bg-red-50 border-red-200 text-red-600'
             }`}
           >
             {feedback.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -71,16 +71,16 @@ export function SeoClient({ initialSettings }: Props) {
       </div>
 
       {/* Google Preview Snippet */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 space-y-2">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-2">
         <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-          <Search className="w-3.5 h-3.5 text-blue-400" />
+          <Search className="w-3.5 h-3.5 text-slate-500" />
           Prévia no Google Search
         </div>
-        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1">
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
           <div className="text-[11px] text-slate-400 flex items-center gap-1 font-sans">
             <span>https://uppa.com.br</span>
           </div>
-          <div className="text-sm font-semibold text-blue-400 hover:underline cursor-pointer">
+          <div className="text-sm font-semibold text-slate-500 hover:underline cursor-pointer">
             {seo.meta_title || 'Título da Página'}
           </div>
           <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
@@ -90,16 +90,16 @@ export function SeoClient({ initialSettings }: Props) {
       </div>
 
       {/* SEO Form */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-5">
+      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
         <div className="space-y-1 text-xs">
-          <label className="font-bold text-slate-200 uppercase tracking-wider">
+          <label className="font-bold text-slate-700 uppercase tracking-wider">
             Título Global (Meta Title)
           </label>
           <input
             type="text"
             value={seo.meta_title}
             onChange={(e) => setSeo({ ...seo, meta_title: e.target.value })}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
           />
           <div className="text-[10px] text-slate-500 text-right">
             {seo.meta_title.length}/60 caracteres recomendados
@@ -107,14 +107,14 @@ export function SeoClient({ initialSettings }: Props) {
         </div>
 
         <div className="space-y-1 text-xs">
-          <label className="font-bold text-slate-200 uppercase tracking-wider">
+          <label className="font-bold text-slate-700 uppercase tracking-wider">
             Descrição Global (Meta Description)
           </label>
           <textarea
             rows={3}
             value={seo.meta_description}
             onChange={(e) => setSeo({ ...seo, meta_description: e.target.value })}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
           />
           <div className="text-[10px] text-slate-500 text-right">
             {seo.meta_description.length}/160 caracteres recomendados
@@ -122,26 +122,26 @@ export function SeoClient({ initialSettings }: Props) {
         </div>
 
         <div className="space-y-1 text-xs">
-          <label className="font-bold text-slate-200 uppercase tracking-wider">
+          <label className="font-bold text-slate-700 uppercase tracking-wider">
             URL da Imagem de Compartilhamento (Open Graph Image)
           </label>
           <input
             type="text"
             value={seo.og_image}
             onChange={(e) => setSeo({ ...seo, og_image: e.target.value })}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
           />
         </div>
 
         <div className="space-y-1 text-xs">
-          <label className="font-bold text-slate-200 uppercase tracking-wider">
+          <label className="font-bold text-slate-700 uppercase tracking-wider">
             Palavras-chave (Separadas por vírgula)
           </label>
           <input
             type="text"
             value={keywordsText}
             onChange={(e) => setKeywordsText(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
           />
         </div>
 

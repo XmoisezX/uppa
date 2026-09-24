@@ -85,7 +85,7 @@ export function UsersClient({ initialUsers, roles }: Props) {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
             Gerenciamento de Usuários & Acessos
           </h2>
           <p className="text-xs text-slate-400">
@@ -97,8 +97,8 @@ export function UsersClient({ initialUsers, roles }: Props) {
           <div
             className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border ${
               feedback.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                : 'bg-red-500/10 border-red-500/30 text-red-400'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                : 'bg-red-50 border-red-200 text-red-600'
             }`}
           >
             {feedback.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -107,7 +107,7 @@ export function UsersClient({ initialUsers, roles }: Props) {
         )}
       </div>
 
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-4">
         <div className="relative max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -115,12 +115,12 @@ export function UsersClient({ initialUsers, roles }: Props) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nome, e-mail ou telefone..."
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
           />
         </div>
       </div>
 
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         {filtered.length === 0 ? (
           <div className="p-12 text-center text-slate-500 text-xs">
             Nenhum usuário encontrado.
@@ -128,7 +128,7 @@ export function UsersClient({ initialUsers, roles }: Props) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/60 border-b border-slate-800 text-slate-400 uppercase font-bold text-[10px] tracking-wider">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-400 uppercase font-bold text-[10px] tracking-wider">
                 <tr>
                   <th className="px-4 py-3">Usuário</th>
                   <th className="px-4 py-3">Cargo / Perfil</th>
@@ -137,19 +137,19 @@ export function UsersClient({ initialUsers, roles }: Props) {
                   <th className="px-4 py-3">Último Acesso</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-slate-100/80">
                 {filtered.map((user) => {
                   const isMainSuper = user.email.toLowerCase() === 'moiseztorres100@gmail.com';
 
                   return (
-                    <tr key={user.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={user.id} className="hover:bg-slate-100/30 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-white uppercase shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-slate-900 uppercase shrink-0">
                             {user.name ? user.name.charAt(0) : user.email.charAt(0)}
                           </div>
                           <div>
-                            <div className="font-bold text-white flex items-center gap-1.5">
+                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
                               <span>{user.name || 'Sem nome informado'}</span>
                               {isMainSuper && (
                                 <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
@@ -184,7 +184,7 @@ export function UsersClient({ initialUsers, roles }: Props) {
                             value={user.role_id || user.role?.id}
                             onChange={(e) => handleRoleChange(user, e.target.value)}
                             disabled={isPending}
-                            className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
+                            className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
                           >
                             {roles.map((r) => (
                               <option key={r.id} value={r.id}>

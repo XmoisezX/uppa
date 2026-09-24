@@ -111,7 +111,7 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
             Gerenciamento do Site & Conteúdo
           </h2>
           <p className="text-xs text-slate-400">
@@ -123,8 +123,8 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
           <div
             className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border animate-fade-in ${
               feedback.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                : 'bg-red-500/10 border-red-500/30 text-red-400'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                : 'bg-red-50 border-red-200 text-red-600'
             }`}
           >
             {feedback.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -134,13 +134,13 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-800 gap-2 overflow-x-auto pb-px">
+      <div className="flex border-b border-slate-200 gap-2 overflow-x-auto pb-px">
         <button
           onClick={() => setActiveTab('home')}
           className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 ${
             activeTab === 'home'
-              ? 'border-blue-500 text-blue-400 bg-slate-900/60'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-blue-500 text-slate-500 bg-slate-100'
+              : 'border-transparent text-slate-400 hover:text-slate-700'
           }`}
         >
           <LayoutTemplate className="w-4 h-4" />
@@ -151,8 +151,8 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
           onClick={() => setActiveTab('sections')}
           className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 ${
             activeTab === 'sections'
-              ? 'border-blue-500 text-blue-400 bg-slate-900/60'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-blue-500 text-slate-500 bg-slate-100'
+              : 'border-transparent text-slate-400 hover:text-slate-700'
           }`}
         >
           <LayoutTemplate className="w-4 h-4" />
@@ -163,8 +163,8 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
           onClick={() => setActiveTab('faqs')}
           className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 ${
             activeTab === 'faqs'
-              ? 'border-blue-500 text-blue-400 bg-slate-900/60'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-blue-500 text-slate-500 bg-slate-100'
+              : 'border-transparent text-slate-400 hover:text-slate-700'
           }`}
         >
           <HelpCircle className="w-4 h-4" />
@@ -175,8 +175,8 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
           onClick={() => setActiveTab('footer')}
           className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 ${
             activeTab === 'footer'
-              ? 'border-blue-500 text-blue-400 bg-slate-900/60'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-blue-500 text-slate-500 bg-slate-100'
+              : 'border-transparent text-slate-400 hover:text-slate-700'
           }`}
         >
           <LinkIcon className="w-4 h-4" />
@@ -186,42 +186,42 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
 
       {/* Tab 1: Textos da Home */}
       {activeTab === 'home' && (
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-5 max-w-3xl">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5 max-w-3xl">
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               Título Principal da Home (Hero Headline)
             </label>
             <input
               type="text"
               value={settings.hero_headline || ''}
               onChange={(e) => setSettings({ ...settings, hero_headline: e.target.value })}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
               placeholder="Ex: Encontre o imóvel ideal no maior portal imobiliário do Brasil"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               Subtítulo Descritivo (Hero Subheadline)
             </label>
             <textarea
               rows={3}
               value={settings.hero_subheadline || ''}
               onChange={(e) => setSettings({ ...settings, hero_subheadline: e.target.value })}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
               placeholder="Ex: Milhares de casas e apartamentos à venda..."
             />
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               Texto de Ajuda da Barra de Busca (Placeholder)
             </label>
             <input
               type="text"
               value={settings.hero_search_placeholder || ''}
               onChange={(e) => setSettings({ ...settings, hero_search_placeholder: e.target.value })}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
               placeholder="Ex: Digite cidade, bairro ou código..."
             />
           </div>
@@ -239,16 +239,16 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
 
       {/* Tab 2: Ordem e Ativação de Seções */}
       {activeTab === 'sections' && (
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-4 max-w-3xl">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4 max-w-3xl">
           <p className="text-xs text-slate-400">
             Ative ou oculte seções completas na página principal do portal com um clique.
           </p>
 
-          <div className="divide-y divide-slate-800">
+          <div className="divide-y divide-slate-100">
             {(settings.home_sections || []).map((sec) => (
               <div key={sec.id} className="py-3 flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-semibold text-white">{sec.label}</div>
+                  <div className="text-sm font-semibold text-slate-900">{sec.label}</div>
                   <div className="text-xs text-slate-500 font-mono">ID: {sec.id}</div>
                 </div>
 
@@ -258,7 +258,7 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                     sec.enabled
                       ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
-                      : 'bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700'
+                      : 'bg-slate-100 border border-slate-200 text-slate-400 hover:bg-slate-700'
                   }`}
                 >
                   {sec.enabled ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
@@ -290,25 +290,25 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
             {faqs.map((faq) => (
               <div
                 key={faq.id}
-                className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-3 flex flex-col justify-between"
+                className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 flex flex-col justify-between"
               >
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-slate-800 text-blue-400">
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-500">
                       {faq.category}
                     </span>
                     <span className={`text-[10px] font-bold ${faq.is_active ? 'text-emerald-400' : 'text-slate-500'}`}>
                       {faq.is_active ? 'Ativa' : 'Inativa'}
                     </span>
                   </div>
-                  <h4 className="text-sm font-bold text-white leading-snug">{faq.question}</h4>
+                  <h4 className="text-sm font-bold text-slate-900 leading-snug">{faq.question}</h4>
                   <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">{faq.answer}</p>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
                   <button
                     onClick={() => setEditingFaq(faq)}
-                    className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 text-xs"
+                    className="p-1.5 text-slate-400 hover:text-slate-900 rounded-lg hover:bg-slate-100 text-xs"
                     title="Editar"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
@@ -328,41 +328,41 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
           {/* Modal de Edição/Criação de FAQ */}
           {editingFaq && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
-                <h3 className="text-base font-bold text-white">
+              <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+                <h3 className="text-base font-bold text-slate-900">
                   {editingFaq.id ? 'Editar Pergunta Frequente' : 'Nova Pergunta Frequente'}
                 </h3>
 
                 <div className="space-y-3 text-xs">
                   <div>
-                    <label className="font-semibold text-slate-300 block mb-1">Pergunta</label>
+                    <label className="font-semibold text-slate-600 block mb-1">Pergunta</label>
                     <input
                       type="text"
                       value={editingFaq.question || ''}
                       onChange={(e) => setEditingFaq({ ...editingFaq, question: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                       placeholder="Ex: Como anunciar no portal?"
                     />
                   </div>
 
                   <div>
-                    <label className="font-semibold text-slate-300 block mb-1">Resposta</label>
+                    <label className="font-semibold text-slate-600 block mb-1">Resposta</label>
                     <textarea
                       rows={4}
                       value={editingFaq.answer || ''}
                       onChange={(e) => setEditingFaq({ ...editingFaq, answer: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                       placeholder="Explique a resposta de forma clara e objetiva..."
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="font-semibold text-slate-300 block mb-1">Categoria</label>
+                      <label className="font-semibold text-slate-600 block mb-1">Categoria</label>
                       <select
                         value={editingFaq.category || 'geral'}
                         onChange={(e) => setEditingFaq({ ...editingFaq, category: e.target.value })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                       >
                         <option value="geral">Geral</option>
                         <option value="anunciantes">Anunciantes</option>
@@ -372,11 +372,11 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
                     </div>
 
                     <div>
-                      <label className="font-semibold text-slate-300 block mb-1">Status</label>
+                      <label className="font-semibold text-slate-600 block mb-1">Status</label>
                       <select
                         value={editingFaq.is_active ? 'active' : 'inactive'}
                         onChange={(e) => setEditingFaq({ ...editingFaq, is_active: e.target.value === 'active' })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                       >
                         <option value="active">Ativo (Visível)</option>
                         <option value="inactive">Inativo (Oculto)</option>
@@ -388,14 +388,14 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
                 <div className="flex justify-end gap-2 pt-2">
                   <button
                     onClick={() => setEditingFaq(null)}
-                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700"
+                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-700"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={handleSaveFaq}
                     disabled={isPending}
-                    className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-500 disabled:opacity-50"
+                    className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-blue-500 disabled:opacity-50"
                   >
                     Salvar FAQ
                   </button>
@@ -408,14 +408,14 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
 
       {/* Tab 4: Rodapé & Contatos */}
       {activeTab === 'footer' && (
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-5 max-w-3xl">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5 max-w-3xl">
+          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
             Informações Oficiais de Contato
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div>
-              <label className="font-semibold text-slate-300 block mb-1">Telefone Comercial</label>
+              <label className="font-semibold text-slate-600 block mb-1">Telefone Comercial</label>
               <input
                 type="text"
                 value={settings.contact_info?.phone || ''}
@@ -425,12 +425,12 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
                     contact_info: { ...settings.contact_info!, phone: e.target.value },
                   })
                 }
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
               />
             </div>
 
             <div>
-              <label className="font-semibold text-slate-300 block mb-1">WhatsApp</label>
+              <label className="font-semibold text-slate-600 block mb-1">WhatsApp</label>
               <input
                 type="text"
                 value={settings.contact_info?.whatsapp || ''}
@@ -440,12 +440,12 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
                     contact_info: { ...settings.contact_info!, whatsapp: e.target.value },
                   })
                 }
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
               />
             </div>
 
             <div>
-              <label className="font-semibold text-slate-300 block mb-1">E-mail de Suporte</label>
+              <label className="font-semibold text-slate-600 block mb-1">E-mail de Suporte</label>
               <input
                 type="email"
                 value={settings.contact_info?.email || ''}
@@ -455,12 +455,12 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
                     contact_info: { ...settings.contact_info!, email: e.target.value },
                   })
                 }
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
               />
             </div>
 
             <div>
-              <label className="font-semibold text-slate-300 block mb-1">Endereço Sede</label>
+              <label className="font-semibold text-slate-600 block mb-1">Endereço Sede</label>
               <input
                 type="text"
                 value={settings.contact_info?.address || ''}
@@ -470,7 +470,7 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
                     contact_info: { ...settings.contact_info!, address: e.target.value },
                   })
                 }
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
               />
             </div>
           </div>

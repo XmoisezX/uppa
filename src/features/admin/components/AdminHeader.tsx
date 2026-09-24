@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Menu, LogOut, Shield, ExternalLink, Building2 } from 'lucide-react';
+import { Menu, LogOut, Shield, ExternalLink, Building2, Bell, LayoutGrid } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
 import type { AdminUser } from '@/types/admin';
 
@@ -18,20 +18,20 @@ export function AdminHeader({ adminUser, onMobileOpen }: HeaderProps) {
   const [loggingOut, setLoggingOut] = useState(false);
 
   const getPageTitle = (path: string) => {
-    if (path === '/admin') return 'Painel Geral';
-    if (path.startsWith('/admin/site')) return 'Gerenciamento do Site & Home';
-    if (path.startsWith('/admin/banners')) return 'Banners & Campanhas Publicitárias';
-    if (path.startsWith('/admin/artigos')) return 'CMS de Artigos & Blog';
-    if (path.startsWith('/admin/imoveis')) return 'Moderação de Imóveis';
-    if (path.startsWith('/admin/agencias')) return 'Imobiliárias & Anunciantes';
-    if (path.startsWith('/admin/usuarios')) return 'Gerenciamento de Usuários';
-    if (path.startsWith('/admin/cargos')) return 'Cargos & Matriz de Permissões';
-    if (path.startsWith('/admin/leads')) return 'Central de Leads & Contatos';
-    if (path.startsWith('/admin/feeds')) return 'Integrações de Feeds & VRSync';
-    if (path.startsWith('/admin/seo')) return 'Configurações de SEO & Meta Tags';
-    if (path.startsWith('/admin/configuracoes')) return 'Configurações Gerais da Plataforma';
-    if (path.startsWith('/admin/auditoria')) return 'Logs de Auditoria Administrativa';
-    return 'Área Administrativa';
+    if (path === '/admin') return 'Dashboard';
+    if (path.startsWith('/admin/site')) return 'Site & Home';
+    if (path.startsWith('/admin/banners')) return 'Banners';
+    if (path.startsWith('/admin/artigos')) return 'Artigos / CMS';
+    if (path.startsWith('/admin/imoveis')) return 'Imóveis';
+    if (path.startsWith('/admin/agencias')) return 'Agências';
+    if (path.startsWith('/admin/usuarios')) return 'Usuários';
+    if (path.startsWith('/admin/cargos')) return 'Cargos & Permissões';
+    if (path.startsWith('/admin/leads')) return 'Leads';
+    if (path.startsWith('/admin/feeds')) return 'Feeds / VRSync';
+    if (path.startsWith('/admin/seo')) return 'SEO & Meta';
+    if (path.startsWith('/admin/configuracoes')) return 'Configurações';
+    if (path.startsWith('/admin/auditoria')) return 'Auditoria';
+    return 'Admin';
   };
 
   const handleSignOut = async () => {
@@ -52,44 +52,46 @@ export function AdminHeader({ adminUser, onMobileOpen }: HeaderProps) {
     adminUser.email?.toLowerCase() === 'moiseztorres100@gmail.com' ||
     adminUser.role?.slug === 'super_admin';
 
+  const now = new Date();
+  const lastUpdated = now.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
   return (
-    <header className="h-16 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20">
-      {/* Left side: Hamburger (mobile) and Breadcrumb */}
+    <header className="h-[60px] bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20">
+      {/* Left side */}
       <div className="flex items-center gap-3">
         <button
           onClick={onMobileOpen}
-          className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 lg:hidden"
+          className="p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 lg:hidden cursor-pointer"
           aria-label="Abrir menu"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-500 font-medium">UPPA Admin</span>
-          <span className="text-slate-700">/</span>
-          <h1 className="text-sm sm:text-base font-bold text-white tracking-tight">
+        <div className="flex items-center gap-2.5">
+          <LayoutGrid className="w-4 h-4 text-slate-400" />
+          <h1 className="text-[15px] font-bold text-slate-900 tracking-tight">
             {getPageTitle(pathname)}
           </h1>
         </div>
       </div>
 
-      {/* Right side: User Profile, Role Badge, Actions */}
-      <div className="flex items-center gap-3">
-        {/* Role Pill */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-xs">
-          <Shield className={`w-3.5 h-3.5 ${isSuperAdmin ? 'text-amber-400' : 'text-blue-400'}`} />
-          <span className="font-semibold text-slate-200">
-            {adminUser.role?.name || 'Admin'}
-          </span>
-        </div>
+      {/* Right side */}
+      <div className="flex items-center gap-2">
+        {/* Last updated */}
+        <span className="hidden md:inline text-xs text-slate-400 mr-2">
+          Atualizado às {lastUpdated}
+        </span>
 
-        {/* Ir para Painel Imobiliária */}
+        {/* Painel Imobiliária */}
         <Link
           href="/painel"
-          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-300 hover:text-white hover:bg-indigo-950/60 border border-indigo-700/50 transition-colors"
+          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors"
           title="Alternar para o Painel da sua Imobiliária"
         >
-          <Building2 className="w-3.5 h-3.5 text-indigo-400" />
+          <Building2 className="w-3.5 h-3.5 text-slate-400" />
           <span>Painel Imobiliária</span>
         </Link>
 
@@ -98,28 +100,35 @@ export function AdminHeader({ adminUser, onMobileOpen }: HeaderProps) {
           href="/"
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/60 transition-colors"
+          className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors"
         >
-          <ExternalLink className="w-3.5 h-3.5" />
+          <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
           <span>Ver Portal</span>
         </a>
 
-        {/* User Avatar */}
-        <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
+        {/* Separator */}
+        <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block" />
+
+        {/* User Avatar & Logout */}
+        <div className="flex items-center gap-2">
           <div className="text-right hidden sm:block">
-            <div className="text-xs font-medium text-slate-200 leading-tight">
+            <div className="text-xs font-semibold text-slate-900 leading-tight">
               {adminUser.name || 'Admin'}
             </div>
             <div className="text-[10px] text-slate-400 truncate max-w-[140px]">
-              {adminUser.email}
+              {adminUser.role?.name || 'Administrador'}
             </div>
+          </div>
+
+          <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold text-xs shrink-0">
+            {adminUser.name ? adminUser.name.charAt(0).toUpperCase() : 'A'}
           </div>
 
           <button
             onClick={handleSignOut}
             disabled={loggingOut}
             title="Sair do painel administrativo"
-            className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all"
+            className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
           </button>

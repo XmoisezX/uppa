@@ -73,7 +73,7 @@ export function FeedsClient({ initialFeeds }: Props) {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
             Integrações de Feeds XML / VRSync
           </h2>
           <p className="text-xs text-slate-400">
@@ -85,8 +85,8 @@ export function FeedsClient({ initialFeeds }: Props) {
           <div
             className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border ${
               feedback.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                : 'bg-red-500/10 border-red-500/30 text-red-400'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                : 'bg-red-50 border-red-200 text-red-600'
             }`}
           >
             {feedback.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -97,7 +97,7 @@ export function FeedsClient({ initialFeeds }: Props) {
 
       <div className="grid grid-cols-1 gap-4">
         {feeds.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 text-xs bg-slate-900/80 border border-slate-800 rounded-xl">
+          <div className="p-12 text-center text-slate-500 text-xs bg-white border border-slate-200 rounded-xl">
             Nenhum feed cadastrado na plataforma.
           </div>
         ) : (
@@ -107,26 +107,26 @@ export function FeedsClient({ initialFeeds }: Props) {
             return (
               <div
                 key={feed.id}
-                className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 space-y-4 hover:border-slate-700/80 transition-colors"
+                className="bg-white border border-slate-200 rounded-xl p-5 space-y-4 hover:border-slate-300/80 transition-colors"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-blue-400 font-bold uppercase shrink-0">
-                      <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin text-blue-400' : ''}`} />
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold uppercase shrink-0">
+                      <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin text-slate-500' : ''}`} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm">
+                        <span className="font-bold text-slate-900 text-sm">
                           {feed.agency_name || 'Imobiliária sem nome'}
                         </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-indigo-400 border border-slate-700/60 uppercase">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-indigo-400 border border-slate-200/60 uppercase">
                           {feed.type}
                         </span>
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             feed.status === 'active'
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                              : 'bg-slate-800 text-slate-400'
+                              : 'bg-slate-100 text-slate-400'
                           }`}
                         >
                           {feed.status === 'active' ? 'Ativo' : 'Pausado'}
@@ -142,7 +142,7 @@ export function FeedsClient({ initialFeeds }: Props) {
                     <button
                       onClick={() => handleToggleStatus(feed)}
                       disabled={isPending || isSyncing}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors inline-flex items-center gap-1.5"
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-700 text-slate-600 text-xs font-semibold transition-colors inline-flex items-center gap-1.5"
                     >
                       {feed.status === 'active' ? (
                         <>
@@ -166,12 +166,12 @@ export function FeedsClient({ initialFeeds }: Props) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-800/80 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-200/80 text-xs">
                   <div>
                     <span className="text-[10px] text-slate-500 block uppercase font-bold">
                       Imóveis Importados
                     </span>
-                    <span className="font-bold text-slate-200">
+                    <span className="font-bold text-slate-700">
                       {feed.properties_count} imóveis
                     </span>
                   </div>
@@ -180,7 +180,7 @@ export function FeedsClient({ initialFeeds }: Props) {
                     <span className="text-[10px] text-slate-500 block uppercase font-bold">
                       Última Sincronização
                     </span>
-                    <span className="font-mono text-slate-300">
+                    <span className="font-mono text-slate-600">
                       {feed.last_sync_at
                         ? new Date(feed.last_sync_at).toLocaleString('pt-BR', {
                             dateStyle: 'short',
@@ -194,7 +194,7 @@ export function FeedsClient({ initialFeeds }: Props) {
                     <span className="text-[10px] text-slate-500 block uppercase font-bold">
                       Intervalo de Sinc.
                     </span>
-                    <span className="text-slate-300">
+                    <span className="text-slate-600">
                       A cada {Math.round(feed.sync_interval_minutes / 60)} horas
                     </span>
                   </div>
