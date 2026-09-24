@@ -292,6 +292,12 @@ export class WebsiteCrawler {
       // 7. Coleta e Persistência Progressiva em Lotes
       // Cada lote é extraído, normalizado e persistido imediatamente no banco
       for (let i = startIndex; i < totalToCrawl; i += batchSize) {
+        // Verifica se houve pedido de cancelamento explícito (ex: clique no X)
+        if (crawlOpts.abortSignal?.aborted) {
+          console.log(`[WebsiteCrawler] Crawl cancelado pelo usuário no índice ${i}.`);
+          break;
+        }
+
         const refBatch = references.slice(i, Math.min(i + batchSize, totalToCrawl));
 
         // Extrai lote em paralelo controlado via DomainRateLimiter
@@ -364,6 +370,32 @@ export class WebsiteCrawler {
             currentProperty: lastPropTitle,
           });
         }
+      }
+
+      if (crawlOpts.abortSignal?.aborted) {
+        await this.supabase
+          .from("crawl_runs")
+          .update({
+            status: "failed",
+            finished_at: new Date().toISOString(),
+            error_message: "Importação cancelada pelo usuário.",
+            duration_ms: Date.now() - startTime,
+          })
+          .eq("id", crawlRunId);
+
+        return {
+          success: false,
+          crawlRunId,
+          itemsFound: totalToCrawl,
+          itemsCreated: importer.itemsCreated,
+          itemsUpdated: importer.itemsUpdated,
+          itemsDeactivated: 0,
+          itemsFailed: importer.itemsFailed,
+          pagesCrawled: importer.itemsCreated + importer.itemsUpdated,
+          durationMs: Date.now() - startTime,
+          status: "failed",
+          error: "Importação cancelada pelo usuário.",
+        };
       }
 
       // 8. Finalização segura com desativação em 2 etapas de imóveis ausentes

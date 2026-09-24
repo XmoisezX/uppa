@@ -50,6 +50,15 @@ export function WebsiteImportModal({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isInterrupted, setIsInterrupted] = useState(false);
+  const [showCancelPrompt, setShowCancelPrompt] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [activeSourceId, setActiveSourceId] = useState<string | undefined>(initialSourceId);
+
+  useEffect(() => {
+    if (initialSourceId) {
+      setActiveSourceId(initialSourceId);
+    }
+  }, [initialSourceId]);
 
   const [previewReport, setPreviewReport] = useState<PreviewReport | null>(null);
   const [syncResult, setSyncResult] = useState<CrawlResult | null>(null);
@@ -72,23 +81,143 @@ export function WebsiteImportModal({
     logs: [],
   });
 
-  // Disparo automático quando o modal é aberto via "Sincronizar" direto de um card
+  // 1. Checagem inicial de status ao abrir o modal (detecta se o servidor já está importando em 2º plano)
   useEffect(() => {
-    if (isOpen && autoStartSync && (initialSourceId || initialDomain)) {
-      startSyncStream(initialSourceId, initialDomain);
-    }
-  }, [isOpen, autoStartSync, initialSourceId, initialDomain]);
+    if (!isOpen) return;
+
+    let isMounted = true;
+    const checkRunningJob = async () => {
+      const sourceId = activeSourceId || initialSourceId;
+      if (!sourceId) {
+        if (autoStartSync && initialDomain) {
+          startSyncStream(undefined, initialDomain);
+        }
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/website-import/sync?websiteSourceId=${sourceId}`);
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (data.running) {
+            setStep("syncing");
+            setIsLoading(true);
+            if (data.jobProgress) {
+              setImportProgress((prev) => ({
+                ...prev,
+                current: data.jobProgress.current,
+                total: data.jobProgress.total || prev.total,
+                created: data.jobProgress.created,
+                updated: data.jobProgress.updated,
+                failed: data.jobProgress.failed,
+                currentProperty: data.jobProgress.currentProperty,
+              }));
+            } else if (data.latestRun) {
+              setImportProgress((prev) => ({
+                ...prev,
+                current: data.latestRun.pages_crawled,
+                total: data.latestRun.items_found || prev.total,
+                created: data.latestRun.items_created,
+                updated: data.latestRun.items_updated,
+                failed: data.latestRun.items_failed,
+                logs: ["Conectado ao processo de sincronização em segundo plano no servidor..."],
+              }));
+            }
+            startSyncStream(sourceId, initialDomain);
+            return;
+          }
+        }
+      } catch {}
+
+      if (autoStartSync && (sourceId || initialDomain)) {
+        startSyncStream(sourceId, initialDomain);
+      }
+    };
+
+    checkRunningJob();
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, autoStartSync, initialSourceId, activeSourceId, initialDomain]);
+
+  // 2. Polling contínuo de status enquanto step === "syncing" (garante progresso mesmo se SSE desconectar)
+  useEffect(() => {
+    const currentId = activeSourceId || initialSourceId;
+    if (!isOpen || step !== "syncing" || !currentId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/website-import/sync?websiteSourceId=${currentId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data.jobProgress) {
+          setImportProgress((prev) => ({
+            ...prev,
+            current: data.jobProgress.current,
+            total: data.jobProgress.total || prev.total,
+            created: data.jobProgress.created,
+            updated: data.jobProgress.updated,
+            failed: data.jobProgress.failed,
+            currentProperty: data.jobProgress.currentProperty || prev.currentProperty,
+            logs: data.jobProgress.currentProperty
+              ? [
+                  data.jobProgress.currentProperty,
+                  ...prev.logs
+                    .filter((l) => l !== data.jobProgress.currentProperty)
+                    .slice(0, 8),
+                ]
+              : prev.logs,
+          }));
+        } else if (data.latestRun) {
+          setImportProgress((prev) => ({
+            ...prev,
+            current: data.latestRun.pages_crawled,
+            total: data.latestRun.items_found || prev.total,
+            created: data.latestRun.items_created,
+            updated: data.latestRun.items_updated,
+            failed: data.latestRun.items_failed,
+          }));
+
+          if (
+            data.latestRun.status === "completed" ||
+            data.latestRun.status === "completed_with_errors"
+          ) {
+            setSyncResult({
+              success: true,
+              crawlRunId: data.latestRun.id,
+              itemsFound: data.latestRun.items_found,
+              itemsCreated: data.latestRun.items_created,
+              itemsUpdated: data.latestRun.items_updated,
+              itemsDeactivated: data.latestRun.items_deactivated || 0,
+              itemsFailed: data.latestRun.items_failed,
+              pagesCrawled: data.latestRun.pages_crawled,
+              durationMs: data.latestRun.duration_ms || 0,
+              status: data.latestRun.status,
+            });
+            setStep("completed");
+            setIsLoading(false);
+            if (onSuccess) onSuccess();
+          }
+        }
+      } catch {}
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [isOpen, step, initialSourceId, activeSourceId]);
 
   if (!isOpen) return null;
 
-  const handleClose = () => {
-    if (isLoading) return;
+  const handleForceClose = () => {
     setStep("input");
     setUrl(initialDomain || "");
     setAuthChecked(false);
     setPreviewReport(null);
     setSyncResult(null);
     setErrorMessage(null);
+    setIsLoading(false);
+    setIsInterrupted(false);
+    setShowCancelPrompt(false);
     setImportProgress({
       current: 0,
       total: 0,
@@ -99,6 +228,37 @@ export function WebsiteImportModal({
       logs: [],
     });
     onClose();
+  };
+
+  const handleClose = handleForceClose;
+
+  const handleHeaderCloseClick = () => {
+    // Se a importação estiver ativa no servidor, pergunta se o usuário quer parar ou manter em 2º plano
+    if (step === "syncing" && !isInterrupted && isLoading) {
+      setShowCancelPrompt(true);
+      return;
+    }
+    handleForceClose();
+  };
+
+  const cancelActiveSync = async () => {
+    setIsCancelling(true);
+    const targetSourceId = activeSourceId || initialSourceId;
+    try {
+      if (targetSourceId) {
+        await fetch("/api/website-import/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "cancel",
+            websiteSourceId: targetSourceId,
+          }),
+        });
+      }
+    } catch {}
+    setIsCancelling(false);
+    setShowCancelPrompt(false);
+    handleForceClose();
   };
 
   // Etapa 1: Gerar Preview
@@ -246,7 +406,11 @@ export function WebsiteImportModal({
           try {
             const data = JSON.parse(dataStr);
 
-            if (eventType === "progress") {
+            if (eventType === "init") {
+              if (data.websiteSourceId) {
+                setActiveSourceId(data.websiteSourceId);
+              }
+            } else if (eventType === "progress") {
               setImportProgress((prev) => {
                 const newLogs = data.currentProperty
                   ? [data.currentProperty, ...prev.logs.slice(0, 9)]
@@ -277,8 +441,44 @@ export function WebsiteImportModal({
         }
       }
 
-      // Se a conexão encerrou sem emitir o evento "complete", indica que houve interrupção (ex: timeout de rede aos 5min)
+      // Se a conexão encerrou sem emitir o evento "complete", checa se o processo continua rodando no servidor
       if (!receivedComplete) {
+        const sourceId = activeSourceId || initialSourceId;
+        if (sourceId) {
+          try {
+            const checkRes = await fetch(`/api/website-import/sync?websiteSourceId=${sourceId}`);
+            if (checkRes.ok) {
+              const checkData = await checkRes.json();
+              if (checkData.running) {
+                // O job no servidor continua firme e forte! O polling cuidará de atualizar a tela até 100%.
+                setIsInterrupted(false);
+                setIsLoading(true);
+                return;
+              }
+              if (
+                checkData.latestRun?.status === "completed" ||
+                checkData.latestRun?.status === "completed_with_errors"
+              ) {
+                setSyncResult({
+                  success: true,
+                  crawlRunId: checkData.latestRun.id,
+                  itemsFound: checkData.latestRun.items_found,
+                  itemsCreated: checkData.latestRun.items_created,
+                  itemsUpdated: checkData.latestRun.items_updated,
+                  itemsDeactivated: checkData.latestRun.items_deactivated || 0,
+                  itemsFailed: checkData.latestRun.items_failed,
+                  pagesCrawled: checkData.latestRun.pages_crawled,
+                  durationMs: checkData.latestRun.duration_ms || 0,
+                  status: checkData.latestRun.status,
+                });
+                setStep("completed");
+                setIsLoading(false);
+                if (onSuccess) onSuccess();
+                return;
+              }
+            }
+          } catch {}
+        }
         setIsInterrupted(true);
       }
     } catch (err: any) {
@@ -292,7 +492,7 @@ export function WebsiteImportModal({
   // Etapa 2: Confirmar e Importar
   const handleConfirmImport = async () => {
     if (!previewReport) return;
-    await startSyncStream(initialSourceId, previewReport.domain);
+    await startSyncStream(activeSourceId || initialSourceId, previewReport.domain);
   };
 
   return (
@@ -315,9 +515,9 @@ export function WebsiteImportModal({
           </div>
 
           <button
-            onClick={handleClose}
-            disabled={isLoading}
+            onClick={handleHeaderCloseClick}
             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Fechar ou Parar Importação"
           >
             <X className="h-5 w-5" />
           </button>
@@ -618,12 +818,12 @@ export function WebsiteImportModal({
                 </h3>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
                   {isInterrupted
-                    ? `A conexão com o servidor foi pausada após o limite de tempo da requisição. Seus dados já processados (${importProgress.current.toLocaleString(
+                    ? `A sincronização foi pausada. Seus dados já processados (${importProgress.current.toLocaleString(
                         "pt-BR"
                       )} de ${importProgress.total.toLocaleString(
                         "pt-BR"
-                      )} imóveis) estão salvos com total segurança.`
-                    : "Baixando, normalizando e gravando imóveis com persistência idempotente e content hash."}
+                      )} imóveis) estão salvos com segurança no banco de dados.`
+                    : "Importando em segundo plano no servidor. Você pode fechar esta tela ou navegar normalmente — o processo continua até o fim e só para se você clicar em 'Parar'."}
                 </p>
               </div>
 
@@ -716,8 +916,8 @@ export function WebsiteImportModal({
                 </div>
               )}
 
-              {/* Botões de Ação para Continuação em Caso de Pausa */}
-              {isInterrupted && (
+              {/* Botões de Ação durante Sincronização ou Pausa */}
+              {isInterrupted ? (
                 <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
                   <Button
                     type="button"
@@ -734,7 +934,7 @@ export function WebsiteImportModal({
                     type="button"
                     onClick={() =>
                       startSyncStream(
-                        initialSourceId,
+                        activeSourceId || initialSourceId,
                         previewReport?.domain || initialDomain,
                         importProgress.current
                       )
@@ -743,6 +943,28 @@ export function WebsiteImportModal({
                   >
                     <ArrowRight className="h-4 w-4" />
                     Continuar Sincronização (a partir de {importProgress.current})
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowCancelPrompt(true)}
+                    disabled={isCancelling}
+                    className="border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-900/40 dark:text-rose-400 rounded-xl h-11 px-4 text-xs font-semibold gap-1.5 cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                    Parar Importação
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onClose}
+                    className="text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl h-11 px-5 text-xs font-semibold cursor-pointer"
+                  >
+                    Minimizar (Continuar em 2º Plano)
                   </Button>
                 </div>
               )}
@@ -812,6 +1034,69 @@ export function WebsiteImportModal({
             </div>
           )}
         </div>
+
+        {/* Modal de Confirmação para Parar ou Manter em Segundo Plano */}
+        {showCancelPrompt && (
+          <div className="absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-6 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full shadow-2xl space-y-4 text-center">
+              <div className="h-14 w-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto border border-amber-200 dark:border-amber-900/50">
+                <AlertTriangle className="h-7 w-7" />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                  Sincronização em Andamento
+                </h4>
+                <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Já foram processados <strong className="text-slate-800 dark:text-slate-200">{importProgress.current}</strong> de{" "}
+                  <strong className="text-slate-800 dark:text-slate-200">{importProgress.total}</strong> imóveis.
+                  A importação continua rodando no servidor mesmo se você fechar esta janela.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2.5 pt-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setShowCancelPrompt(false);
+                    onClose();
+                  }}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-11 text-xs font-bold cursor-pointer shadow-md shadow-indigo-500/20"
+                >
+                  Continuar em Segundo Plano (Fechar Janela)
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isCancelling}
+                  onClick={cancelActiveSync}
+                  className="w-full border-rose-200 hover:bg-rose-50 text-rose-600 dark:border-rose-900/40 dark:hover:bg-rose-950/30 dark:text-rose-400 rounded-xl h-11 text-xs font-semibold cursor-pointer gap-2"
+                >
+                  {isCancelling ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Interrompendo no Servidor...
+                    </>
+                  ) : (
+                    <>
+                      <X className="h-3.5 w-3.5" />
+                      Parar Importação Definitivamente
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setShowCancelPrompt(false)}
+                  className="w-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs h-9 cursor-pointer"
+                >
+                  Voltar para o Progresso
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

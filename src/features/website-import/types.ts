@@ -161,6 +161,7 @@ export interface WebsiteCrawlOptions {
   customMaxListings?: number;
   batchSize?: number;
   startIndex?: number;
+  abortSignal?: AbortSignal;
   onProgress?: (progress: WebsiteCrawlProgress) => void | Promise<void>;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Globe,
   RefreshCw,
@@ -32,6 +32,39 @@ export function WebsiteSourcesSection({
     id: string;
     domain: string;
   } | null>(null);
+  const [runningJobs, setRunningJobs] = useState<
+    Record<string, { current: number; total: number }>
+  >({});
+
+  // Polling periódico para detectar importações ativas rodando em segundo plano no servidor
+  useEffect(() => {
+    let isMounted = true;
+    const checkRunning = async () => {
+      try {
+        const res = await fetch("/api/website-import/sync");
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (data.runningJobs) {
+            const map: Record<string, { current: number; total: number }> = {};
+            for (const j of data.runningJobs) {
+              map[j.websiteSourceId] = {
+                current: j.progress?.current || 0,
+                total: j.progress?.total || 0,
+              };
+            }
+            setRunningJobs(map);
+          }
+        }
+      } catch {}
+    };
+
+    checkRunning();
+    const interval = setInterval(checkRunning, 3000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleManualSync = (sourceId: string, domain: string) => {
     setSelectedSourceForSync({ id: sourceId, domain });
@@ -92,10 +125,17 @@ export function WebsiteSourcesSection({
             >
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Ativo
-                  </span>
+                  {runningJobs[source.id] ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 animate-pulse">
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      Importando em 2º plano ({runningJobs[source.id].current}/{runningJobs[source.id].total || "..."})
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Ativo
+                    </span>
+                  )}
                   <span className="text-[11px] text-slate-400 font-medium">
                     Conector: {source.connectorType}
                   </span>
@@ -129,10 +169,18 @@ export function WebsiteSourcesSection({
                 <Button
                   size="sm"
                   onClick={() => handleManualSync(source.id, source.domain)}
-                  className="rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 gap-1.5 cursor-pointer"
+                  className={`rounded-xl text-xs font-bold gap-1.5 cursor-pointer ${
+                    runningJobs[source.id]
+                      ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20"
+                      : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700"
+                  }`}
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Sincronizar
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${
+                      runningJobs[source.id] ? "animate-spin" : ""
+                    }`}
+                  />
+                  {runningJobs[source.id] ? "Acompanhar Progresso" : "Sincronizar"}
                 </Button>
               </div>
             </div>
