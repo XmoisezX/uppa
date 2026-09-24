@@ -14,6 +14,8 @@ import {
   publishProperty,
   savePropertyAsDraft,
   getCitiesByState,
+  deleteProperty,
+  deletePropertiesBatch,
 } from "./services";
 import type { CreatePropertyInput } from "@/lib/validations/property";
 import type { MediaType } from "@/types/property";
@@ -247,5 +249,55 @@ export async function fetchCitiesByStateAction(stateId: string) {
     return { success: true, cities };
   } catch (error: any) {
     return { success: false, cities: [], error: error?.message };
+  }
+}
+
+/**
+ * Exclusão definitiva de um imóvel da imobiliária
+ */
+export async function deletePropertyAction(propertyId: string) {
+  try {
+    const { membership } = await assertPropertyOwnership(propertyId);
+    await deleteProperty(propertyId, membership.agency.id);
+
+    revalidatePath("/painel/imoveis");
+    revalidatePath("/comprar");
+    revalidatePath("/alugar");
+
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error?.message || "Erro ao excluir imóvel.",
+    };
+  }
+}
+
+/**
+ * Exclusão em lote de múltiplos imóveis da imobiliária
+ */
+export async function deletePropertiesBatchAction(propertyIds: string[]) {
+  try {
+    const membership = await getCurrentUserAgency();
+    if (!membership) {
+      throw new Error("Você precisa estar vinculado a uma imobiliária ativa.");
+    }
+
+    if (!propertyIds || propertyIds.length === 0) {
+      return { success: true, deletedCount: 0 };
+    }
+
+    const deletedCount = await deletePropertiesBatch(propertyIds, membership.agency.id);
+
+    revalidatePath("/painel/imoveis");
+    revalidatePath("/comprar");
+    revalidatePath("/alugar");
+
+    return { success: true, deletedCount };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error?.message || "Erro ao excluir imóveis em lote.",
+    };
   }
 }

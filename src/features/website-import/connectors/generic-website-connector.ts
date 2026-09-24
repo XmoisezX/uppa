@@ -165,6 +165,15 @@ export class GenericWebsiteConnector implements WebsiteConnector {
       meta["page_title"] ||
       "Imóvel Anunciado";
 
+    if (
+      /\b\d+\s+imóve/i.test(title) ||
+      /\bimóve(?:is|l)\s+encontrado/i.test(title) ||
+      /\bresultados?\s+da\s+busca/i.test(title) ||
+      /\bbusca\s+de\s+imóve/i.test(title)
+    ) {
+      throw new Error(`Página de listagem/filtro ignorada: "${title}"`);
+    }
+
     // 2. Descrição Completa (DOM, JSON embutido e fallbacks)
     const description = extractFullPropertyDescription(html, meta);
 

@@ -1265,3 +1265,40 @@ export async function getSimilarProperties(
   }
 }
 
+/**
+ * Remove um imóvel pertencente à imobiliária informada
+ */
+export async function deleteProperty(propertyId: string, agencyId: string): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("properties")
+    .delete()
+    .eq("id", propertyId)
+    .eq("agency_id", agencyId);
+
+  if (error) {
+    throw new Error(`Erro ao excluir imóvel: ${error.message}`);
+  }
+}
+
+/**
+ * Remove múltiplos imóveis pertencentes à imobiliária informada (exclusão em lote)
+ */
+export async function deletePropertiesBatch(propertyIds: string[], agencyId: string): Promise<number> {
+  if (!propertyIds || propertyIds.length === 0) return 0;
+  const supabase = await createClient();
+
+  const { error, count } = await supabase
+    .from("properties")
+    .delete({ count: "exact" })
+    .in("id", propertyIds)
+    .eq("agency_id", agencyId);
+
+  if (error) {
+    throw new Error(`Erro ao excluir lote de imóveis: ${error.message}`);
+  }
+
+  return count ?? propertyIds.length;
+}
+

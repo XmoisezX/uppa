@@ -157,6 +157,15 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
       meta["page_title"] ||
       "Imóvel para Venda ou Locação";
 
+    if (
+      /\b\d+\s+imóve/i.test(title) ||
+      /\bimóve(?:is|l)\s+encontrado/i.test(title) ||
+      /\bresultados?\s+da\s+busca/i.test(title) ||
+      /\bbusca\s+de\s+imóve/i.test(title)
+    ) {
+      throw new Error(`Página de listagem/filtro ignorada: "${title}"`);
+    }
+
     const description = extractFullPropertyDescription(html, meta, listingBlock);
 
     // 4. Tipo de Transação e Tipo do Imóvel

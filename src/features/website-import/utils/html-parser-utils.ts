@@ -346,6 +346,20 @@ export function isListingDetailUrl(rawUrl: string): boolean {
       return false;
     }
 
+    // 5.1 Rejeita rotas de filtros por bairro, cidade, busca ou paginação
+    if (
+      pathname.includes("/busca") ||
+      pathname.includes("/pesquisa") ||
+      pathname.includes("/resultados") ||
+      pathname.includes("/encontrados") ||
+      pathname.includes("/bairro/") ||
+      pathname.includes("/cidade/") ||
+      pathname.includes("/categoria/") ||
+      /-[a-z]{2}$/i.test(cleanPath) // ex: tres-vendas-pelotas-rs, centro-pelotas-rs
+    ) {
+      return false;
+    }
+
     // 6. Singular /imovel/, /propriedade/, /listing/, /anuncio/ com detalhes
     if (
       pathname.startsWith("/imovel/") ||
@@ -373,9 +387,16 @@ export function isListingDetailUrl(rawUrl: string): boolean {
       }
     }
 
-    // 8. URLs em /imoveis/ com 4 ou mais segmentos estruturados
+    // 8. URLs em /imoveis/ com 4 ou mais segmentos estruturados e código no final
     if (segments[0] === "imoveis" && segments.length >= 4) {
-      return true;
+      const last = segments[segments.length - 1];
+      if (
+        /^[a-zA-Z]{2,4}\d+/i.test(last) ||
+        /\d{3,}/.test(last) ||
+        /[-_](?:cod|ref|id)/i.test(last)
+      ) {
+        return true;
+      }
     }
 
     // 9. URLs que contêm /imovel- ou /listing- com slug
