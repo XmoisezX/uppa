@@ -8,7 +8,7 @@ import {
 import { CrawlJobManager } from "@/features/website-import/crawler/crawl-job-manager";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 900; // Permite execuções de até 15 minutos em ambientes compatíveis
+export const maxDuration = 300; // Máximo suportado pelo plano Hobby da Vercel (5 minutos)
 
 export async function GET(request: NextRequest) {
   try {
