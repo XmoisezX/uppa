@@ -120,14 +120,25 @@ export function PropertyDetailMap({
           scrollWheelZoom: false,
         });
 
-        // Camada de mapas CartoDB Voyager - Visual profissional sem marca d'água
-        const baseLayer = L.tileLayer(
-          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-          {
-            maxZoom: 19,
-            subdomains: "abcd",
-          }
-        ).addTo(map);
+        // Camada de mapas CartoDB Voyager com chave oficial de autenticação
+        const cartoKey =
+          process.env.NEXT_PUBLIC_CARTO_API_KEY ||
+          "cb1_3qa9_1_431f37359957466841c5e31b";
+
+        const isLocalhost =
+          typeof window !== "undefined" &&
+          (window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1");
+
+        // No localhost usa o proxy para injetar o Referer autorizado; na Vercel vai direto à CDN
+        const tileUrl = isLocalhost
+          ? "/api/maps/tiles/{s}/{z}/{x}/{y}.png"
+          : `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${cartoKey}`;
+
+        const baseLayer = L.tileLayer(tileUrl, {
+          maxZoom: 19,
+          subdomains: "abcd",
+        }).addTo(map);
 
         baseLayer.on("tileerror", () => {
           L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
