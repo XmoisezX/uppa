@@ -120,16 +120,33 @@ export function PropertyDetailMap({
           scrollWheelZoom: false,
         });
 
-        // Tiles CartoDB Voyager
-        const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY || "cb1_3qa9_1_431f37359957466841c5e31b";
-        const tileUrl = cartoKey
-          ? `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${cartoKey}`
-          : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+        // Camada de mapas CartoDB Voyager - Visual profissional sem marca d'água
+        const baseLayer = L.tileLayer(
+          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+          {
+            maxZoom: 19,
+            subdomains: "abcd",
+          }
+        ).addTo(map);
 
-        L.tileLayer(tileUrl, {
-          maxZoom: 19,
-          subdomains: "abcd",
-        }).addTo(map);
+        baseLayer.on("tileerror", () => {
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            subdomains: "abc",
+          }).addTo(map);
+        });
+
+        // Garante que o Leaflet preencha 100% da largura/altura do container
+        setTimeout(() => {
+          try {
+            map.invalidateSize();
+          } catch {}
+        }, 150);
+        setTimeout(() => {
+          try {
+            map.invalidateSize();
+          } catch {}
+        }, 600);
 
         if (isExactLocation) {
           // ==========================================

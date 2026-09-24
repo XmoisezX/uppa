@@ -1,7 +1,20 @@
 import React from "react";
-import { MapPin, Navigation, ExternalLink, ShieldCheck } from "lucide-react";
+import dynamic from "next/dynamic";
+import { MapPin, Navigation, ExternalLink, ShieldCheck, Loader2 } from "lucide-react";
 import type { PropertyWithDetails } from "@/types/property";
-import { PropertyDetailMap } from "./PropertyDetailMap";
+
+const PropertyDetailMap = dynamic(
+  () => import("./PropertyDetailMap").then((mod) => mod.PropertyDetailMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="relative aspect-[16/9] md:aspect-[21/9] min-h-[300px] w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 flex flex-col items-center justify-center gap-2">
+        <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+        <span className="text-xs font-medium text-slate-400">Carregando mapa...</span>
+      </div>
+    ),
+  }
+);
 
 interface PropertyLocationViewProps {
   property: PropertyWithDetails;
