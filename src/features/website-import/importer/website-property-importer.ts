@@ -23,6 +23,11 @@ export interface WebsiteImporterContext {
   agencyId: string;
   websiteSourceId: string;
   crawlRunId: string;
+  initialCounts?: {
+    created?: number;
+    updated?: number;
+    failed?: number;
+  };
 }
 
 export class WebsitePropertyImporter {
@@ -47,6 +52,9 @@ export class WebsitePropertyImporter {
   ) {
     this.supabase = supabase;
     this.context = context;
+    this._itemsCreated = context.initialCounts?.created || 0;
+    this._itemsUpdated = context.initialCounts?.updated || 0;
+    this._itemsFailed = context.initialCounts?.failed || 0;
   }
 
   public get itemsCreated(): number {
@@ -152,7 +160,8 @@ export class WebsitePropertyImporter {
   public async finalize(
     itemsFound: number,
     pagesCrawled = 1,
-    skipDeactivation = false
+    skipDeactivation = false,
+    crawlRunStartedAt?: string
   ): Promise<CrawlResult> {
     const { agencyId, websiteSourceId, crawlRunId } = this.context;
 
@@ -162,7 +171,8 @@ export class WebsitePropertyImporter {
       ? 0
       : await this.handleMissingProperties(
           agencyId,
-          this._processedExternalIds
+          this._processedExternalIds,
+          crawlRunStartedAt
         );
 
     const durationMs = Date.now() - this._startTime;
@@ -297,7 +307,7 @@ export class WebsitePropertyImporter {
       }
     }
 
-    // Imóveis sem imagens válidas ou sem descrição devem ficar inativos como padrão
+    // Imóveis sem imagens válidas, sem descrição ou sem preço devem ficar inativos como padrão
     const hasValidImages =
       Array.isArray(prop.images) &&
       prop.images.some(
@@ -306,9 +316,13 @@ export class WebsitePropertyImporter {
     const hasValidDescription = Boolean(
       prop.description && prop.description.trim().length >= 10
     );
+    const hasValidPrice = Boolean(
+      (typeof prop.price === "number" && prop.price > 0) ||
+      (typeof prop.rentPrice === "number" && prop.rentPrice > 0)
+    );
 
     let targetStatus: PropertyStatus = "active";
-    if (prop.isUnavailable || !hasValidImages || !hasValidDescription) {
+    if (prop.isUnavailable || !hasValidImages || !hasValidDescription || !hasValidPrice) {
       targetStatus = "inactive";
     }
 
@@ -539,13 +553,14 @@ export class WebsitePropertyImporter {
    */
   private async handleMissingProperties(
     agencyId: string,
-    presentExternalIds: string[]
+    presentExternalIds: string[],
+    crawlRunStartedAt?: string
   ): Promise<number> {
     const presentSet = new Set(presentExternalIds);
 
     const { data: dbProperties, error } = await this.supabase
       .from("properties")
-      .select("id, external_id, status, missing_from_feed_at")
+      .select("id, external_id, status, missing_from_feed_at, last_seen_at")
       .eq("agency_id", agencyId)
       .eq("source", "website");
 
@@ -561,16 +576,23 @@ export class WebsitePropertyImporter {
     const nowIso = new Date().toISOString();
 
     for (const prop of dbProperties) {
-      const isPresent = presentSet.has(prop.external_id);
+      const isPresent =
+        presentSet.has(prop.external_id) ||
+        Boolean(
+          crawlRunStartedAt &&
+            prop.last_seen_at &&
+            new Date(prop.last_seen_at).getTime() >=
+              new Date(crawlRunStartedAt).getTime()
+        );
 
       if (isPresent) {
-        // Imóvel presente: se estava marcado como ausente ou inativo, restaura
-        if (prop.missing_from_feed_at !== null || prop.status === "inactive") {
+        // Imóvel presente: se estava marcado como ausente temporariamente, limpa marcação
+        // NUNCA força reativação para active se o imóvel estiver inativo por falta de preço/imagens/descrição
+        if (prop.missing_from_feed_at !== null) {
           await this.supabase
             .from("properties")
             .update({
               missing_from_feed_at: null,
-              status: "active",
               updated_at: nowIso,
             })
             .eq("id", prop.id);
@@ -578,7 +600,7 @@ export class WebsitePropertyImporter {
       } else {
         // Imóvel ausente no site
         if (prop.missing_from_feed_at === null) {
-          // 1ª ausência: apenas marca timestamp e mantém ativo
+          // 1ª ausência: apenas marca timestamp e mantém status atual
           await this.supabase
             .from("properties")
             .update({

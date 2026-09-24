@@ -146,6 +146,8 @@ export interface CrawlResult {
   durationMs: number;
   status: CrawlRunStatus;
   error?: string;
+  isChunkComplete?: boolean;
+  nextStartIndex?: number;
 }
 
 export interface WebsiteCrawlProgress {
@@ -155,12 +157,15 @@ export interface WebsiteCrawlProgress {
   updated: number;
   failed: number;
   currentProperty?: string;
+  crawlRunId?: string;
 }
 
 export interface WebsiteCrawlOptions {
   customMaxListings?: number;
   batchSize?: number;
   startIndex?: number;
+  crawlRunId?: string;
+  maxChunkDurationMs?: number;
   abortSignal?: AbortSignal;
   onProgress?: (progress: WebsiteCrawlProgress) => void | Promise<void>;
 }

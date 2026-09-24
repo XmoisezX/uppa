@@ -88,8 +88,10 @@ export class CrawlJobManager {
     websiteSourceId: string,
     options?: {
       startIndex?: number;
+      crawlRunId?: string;
       customMaxListings?: number;
       batchSize?: number;
+      maxChunkDurationMs?: number;
     }
   ): ActiveCrawlJob {
     const existing = activeJobs.get(websiteSourceId);
@@ -117,6 +119,7 @@ export class CrawlJobManager {
             created: 0,
             updated: 0,
             failed: 0,
+            crawlRunId: options.crawlRunId,
             currentProperty: "Retomando sincronização...",
           }
         : undefined,
@@ -128,8 +131,10 @@ export class CrawlJobManager {
       try {
         const crawlOpts: WebsiteCrawlOptions = {
           startIndex: options?.startIndex,
+          crawlRunId: options?.crawlRunId,
           customMaxListings: options?.customMaxListings,
           batchSize: options?.batchSize,
+          maxChunkDurationMs: options?.maxChunkDurationMs,
           abortSignal: abortController.signal,
           onProgress: (progress) => {
             job.lastProgress = progress;

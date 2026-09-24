@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Globe,
   CheckCircle2,
@@ -62,6 +62,11 @@ export function WebsiteImportModal({
 
   const [previewReport, setPreviewReport] = useState<PreviewReport | null>(null);
   const [syncResult, setSyncResult] = useState<CrawlResult | null>(null);
+  const [activeCrawlRunId, setActiveCrawlRunId] = useState<string | null>(null);
+  const activeCrawlRunIdRef = useRef<string | null>(null);
+  const autoRetryCountRef = useRef(0);
+  const isCancelledRef = useRef(false);
+  const lastProgressRef = useRef<{ current: number; total: number }>({ current: 0, total: 0 });
 
   const [importProgress, setImportProgress] = useState<{
     current: number;
@@ -244,6 +249,7 @@ export function WebsiteImportModal({
   };
 
   const cancelActiveSync = async () => {
+    isCancelledRef.current = true;
     setIsCancelling(true);
     const targetSourceId = activeSourceId || initialSourceId;
     try {
@@ -305,16 +311,18 @@ export function WebsiteImportModal({
     }
   };
 
-  // Executa o streaming SSE para sincronização do website com suporte a retomada
+  // Executa o streaming SSE para sincronização do website com suporte a retomada e auto-encadeamento de chunks
   const startSyncStream = async (
     targetSourceId?: string,
     targetDomain?: string,
     resumeFromIndex?: number,
-    isAttaching = false
+    isAttaching = false,
+    crawlRunIdToPass?: string | null
   ) => {
     const domainToSync = targetDomain || previewReport?.domain || url;
     if (!domainToSync && !targetSourceId) return;
 
+    isCancelledRef.current = false;
     const isResuming = typeof resumeFromIndex === "number" && resumeFromIndex > 0;
 
     setIsLoading(true);
@@ -335,6 +343,7 @@ export function WebsiteImportModal({
         currentProperty: "Conectando ao crawler...",
         logs: ["Conexão estabelecida. Iniciando análise e normalização dos imóveis..."],
       });
+      lastProgressRef.current = { current: 0, total: totalExpected };
     } else if (isResuming) {
       setImportProgress((prev) => ({
         ...prev,
@@ -344,9 +353,11 @@ export function WebsiteImportModal({
           ...prev.logs.slice(0, 8),
         ],
       }));
+      lastProgressRef.current = { current: resumeFromIndex, total: totalExpected };
     }
 
     let receivedComplete = false;
+    let receivedChunkComplete = false;
 
     try {
       const response = await fetch("/api/website-import/sync", {
@@ -360,6 +371,7 @@ export function WebsiteImportModal({
           websiteSourceId: targetSourceId,
           url: domainToSync,
           startIndex: isResuming ? resumeFromIndex : undefined,
+          crawlRunId: crawlRunIdToPass || activeCrawlRunIdRef.current || undefined,
           stream: true,
         }),
       });
@@ -413,7 +425,22 @@ export function WebsiteImportModal({
               if (data.websiteSourceId) {
                 setActiveSourceId(data.websiteSourceId);
               }
+              if (data.crawlRunId) {
+                setActiveCrawlRunId(data.crawlRunId);
+                activeCrawlRunIdRef.current = data.crawlRunId;
+              }
             } else if (eventType === "progress") {
+              autoRetryCountRef.current = 0;
+              if (data.crawlRunId) {
+                setActiveCrawlRunId(data.crawlRunId);
+                activeCrawlRunIdRef.current = data.crawlRunId;
+              }
+              if (typeof data.current === "number") {
+                lastProgressRef.current = {
+                  current: data.current,
+                  total: data.total || lastProgressRef.current.total,
+                };
+              }
               setImportProgress((prev) => {
                 const newLogs =
                   data.currentProperty &&
@@ -436,8 +463,46 @@ export function WebsiteImportModal({
                   logs: newLogs,
                 };
               });
+            } else if (eventType === "chunk_complete") {
+              receivedChunkComplete = true;
+              autoRetryCountRef.current = 0;
+              if (data.crawlRunId) {
+                setActiveCrawlRunId(data.crawlRunId);
+                activeCrawlRunIdRef.current = data.crawlRunId;
+              }
+              const nextIdx = data.nextStartIndex;
+              const total = data.total;
+              lastProgressRef.current = { current: nextIdx, total };
+
+              setImportProgress((prev) => ({
+                ...prev,
+                current: nextIdx,
+                total: total,
+                created: data.progress?.created ?? prev.created,
+                updated: data.progress?.updated ?? prev.updated,
+                failed: data.progress?.failed ?? prev.failed,
+                currentProperty: `Lote sincronizado (${nextIdx}/${total}). Conectando próximo lote...`,
+                logs: [
+                  `Lote processado com sucesso (${nextIdx}/${total}). Conectando próximo lote automaticamente...`,
+                  ...prev.logs.slice(0, 8),
+                ],
+              }));
+
+              // Auto-chains immediately into the next serverless chunk
+              setTimeout(() => {
+                if (!isCancelledRef.current) {
+                  startSyncStream(
+                    targetSourceId,
+                    domainToSync,
+                    nextIdx,
+                    true,
+                    activeCrawlRunIdRef.current
+                  );
+                }
+              }, 200);
             } else if (eventType === "complete") {
               receivedComplete = true;
+              autoRetryCountRef.current = 0;
               setSyncResult(data.result);
               setStep("completed");
               if (onSuccess) onSuccess();
@@ -451,47 +516,120 @@ export function WebsiteImportModal({
         }
       }
 
-      // Se a conexão encerrou sem emitir o evento "complete", checa se o processo continua rodando no servidor
-      if (!receivedComplete) {
-        const sourceId = activeSourceId || initialSourceId;
-        if (sourceId) {
-          try {
-            const checkRes = await fetch(`/api/website-import/sync?websiteSourceId=${sourceId}`);
-            if (checkRes.ok) {
-              const checkData = await checkRes.json();
-              if (checkData.running) {
-                // O job no servidor continua firme e forte! O polling cuidará de atualizar a tela até 100%.
-                setIsInterrupted(false);
-                setIsLoading(true);
-                return;
-              }
-              if (
-                checkData.latestRun?.status === "completed" ||
-                checkData.latestRun?.status === "completed_with_errors"
-              ) {
-                setSyncResult({
-                  success: true,
-                  crawlRunId: checkData.latestRun.id,
-                  itemsFound: checkData.latestRun.items_found,
-                  itemsCreated: checkData.latestRun.items_created,
-                  itemsUpdated: checkData.latestRun.items_updated,
-                  itemsDeactivated: checkData.latestRun.items_deactivated || 0,
-                  itemsFailed: checkData.latestRun.items_failed,
-                  pagesCrawled: checkData.latestRun.pages_crawled,
-                  durationMs: checkData.latestRun.duration_ms || 0,
-                  status: checkData.latestRun.status,
-                });
-                setStep("completed");
-                setIsLoading(false);
-                if (onSuccess) onSuccess();
-                return;
-              }
-            }
-          } catch {}
-        }
-        setIsInterrupted(true);
+      if (receivedChunkComplete || receivedComplete) {
+        return;
       }
+
+      // Se a conexão encerrou sem emitir "complete" nem "chunk_complete" (ex: corte de rede ou timeout de proxy)
+      const lastCurrent = lastProgressRef.current.current;
+      const lastTotal = lastProgressRef.current.total;
+
+      if (
+        lastCurrent > 0 &&
+        lastTotal > 0 &&
+        lastCurrent < lastTotal &&
+        !isCancelledRef.current
+      ) {
+        if (autoRetryCountRef.current < 5) {
+          autoRetryCountRef.current++;
+          const retryDelay = Math.min(1500 * autoRetryCountRef.current, 5000);
+          setImportProgress((prev) => ({
+            ...prev,
+            currentProperty: `Reconectando automaticamente (${lastCurrent}/${lastTotal})...`,
+            logs: [
+              `Conexão reiniciada pelo servidor. Reconectando lote #${lastCurrent + 1} em ${retryDelay / 1000}s...`,
+              ...prev.logs.slice(0, 8),
+            ],
+          }));
+
+          setTimeout(() => {
+            if (!isCancelledRef.current) {
+              startSyncStream(
+                targetSourceId,
+                domainToSync,
+                lastCurrent,
+                true,
+                activeCrawlRunIdRef.current
+              );
+            }
+          }, retryDelay);
+          return;
+        }
+      }
+
+      // Se esgotou retentativas, checa status no servidor
+      const sourceId = activeSourceId || initialSourceId;
+      if (sourceId) {
+        try {
+          const checkRes = await fetch(`/api/website-import/sync?websiteSourceId=${sourceId}`);
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            if (checkData.running) {
+              setIsInterrupted(false);
+              setIsLoading(true);
+              return;
+            }
+            if (
+              checkData.latestRun?.status === "completed" ||
+              checkData.latestRun?.status === "completed_with_errors"
+            ) {
+              setSyncResult({
+                success: true,
+                crawlRunId: checkData.latestRun.id,
+                itemsFound: checkData.latestRun.items_found,
+                itemsCreated: checkData.latestRun.items_created,
+                itemsUpdated: checkData.latestRun.items_updated,
+                itemsDeactivated: checkData.latestRun.items_deactivated || 0,
+                itemsFailed: checkData.latestRun.items_failed,
+                pagesCrawled: checkData.latestRun.pages_crawled,
+                durationMs: checkData.latestRun.duration_ms || 0,
+                status: checkData.latestRun.status,
+              });
+              setStep("completed");
+              setIsLoading(false);
+              if (onSuccess) onSuccess();
+              return;
+            }
+          }
+        } catch {}
+      }
+      setIsInterrupted(true);
     } catch (err: any) {
+      if (!isCancelledRef.current) {
+        const lastCurrent = lastProgressRef.current.current;
+        const lastTotal = lastProgressRef.current.total;
+        if (
+          lastCurrent > 0 &&
+          lastTotal > 0 &&
+          lastCurrent < lastTotal &&
+          autoRetryCountRef.current < 5
+        ) {
+          autoRetryCountRef.current++;
+          const retryDelay = Math.min(1500 * autoRetryCountRef.current, 5000);
+          setImportProgress((prev) => ({
+            ...prev,
+            currentProperty: `Reconectando automaticamente (${lastCurrent}/${lastTotal})...`,
+            logs: [
+              `Instabilidade temporária. Tentando reconectar anúncio #${lastCurrent + 1} em ${retryDelay / 1000}s...`,
+              ...prev.logs.slice(0, 8),
+            ],
+          }));
+
+          setTimeout(() => {
+            if (!isCancelledRef.current) {
+              startSyncStream(
+                targetSourceId,
+                domainToSync,
+                lastCurrent,
+                true,
+                activeCrawlRunIdRef.current
+              );
+            }
+          }, retryDelay);
+          return;
+        }
+      }
+
       setErrorMessage(err?.message || "Erro inesperado durante a importação.");
       setIsInterrupted(true);
     } finally {

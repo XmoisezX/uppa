@@ -200,6 +200,16 @@ export async function POST(request: NextRequest) {
         ? body.startIndex
         : undefined;
 
+    const crawlRunId: string | undefined =
+      typeof body.crawlRunId === "string" && body.crawlRunId.trim().length > 0
+        ? body.crawlRunId.trim()
+        : undefined;
+
+    const maxChunkDurationMs: number | undefined =
+      typeof body.maxChunkDurationMs === "number" && body.maxChunkDurationMs > 0
+        ? body.maxChunkDurationMs
+        : undefined;
+
     const wantsStream =
       body.stream === true ||
       request.headers.get("accept")?.includes("text/event-stream");
@@ -212,6 +222,8 @@ export async function POST(request: NextRequest) {
       // Inicia ou anexa ao job em segundo plano (desacoplado da requisição HTTP)
       const job = CrawlJobManager.startJob(targetAgencyId, targetWebsiteSourceId, {
         startIndex,
+        crawlRunId,
+        maxChunkDurationMs,
       });
 
       const stream = new ReadableStream({
@@ -238,6 +250,7 @@ export async function POST(request: NextRequest) {
                 ? `Retomando sincronização a partir do anúncio #${startIndex + 1}...`
                 : "Iniciando varredura e importação em segundo plano...",
             websiteSourceId: targetWebsiteSourceId,
+            crawlRunId,
             startIndex: startIndex || 0,
           });
 
@@ -249,7 +262,21 @@ export async function POST(request: NextRequest) {
             },
             (completion) => {
               clearInterval(keepAliveTimer);
-              if (completion.success) {
+              if (completion.result?.isChunkComplete) {
+                sendEvent("chunk_complete", {
+                  nextStartIndex: completion.result.nextStartIndex,
+                  total: completion.result.itemsFound,
+                  crawlRunId: completion.result.crawlRunId,
+                  progress: {
+                    current: completion.result.pagesCrawled,
+                    total: completion.result.itemsFound,
+                    created: completion.result.itemsCreated,
+                    updated: completion.result.itemsUpdated,
+                    failed: completion.result.itemsFailed,
+                    currentProperty: "Lote concluído. Conectando próximo lote...",
+                  },
+                });
+              } else if (completion.success) {
                 sendEvent("complete", {
                   success: true,
                   result: completion.result,

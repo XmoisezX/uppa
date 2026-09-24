@@ -208,6 +208,18 @@ export class WebsiteCrawler {
     const startIndex = Math.max(0, crawlOpts.startIndex || 0);
     const onProgress = crawlOpts.onProgress;
 
+    // Em ambientes serverless (Vercel), cada invocação tem limite rígido (ex: 60s no Hobby).
+    // Usamos um orçamento seguro (45s) para encerrar o chunk de forma limpa e permitir que o cliente encadeie o próximo.
+    const isServerless =
+      process.env.VERCEL === "1" ||
+      Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+    const defaultMaxDurationMs = isServerless ? 45000 : 0;
+    const maxChunkDurationMs =
+      typeof crawlOpts.maxChunkDurationMs === "number"
+        ? crawlOpts.maxChunkDurationMs
+        : defaultMaxDurationMs;
+
     // 1. Busca dados da fonte de website
     const { data: source, error: sourceErr } = await this.supabase
       .from("website_sources")
@@ -223,23 +235,66 @@ export class WebsiteCrawler {
     // 2. Validação estrita de autorização
     await this.ensureAuthorization(agencyId, source.domain);
 
-    // 3. Inicia registro de execução em crawl_runs
-    const { data: crawlRun, error: runErr } = await this.supabase
-      .from("crawl_runs")
-      .insert({
-        website_source_id: source.id,
-        agency_id: agencyId,
-        status: "running",
-        started_at: new Date().toISOString(),
-      })
-      .select("id")
-      .single();
+    // 3. Inicia ou reaproveita registro de execução em crawl_runs
+    let crawlRunId = crawlOpts.crawlRunId;
+    let initialCounts = { created: 0, updated: 0, failed: 0 };
+    let crawlRunStartedAt = new Date().toISOString();
 
-    if (runErr || !crawlRun) {
-      throw new Error(`Falha ao registrar execução em crawl_runs: ${runErr?.message}`);
+    if (crawlRunId) {
+      const { data: existingRun } = await this.supabase
+        .from("crawl_runs")
+        .select("id, items_created, items_updated, items_failed, started_at")
+        .eq("id", crawlRunId)
+        .maybeSingle();
+
+      if (existingRun) {
+        initialCounts = {
+          created: existingRun.items_created || 0,
+          updated: existingRun.items_updated || 0,
+          failed: existingRun.items_failed || 0,
+        };
+        crawlRunStartedAt = existingRun.started_at;
+      }
+    } else if (startIndex > 0) {
+      // Se estamos retomando um índice > 0 e não foi passado crawlRunId, busca última em execução
+      const { data: latestRunning } = await this.supabase
+        .from("crawl_runs")
+        .select("id, items_created, items_updated, items_failed, started_at")
+        .eq("website_source_id", source.id)
+        .eq("status", "running")
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestRunning) {
+        crawlRunId = latestRunning.id;
+        initialCounts = {
+          created: latestRunning.items_created || 0,
+          updated: latestRunning.items_updated || 0,
+          failed: latestRunning.items_failed || 0,
+        };
+        crawlRunStartedAt = latestRunning.started_at;
+      }
     }
 
-    const crawlRunId = crawlRun.id;
+    if (!crawlRunId) {
+      const { data: crawlRun, error: runErr } = await this.supabase
+        .from("crawl_runs")
+        .insert({
+          website_source_id: source.id,
+          agency_id: agencyId,
+          status: "running",
+          started_at: crawlRunStartedAt,
+        })
+        .select("id")
+        .single();
+
+      if (runErr || !crawlRun) {
+        throw new Error(`Falha ao registrar execução em crawl_runs: ${runErr?.message}`);
+      }
+
+      crawlRunId = crawlRun.id;
+    }
 
     try {
       // 4. Detecção e contexto
@@ -266,11 +321,12 @@ export class WebsiteCrawler {
       const references = allReferences.slice(0, customMaxListings);
       const totalToCrawl = references.length;
 
-      // 6. Inicializa WebsitePropertyImporter
+      // 6. Inicializa WebsitePropertyImporter com contadores cumulativos
       const importer = new WebsitePropertyImporter(this.supabase, {
         agencyId,
         websiteSourceId: source.id,
         crawlRunId,
+        initialCounts,
       });
       await importer.init();
 
@@ -279,9 +335,10 @@ export class WebsiteCrawler {
         await onProgress({
           current: startIndex,
           total: totalToCrawl,
-          created: 0,
-          updated: 0,
-          failed: 0,
+          created: initialCounts.created,
+          updated: initialCounts.updated,
+          failed: initialCounts.failed,
+          crawlRunId,
           currentProperty:
             startIndex > 0
               ? `Continuando sincronização a partir do anúncio #${startIndex + 1}...`
@@ -291,6 +348,8 @@ export class WebsiteCrawler {
 
       // 7. Coleta e Persistência Progressiva em Lotes
       // Cada lote é extraído, normalizado e persistido imediatamente no banco
+      let processedCount = startIndex;
+
       for (let i = startIndex; i < totalToCrawl; i += batchSize) {
         // Verifica se houve pedido de cancelamento explícito (ex: clique no X)
         if (crawlOpts.abortSignal?.aborted) {
@@ -338,7 +397,7 @@ export class WebsiteCrawler {
           await importer.importBatch(successfulProps);
         }
 
-        const processedCount = Math.min(i + refBatch.length, totalToCrawl);
+        processedCount = Math.min(i + refBatch.length, totalToCrawl);
         const lastPropTitle =
           successfulProps[successfulProps.length - 1]?.title ||
           refBatch[refBatch.length - 1]?.url;
@@ -367,8 +426,34 @@ export class WebsiteCrawler {
             created: importer.itemsCreated,
             updated: importer.itemsUpdated,
             failed: importer.itemsFailed,
+            crawlRunId,
             currentProperty: lastPropTitle,
           });
+        }
+
+        // Verifica se atingiu o orçamento de tempo do chunk serverless
+        const elapsed = Date.now() - startTime;
+        const isLastBatch = processedCount >= totalToCrawl;
+
+        if (maxChunkDurationMs > 0 && elapsed >= maxChunkDurationMs && !isLastBatch) {
+          console.log(
+            `[WebsiteCrawler] Limite de chunk serverless atingido (${elapsed}ms). Progresso: ${processedCount}/${totalToCrawl}. Concluindo chunk para continuação.`
+          );
+
+          return {
+            success: true,
+            crawlRunId,
+            itemsFound: totalToCrawl,
+            itemsCreated: importer.itemsCreated,
+            itemsUpdated: importer.itemsUpdated,
+            itemsDeactivated: 0,
+            itemsFailed: importer.itemsFailed,
+            pagesCrawled: processedCount,
+            durationMs: elapsed,
+            status: "running",
+            isChunkComplete: true,
+            nextStartIndex: processedCount,
+          };
         }
       }
 
@@ -399,9 +484,14 @@ export class WebsiteCrawler {
       }
 
       // 8. Finalização segura com desativação em 2 etapas de imóveis ausentes
-      // Desativação apenas ocorre se o ciclo foi executado desde o início (startIndex === 0)
-      const skipDeactivation = startIndex > 0;
-      const importResult = await importer.finalize(totalToCrawl, totalToCrawl, skipDeactivation);
+      // Desativação apenas ocorre se o ciclo foi concluído até o fim
+      const skipDeactivation = startIndex > 0 && processedCount < totalToCrawl;
+      const importResult = await importer.finalize(
+        totalToCrawl,
+        totalToCrawl,
+        skipDeactivation,
+        crawlRunStartedAt
+      );
 
       return importResult;
     } catch (criticalErr: any) {

@@ -238,6 +238,11 @@ export class PropertyImporter {
 
       // 1. Atualiza dados principais (históricos de preço e status são gerados automaticamente pelas triggers no Postgres)
 
+      const hasValidPrice = Boolean(
+        (typeof prop.price === "number" && prop.price > 0) ||
+        (typeof prop.rentPrice === "number" && prop.rentPrice > 0)
+      );
+
       // 2. Atualiza dados principais
       const { error: updateError } = await this.supabase
         .from("properties")
@@ -246,6 +251,7 @@ export class PropertyImporter {
           description: prop.description || null,
           transaction_type: prop.transactionType,
           property_type: prop.propertyType,
+          ...(!hasValidPrice ? { status: "inactive" as const } : {}),
           price: prop.price || null,
           rent_price: prop.rentPrice || null,
           condominium_fee: prop.condominiumFee || null,
@@ -288,6 +294,10 @@ export class PropertyImporter {
       // OPERAÇÃO INSERT (Novo imóvel)
       // ==========================================
       const baseSlug = this.generateSlug(prop.title, prop.externalId);
+      const hasValidPrice = Boolean(
+        (typeof prop.price === "number" && prop.price > 0) ||
+        (typeof prop.rentPrice === "number" && prop.rentPrice > 0)
+      );
 
       const { data: newProperty, error: insertError } = await this.supabase
         .from("properties")
@@ -300,7 +310,7 @@ export class PropertyImporter {
           description: prop.description || null,
           transaction_type: prop.transactionType,
           property_type: prop.propertyType,
-          status: "active",
+          status: hasValidPrice ? "active" : "inactive",
           price: prop.price || null,
           rent_price: prop.rentPrice || null,
           condominium_fee: prop.condominiumFee || null,
