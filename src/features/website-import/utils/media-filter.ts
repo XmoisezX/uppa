@@ -37,6 +37,14 @@ const EXCLUDED_PATTERNS = [
   /blank\.gif/i,
   /1x1/i,
   /spacer/i,
+  /loftsites\.com\.br\/images/i,
+  /loftsites\.com\.br\/shared/i,
+  /marca/i,
+  /brand/i,
+  /anuncie/i,
+  /corretor/i,
+  /creci/i,
+  /tecnologia/i,
 ];
 
 const DISALLOWED_EXTENSIONS = [".svg", ".gif", ".ico", ".bmp"];
