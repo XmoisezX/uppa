@@ -37,13 +37,26 @@ body {
   box-sizing: border-box;
 }
 
-/* Grade de imóveis */
-.properties-grid {
-  display: grid;
+/* Lista de imóveis (formato lista horizontal) */
+.properties-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   width: 100%;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-  box-sizing: border-box;
+}
+
+.properties-list > * {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100%;
+}
+
+/* Grade de imóveis (compatibilidade) */
+.properties-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
 }
 
 .properties-grid > * {
