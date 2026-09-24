@@ -116,11 +116,12 @@ export function SearchPropertyCard({
     >
       <div className="relative sm:w-[260px] md:w-[280px] aspect-[4/3] sm:aspect-auto overflow-hidden bg-slate-100 shrink-0 self-stretch">
         {coverImage && !imageError ? (
-          <Link href={"/imovel/" + property.slug} tabIndex={-1}>
+          <Link href={"/imovel/" + property.slug} tabIndex={-1} prefetch={false}>
             <img
               src={coverImage}
               alt={property.title}
               loading="lazy"
+              decoding="async"
               onError={() => setImageError(true)}
               className="absolute inset-0 h-full w-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
             />

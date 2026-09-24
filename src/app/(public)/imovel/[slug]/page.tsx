@@ -72,6 +72,33 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
   };
 }
 
+export const revalidate = 120;
+
+async function SimilarPropertiesAsync({
+  propertyId,
+  transactionType,
+  propertyType,
+  cityId,
+}: {
+  propertyId: string;
+  transactionType: any;
+  propertyType: any;
+  cityId: string | null;
+}) {
+  const similarProperties = await getSimilarProperties(
+    propertyId,
+    transactionType,
+    propertyType,
+    cityId
+  );
+  return (
+    <SimilarProperties
+      properties={similarProperties}
+      transactionType={transactionType}
+    />
+  );
+}
+
 /**
  * PÁGINA PÚBLICA DO IMÓVEL (SERVER COMPONENT)
  */
@@ -83,14 +110,6 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
   if (!property || property.status !== "active") {
     notFound();
   }
-
-  // Carrega imóveis semelhantes em paralelo (não bloqueia se falhar)
-  const similarProperties = await getSimilarProperties(
-    property.id,
-    property.transactionType,
-    property.propertyType,
-    property.cityId ?? null
-  );
 
   // Schema Estruturado JSON-LD (schema.org) para indexação rica no Google
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://uppa.com.br";
@@ -184,11 +203,25 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
             {/* Banner property_bottom — colapsa se não houver banner ativo */}
             <BannerSlot position="property_bottom" />
 
-            {/* Imóveis Semelhantes — colapsa se não houver similares */}
-            <SimilarProperties
-              properties={similarProperties}
-              transactionType={property.transactionType}
-            />
+            {/* Imóveis Semelhantes — transmitido via Suspense */}
+            <React.Suspense
+              fallback={
+                <div className="space-y-4 pt-4">
+                  <div className="h-6 w-48 bg-slate-200 dark:bg-slate-800 rounded-md animate-pulse" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="h-44 bg-slate-100 dark:bg-slate-900 rounded-2xl animate-pulse" />
+                    <div className="h-44 bg-slate-100 dark:bg-slate-900 rounded-2xl animate-pulse" />
+                  </div>
+                </div>
+              }
+            >
+              <SimilarPropertiesAsync
+                propertyId={property.id}
+                transactionType={property.transactionType}
+                propertyType={property.propertyType}
+                cityId={property.cityId ?? null}
+              />
+            </React.Suspense>
           </div>
 
           {/* Coluna Direita: Sidebar Sticky com CTA de WhatsApp */}

@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { cache } from "react";
+import { createClient, createPublicServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 import type { Property, PropertyWithDetails, Feature, PropertyMedia, PropertyStatus, MediaType } from "@/types/property";
 import type { State, City } from "@/types/geo";
@@ -30,10 +31,12 @@ export async function listFeatures(): Promise<Feature[]> {
 }
 
 /**
- * Consulta de imóvel ativo por slug para visualização pública
+ * Consulta de imóvel ativo por slug para visualização pública.
+ * Envolvido em React.cache para deduplicação entre generateMetadata e Page.
  */
-export async function getPropertyBySlug(slug: string): Promise<PropertyWithDetails | null> {
-  const supabase = await createClient();
+export const getPropertyBySlug = cache(
+  async (slug: string): Promise<PropertyWithDetails | null> => {
+    const supabase = createPublicServerClient();
 
   const { data, error } = await supabase
     .from("properties")
@@ -146,7 +149,7 @@ export async function getPropertyBySlug(slug: string): Promise<PropertyWithDetai
         createdAt: f.created_at,
       })),
   };
-}
+});
 
 /**
  * Criação de imóvel no banco de dados (respeita RLS - apenas membros da imobiliária)
@@ -1052,7 +1055,7 @@ export async function getSimilarProperties(
   if (!cityId) return [];
 
   try {
-    const supabase = await createClient();
+    const supabase = createPublicServerClient();
 
     const { data, error } = await supabase
       .from("properties")

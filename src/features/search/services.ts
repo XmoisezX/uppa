@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createPublicServerClient } from "@/lib/supabase/server";
 import type { SearchFilters, SearchPropertyItem, SearchResult } from "./types";
 
 const UUID_REGEX =
@@ -107,7 +107,7 @@ const SEARCH_PROPERTIES_SELECT = `
  * Executa a busca pública de imóveis ativos com filtros dinâmicos e paginação
  */
 export async function searchProperties(filters: SearchFilters): Promise<SearchResult> {
-  const supabase = await createClient();
+  const supabase = createPublicServerClient();
 
   const page = Math.max(1, filters.page || 1);
   const limit = Math.min(50, Math.max(1, filters.limit || 12));
@@ -382,7 +382,7 @@ export async function searchPropertiesSpatial(filters: SearchFilters): Promise<{
     return { properties: result.properties, total: result.total };
   }
 
-  const supabase = await createClient();
+  const supabase = createPublicServerClient();
   const { north, south, east, west } = filters.bbox!;
   const limit = Math.min(150, Math.max(1, filters.limit || 100));
 

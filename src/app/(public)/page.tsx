@@ -26,6 +26,10 @@ export const metadata: Metadata = {
     "Compre ou alugue apartamentos, casas, terrenos e salas comerciais em todo o Brasil. Estoque real com contato direto no WhatsApp de imobiliárias e corretores parceiros.",
 };
 
+// Revalida a cada 60 segundos (Incremental Static Regeneration - ISR)
+// Reduz o tempo de resposta da página inicial para milissegundos
+export const revalidate = 60;
+
 export default async function HomePage() {
   // Carrega dados 100% reais do banco de dados em paralelo
   const [activeCities, recentProperties] = await Promise.all([

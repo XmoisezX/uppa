@@ -1,19 +1,15 @@
-import { createClient } from '@/lib/supabase/server';
+import { unstable_cache } from 'next/cache';
+import { createPublicServerClient } from '@/lib/supabase/server';
 import type { Banner, BannerPosition } from './types';
 
 /**
- * Retorna os banners ativos para uma posição específica.
- *
- * A RLS da tabela já garante que apenas banners ativos dentro do período de vigência
- * são retornados. A query adiciona ordenação por prioridade.
- *
- * Nunca usa service_role — utiliza o client público com RLS ativo.
+ * Busca banners ativos para uma posição específica no banco de dados.
  */
-export async function getBannersByPosition(
+async function fetchBannersByPosition(
   position: BannerPosition
 ): Promise<Banner[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicServerClient();
 
     const { data, error } = await supabase
       .from('banners')
@@ -70,3 +66,10 @@ export async function getBannersByPosition(
     return [];
   }
 }
+
+export const getBannersByPosition = unstable_cache(
+  fetchBannersByPosition,
+  ['banners-by-position'],
+  { revalidate: 300, tags: ['banners'] }
+);
+

@@ -37,25 +37,26 @@ export async function updateSession(request: NextRequest) {
     (c) => c.name.includes("auth-token") || c.name.startsWith("sb-")
   );
 
+  const isProtectedRoute =
+    pathname.startsWith("/painel") || pathname.startsWith("/admin");
+  const isAuthRoute = pathname === "/entrar" || pathname === "/cadastrar";
+
+  // Se for rota pública (qualquer rota fora de /painel, /admin, /entrar, /cadastrar),
+  // não bloqueia a requisição chamando rede externa do Supabase Auth.
+  if (!isProtectedRoute && !isAuthRoute) {
+    return supabaseResponse;
+  }
+
   // Se for rota privada (/painel ou /admin) e não tem nenhum cookie de autenticação, redireciona de imediato
-  if (
-    !hasAuthCookie &&
-    (pathname.startsWith("/painel") || pathname.startsWith("/admin"))
-  ) {
+  if (!hasAuthCookie && isProtectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/entrar";
     url.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(url);
   }
 
-  // Se rota pública e sem cookie de autenticação, não precisa chamar rede externa
-  if (
-    !hasAuthCookie &&
-    !pathname.startsWith("/painel") &&
-    !pathname.startsWith("/admin") &&
-    pathname !== "/entrar" &&
-    pathname !== "/cadastrar"
-  ) {
+  // Se for página de login/cadastro e não tem cookie, exibe a página sem consultar rede
+  if (!hasAuthCookie && isAuthRoute) {
     return supabaseResponse;
   }
 

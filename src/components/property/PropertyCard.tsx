@@ -83,11 +83,12 @@ export function PropertyCard({ property, className = "" }: PropertyCardProps) {
       {/* 1. MÍDIA / FOTO COM ASPECTO ELEGANTE */}
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
         {coverImage && !imageError ? (
-          <Link href={`/imovel/${property.slug}`} tabIndex={-1}>
+          <Link href={`/imovel/${property.slug}`} tabIndex={-1} prefetch={false}>
             <img
               src={coverImage}
               alt={property.title}
               loading="lazy"
+              decoding="async"
               onError={() => setImageError(true)}
               className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
             />
@@ -225,6 +226,7 @@ export function PropertyCard({ property, className = "" }: PropertyCardProps) {
 
             <Link
               href={`/imovel/${property.slug}`}
+              prefetch={false}
               className="h-8 px-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center transition-colors"
             >
               Ver mais

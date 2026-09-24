@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
+import { createPublicServerClient } from "@/lib/supabase/server";
 import type { SearchPropertyItem } from "@/features/search/types";
 
 export interface ActiveCitySummary {
@@ -12,11 +13,11 @@ export interface ActiveCitySummary {
 /**
  * Retorna as cidades com propriedades ativas reais no banco de dados,
  * ordenadas pelo número de anúncios disponíveis.
- * (Cumpre Regra 11 e 12: Zero dados fictícios ou hardcoded)
+ * Utiliza unstable_cache com revalidação de 5 minutos para alta performance.
  */
-export async function getActiveCitiesWithCounts(): Promise<ActiveCitySummary[]> {
+async function fetchActiveCitiesWithCounts(): Promise<ActiveCitySummary[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicServerClient();
 
     // Consulta apenas imóveis ativos para extrair cidades reais com anúncios
     const { data, error } = await supabase
@@ -72,15 +73,21 @@ export async function getActiveCitiesWithCounts(): Promise<ActiveCitySummary[]> 
   }
 }
 
+export const getActiveCitiesWithCounts = unstable_cache(
+  fetchActiveCitiesWithCounts,
+  ["active-cities-with-counts"],
+  { revalidate: 300, tags: ["cities", "properties"] }
+);
+
 /**
  * Retorna uma seleção enxuta de imóveis ativos recém-publicados reais.
- * (Cumpre Regra 13 e 19: Dados 100% reais do banco de dados)
+ * Utiliza unstable_cache com revalidação de 60 segundos para alta performance.
  */
-export async function getRecentActiveProperties(
+async function fetchRecentActiveProperties(
   limit = 6
 ): Promise<SearchPropertyItem[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicServerClient();
 
     const { data, error } = await supabase
       .from("properties")
@@ -210,3 +217,10 @@ export async function getRecentActiveProperties(
     return [];
   }
 }
+
+export const getRecentActiveProperties = unstable_cache(
+  fetchRecentActiveProperties,
+  ["recent-active-properties"],
+  { revalidate: 60, tags: ["properties"] }
+);
+
