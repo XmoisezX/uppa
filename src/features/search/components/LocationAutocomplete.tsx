@@ -10,6 +10,7 @@ export interface AutocompleteCity {
   slug: string;
   stateCode: string;
   stateName?: string;
+  count?: number;
   type: "city";
 }
 
@@ -25,6 +26,14 @@ export interface AutocompleteNeighborhood {
   type: "neighborhood";
 }
 
+export interface SuggestedCityItem {
+  id: string;
+  name: string;
+  slug: string;
+  stateCode: string;
+  propertyCount?: number;
+}
+
 interface LocationAutocompleteProps {
   initialCity?: string;
   initialNeighborhood?: string;
@@ -32,7 +41,13 @@ interface LocationAutocompleteProps {
   neighborhoodName?: string;
   placeholder?: string;
   className?: string;
-  onLocationChange?: (location: { city?: string; neighborhood?: string }) => void;
+  suggestedCities?: SuggestedCityItem[];
+  onLocationChange?: (location: {
+    city?: string;
+    neighborhood?: string;
+    displayText?: string;
+  }) => void;
+  onInputChange?: (value: string) => void;
 }
 
 export function LocationAutocomplete({
@@ -42,7 +57,9 @@ export function LocationAutocomplete({
   neighborhoodName,
   placeholder = "Digite cidade ou bairro...",
   className = "",
+  suggestedCities,
   onLocationChange,
+  onInputChange,
 }: LocationAutocompleteProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -62,7 +79,20 @@ export function LocationAutocomplete({
   const [inputValue, setInputValue] = useState(getInitialDisplayText());
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [cities, setCities] = useState<AutocompleteCity[]>([]);
+
+  const mapSuggested = useCallback((items?: SuggestedCityItem[]): AutocompleteCity[] => {
+    if (!items || items.length === 0) return [];
+    return items.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      stateCode: c.stateCode,
+      count: c.propertyCount,
+      type: "city" as const,
+    }));
+  }, []);
+
+  const [cities, setCities] = useState<AutocompleteCity[]>(() => mapSuggested(suggestedCities));
   const [neighborhoods, setNeighborhoods] = useState<AutocompleteNeighborhood[]>([]);
   
   const containerRef = useRef<HTMLDivElement>(null);
@@ -73,6 +103,13 @@ export function LocationAutocomplete({
   useEffect(() => {
     setInputValue(getInitialDisplayText());
   }, [initialCity, initialNeighborhood, cityName, neighborhoodName]);
+
+  // Atualiza lista quando suggestedCities mudar
+  useEffect(() => {
+    if (suggestedCities && suggestedCities.length > 0 && !inputValue.trim()) {
+      setCities(mapSuggested(suggestedCities));
+    }
+  }, [suggestedCities, mapSuggested, inputValue]);
 
   // Fecha dropdown ao clicar fora
   useEffect(() => {
@@ -92,7 +129,21 @@ export function LocationAutocomplete({
       const res = await fetch(`/api/locations/autocomplete?q=${encodeURIComponent(query.trim())}`);
       if (res.ok) {
         const data = await res.json();
-        setCities(data.cities || []);
+        const apiCities = (data.cities || []).map((ac: any) => {
+          const match = suggestedCities?.find(
+            (sc) => sc.id === ac.id || sc.slug === ac.slug || sc.name.toLowerCase() === ac.name.toLowerCase()
+          );
+          return {
+            ...ac,
+            count: match?.propertyCount ?? ac.count,
+          };
+        });
+
+        if (!query.trim() && suggestedCities && suggestedCities.length > 0) {
+          setCities(mapSuggested(suggestedCities));
+        } else if (apiCities.length > 0) {
+          setCities(apiCities);
+        }
         setNeighborhoods(data.neighborhoods || []);
       }
     } catch (err) {
@@ -100,13 +151,31 @@ export function LocationAutocomplete({
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [suggestedCities, mapSuggested]);
 
   // Dispara busca com debounce
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInputValue(value);
     setIsOpen(true);
+    onInputChange?.(value);
+
+    // Se temos suggestedCities, filtra instantaneamente em memória
+    if (suggestedCities && suggestedCities.length > 0) {
+      const term = value.trim().toLowerCase();
+      if (!term) {
+        setCities(mapSuggested(suggestedCities));
+        setNeighborhoods([]);
+      } else {
+        const filtered = suggestedCities.filter(
+          (c) =>
+            c.name.toLowerCase().includes(term) ||
+            c.slug.toLowerCase().includes(term) ||
+            c.stateCode.toLowerCase().includes(term)
+        );
+        setCities(mapSuggested(filtered));
+      }
+    }
 
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -119,7 +188,11 @@ export function LocationAutocomplete({
 
   const handleInputFocus = () => {
     setIsOpen(true);
-    // Se ainda não buscou ou está vazio, carrega opções populares/atuais
+    if (!inputValue.trim() && suggestedCities && suggestedCities.length > 0) {
+      setCities(mapSuggested(suggestedCities));
+      setNeighborhoods([]);
+      return;
+    }
     if (cities.length === 0 && neighborhoods.length === 0) {
       fetchLocations(inputValue);
     }
@@ -133,7 +206,7 @@ export function LocationAutocomplete({
     setIsOpen(false);
 
     if (onLocationChange) {
-      onLocationChange({ city: citySlug, neighborhood: neighborhoodSlug });
+      onLocationChange({ city: citySlug, neighborhood: neighborhoodSlug, displayText });
       return;
     }
 
@@ -194,16 +267,25 @@ export function LocationAutocomplete({
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     setInputValue("");
+    onInputChange?.("");
     applyLocation(undefined, undefined, "");
     inputRef.current?.focus();
-    fetchLocations("");
+    if (suggestedCities && suggestedCities.length > 0) {
+      setCities(mapSuggested(suggestedCities));
+      setNeighborhoods([]);
+    } else {
+      fetchLocations("");
+    }
     setIsOpen(true);
   };
 
   // Verifica seleções ativas para renderizar checkboxes
   const isCitySelected = (c: AutocompleteCity) => {
     return (
-      (initialCity === c.slug || initialCity === c.id || cityName?.toLowerCase() === c.name.toLowerCase()) &&
+      (initialCity === c.slug ||
+        initialCity === c.id ||
+        cityName?.toLowerCase() === c.name.toLowerCase() ||
+        inputValue.trim().toLowerCase() === c.name.toLowerCase()) &&
       !initialNeighborhood &&
       !neighborhoodName
     );
@@ -292,7 +374,9 @@ export function LocationAutocomplete({
                               {city.name}
                             </span>
                             <span className="text-xs text-slate-400 dark:text-slate-500">
-                              Cidade · {city.stateCode}
+                              {city.count !== undefined
+                                ? `${city.name} (${city.stateCode}) — ${city.count} imóveis`
+                                : `Cidade · ${city.stateCode}`}
                             </span>
                           </div>
                         </div>
