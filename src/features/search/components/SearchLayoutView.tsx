@@ -57,11 +57,17 @@ export function SearchLayoutView({ result }: SearchLayoutViewProps) {
 
   const activeCount = countActiveFilters(currentResult.filters);
 
-  // Extrai nome de cidade / estado / bairro do primeiro item retornado ou filtros
+  // Extrai nome de cidade / estado / bairro exclusivamente se houver filtro ativo na busca
   const firstProperty = currentResult.properties[0];
-  const cityName = firstProperty?.city?.name || currentResult.filters.city;
-  const stateCode = firstProperty?.state?.code || currentResult.filters.state;
-  const neighborhoodName = firstProperty?.neighborhood?.name || currentResult.filters.neighborhood;
+  const cityName = currentResult.filters.city
+    ? (firstProperty?.city?.name || currentResult.filters.city)
+    : undefined;
+  const stateCode = currentResult.filters.state
+    ? (firstProperty?.state?.code || currentResult.filters.state)
+    : undefined;
+  const neighborhoodName = currentResult.filters.neighborhood
+    ? (firstProperty?.neighborhood?.name || currentResult.filters.neighborhood)
+    : undefined;
 
   // Atualiza query string na URL ao aplicar filtros do drawer mobile
   const handleApplyDrawerFilters = (newFilters: Partial<SearchFilters>) => {

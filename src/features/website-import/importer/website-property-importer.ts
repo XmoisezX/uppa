@@ -314,6 +314,52 @@ export class WebsitePropertyImporter {
         return "skipped";
       }
 
+      // Determina precisão do endereço: pontual (exato) vs região/bairro
+      const isExactAddress = Boolean(
+        prop.address.street &&
+        prop.address.number &&
+        prop.address.number !== "0" &&
+        prop.address.number !== "0000" &&
+        prop.address.number.toLowerCase() !== "sn" &&
+        prop.address.number.toLowerCase() !== "s/n"
+      );
+
+      const addressVisible =
+        typeof prop.address.addressVisible === "boolean"
+          ? prop.address.addressVisible
+          : isExactAddress;
+
+      let resolvedLat = prop.address.latitude || null;
+      let resolvedLng = prop.address.longitude || null;
+
+      if ((!resolvedLat || !resolvedLng) && neighborhoodId) {
+        try {
+          const { data: nRow } = await this.supabase
+            .from("neighborhoods")
+            .select("latitude, longitude")
+            .eq("id", neighborhoodId)
+            .single();
+          if (nRow?.latitude && nRow?.longitude) {
+            resolvedLat = Number(nRow.latitude);
+            resolvedLng = Number(nRow.longitude);
+          }
+        } catch {}
+      }
+
+      if ((!resolvedLat || !resolvedLng) && cityId) {
+        try {
+          const { data: cRow } = await this.supabase
+            .from("cities")
+            .select("latitude, longitude")
+            .eq("id", cityId)
+            .single();
+          if (cRow?.latitude && cRow?.longitude) {
+            resolvedLat = Number(cRow.latitude);
+            resolvedLng = Number(cRow.longitude);
+          }
+        } catch {}
+      }
+
       // Conteúdo alterado: executa UPDATE completo
       const { error: updateError } = await this.supabase
         .from("properties")
@@ -333,6 +379,7 @@ export class WebsitePropertyImporter {
           usable_area: this.safeArea(prop.usableArea),
           total_area: this.safeArea(prop.totalArea),
           lot_area: this.safeArea(prop.lotArea),
+          address_visible: addressVisible,
           street: prop.address.street || null,
           number: prop.address.number || null,
           complement: prop.address.complement || null,
@@ -340,8 +387,8 @@ export class WebsitePropertyImporter {
           state_id: stateId || null,
           city_id: cityId || null,
           neighborhood_id: neighborhoodId || null,
-          latitude: prop.address.latitude || null,
-          longitude: prop.address.longitude || null,
+          latitude: resolvedLat,
+          longitude: resolvedLng,
           source_url: prop.sourceUrl || null,
           content_hash: contentHash,
           last_seen_at: nowIso,
@@ -363,6 +410,52 @@ export class WebsitePropertyImporter {
 
       return "updated";
     } else {
+      // Determina precisão do endereço: pontual (exato) vs região/bairro
+      const isExactAddress = Boolean(
+        prop.address.street &&
+        prop.address.number &&
+        prop.address.number !== "0" &&
+        prop.address.number !== "0000" &&
+        prop.address.number.toLowerCase() !== "sn" &&
+        prop.address.number.toLowerCase() !== "s/n"
+      );
+
+      const addressVisible =
+        typeof prop.address.addressVisible === "boolean"
+          ? prop.address.addressVisible
+          : isExactAddress;
+
+      let resolvedLat = prop.address.latitude || null;
+      let resolvedLng = prop.address.longitude || null;
+
+      if ((!resolvedLat || !resolvedLng) && neighborhoodId) {
+        try {
+          const { data: nRow } = await this.supabase
+            .from("neighborhoods")
+            .select("latitude, longitude")
+            .eq("id", neighborhoodId)
+            .single();
+          if (nRow?.latitude && nRow?.longitude) {
+            resolvedLat = Number(nRow.latitude);
+            resolvedLng = Number(nRow.longitude);
+          }
+        } catch {}
+      }
+
+      if ((!resolvedLat || !resolvedLng) && cityId) {
+        try {
+          const { data: cRow } = await this.supabase
+            .from("cities")
+            .select("latitude, longitude")
+            .eq("id", cityId)
+            .single();
+          if (cRow?.latitude && cRow?.longitude) {
+            resolvedLat = Number(cRow.latitude);
+            resolvedLng = Number(cRow.longitude);
+          }
+        } catch {}
+      }
+
       // Inserção de Novo Anúncio
       const baseSlug = this.generateSlug(prop.title, prop.externalId);
 
@@ -389,6 +482,7 @@ export class WebsitePropertyImporter {
           usable_area: this.safeArea(prop.usableArea),
           total_area: this.safeArea(prop.totalArea),
           lot_area: this.safeArea(prop.lotArea),
+          address_visible: addressVisible,
           street: prop.address.street || null,
           number: prop.address.number || null,
           complement: prop.address.complement || null,
@@ -396,8 +490,8 @@ export class WebsitePropertyImporter {
           state_id: stateId || null,
           city_id: cityId || null,
           neighborhood_id: neighborhoodId || null,
-          latitude: prop.address.latitude || null,
-          longitude: prop.address.longitude || null,
+          latitude: resolvedLat,
+          longitude: resolvedLng,
           source_url: prop.sourceUrl || null,
           content_hash: contentHash,
           last_seen_at: nowIso,

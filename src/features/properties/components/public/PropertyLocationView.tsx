@@ -1,6 +1,7 @@
 import React from "react";
 import { MapPin, Navigation, ExternalLink, ShieldCheck } from "lucide-react";
 import type { PropertyWithDetails } from "@/types/property";
+import { PropertyDetailMap } from "./PropertyDetailMap";
 
 interface PropertyLocationViewProps {
   property: PropertyWithDetails;
@@ -72,37 +73,17 @@ export function PropertyLocationView({ property }: PropertyLocationViewProps) {
         )}
       </div>
 
-      {/* CONTAINER VISUAL DE MAPA COM PONTO POSTGIS */}
-      <div className="relative aspect-[21/9] min-h-[220px] w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 flex flex-col items-center justify-center text-center p-6 shadow-inner">
-        {/* Fundo simulado de malha cartográfica */}
-        <div className="absolute inset-0 opacity-10 dark:opacity-5 [background-image:radial-gradient(#4f46e5_1px,transparent_1px)] [background-size:16px_16px]" />
-
-        <div className="relative z-10 flex flex-col items-center">
-          <div className="h-12 w-12 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg animate-bounce duration-1000 mb-2">
-            <MapPin className="h-6 w-6" />
-          </div>
-
-          <span className="text-sm font-bold text-slate-900 dark:text-white">
-            {property.neighborhood?.name || property.city?.name || "Localização Privilegiada"}
-          </span>
-
-          <span className="text-xs text-slate-500 max-w-sm mt-0.5">
-            {property.city?.name} - {property.state?.code || "Brasil"}
-          </span>
-
-          {hasCoordinates && isAddressVisible && (
-            <span className="text-[10px] font-mono text-slate-400 mt-2 bg-white/80 dark:bg-slate-900/80 px-2 py-0.5 rounded">
-              WGS84: {property.latitude?.toFixed(5)}, {property.longitude?.toFixed(5)}
-            </span>
-          )}
-
-          {!isAddressVisible && (
-            <span className="text-[11px] font-medium text-slate-500 mt-2 bg-white/80 dark:bg-slate-900/80 px-2.5 py-1 rounded-full border border-slate-200/60 dark:border-slate-800">
-              Região do anúncio: {property.neighborhood?.name || property.city?.name}
-            </span>
-          )}
-        </div>
-      </div>
+      {/* MAPA INTERATIVO REAL DO IMÓVEL (PONTUAL OU REGIÃO/BAIRRO) */}
+      <PropertyDetailMap
+        latitude={property.latitude}
+        longitude={property.longitude}
+        addressVisible={Boolean(property.addressVisible)}
+        street={property.street}
+        number={property.number}
+        neighborhood={property.neighborhood?.name}
+        city={property.city?.name}
+        state={property.state?.code}
+      />
     </div>
   );
 }

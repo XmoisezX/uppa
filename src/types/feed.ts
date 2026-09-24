@@ -68,6 +68,7 @@ export interface NormalizedAddress {
   postalCode?: string;
   latitude?: number;
   longitude?: number;
+  addressVisible?: boolean;
 }
 
 export interface NormalizedMedia {

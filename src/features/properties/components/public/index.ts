@@ -8,4 +8,5 @@ export * from "./PropertyLocationView";
 export * from "./PropertyAgencyCard";
 export * from "./PropertyStickyCTA";
 export * from "./SimilarProperties";
+export * from "./PropertyDetailMap";
 

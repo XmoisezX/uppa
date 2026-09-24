@@ -217,6 +217,26 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
       ) || undefined;
 
     // 8. Endereço
+    let lat: number | undefined = geoBlock.latitude ? parseFloat(geoBlock.latitude) : undefined;
+    let lng: number | undefined = geoBlock.longitude ? parseFloat(geoBlock.longitude) : undefined;
+
+    if (!lat || !lng) {
+      const latMatch = html.match(/(?:\\?"latitude\\?"|\\?"lat\\?"):\s*(-?\d+\.\d+)/i);
+      const lngMatch = html.match(/(?:\\?"longitude\\?"|\\?"lng\\?"):\s*(-?\d+\.\d+)/i);
+      if (latMatch && lngMatch) {
+        const lVal = parseFloat(latMatch[1]);
+        const gVal = parseFloat(lngMatch[1]);
+        if (lVal >= -35 && lVal <= 6 && gVal >= -75 && gVal <= -30) {
+          lat = lVal;
+          lng = gVal;
+        }
+      }
+    }
+
+    const street = addressBlock.streetAddress || undefined;
+    const number = addressBlock.streetNumber || undefined;
+    const isExact = Boolean(street && number && number !== "0" && number !== "0000");
+
     const address: NormalizedAddress = {
       country: "Brasil",
       state: addressBlock.addressRegion || undefined,
@@ -225,11 +245,12 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
         addressBlock.addressSublocality ||
         addressBlock.neighborhood ||
         undefined,
-      street: addressBlock.streetAddress || undefined,
-      number: addressBlock.streetNumber || undefined,
+      street,
+      number,
       postalCode: addressBlock.postalCode || undefined,
-      latitude: geoBlock.latitude ? parseFloat(geoBlock.latitude) : undefined,
-      longitude: geoBlock.longitude ? parseFloat(geoBlock.longitude) : undefined,
+      latitude: lat,
+      longitude: lng,
+      addressVisible: isExact,
     };
 
     // 9. Características

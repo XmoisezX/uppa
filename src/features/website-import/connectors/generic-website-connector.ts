@@ -342,32 +342,88 @@ export class GenericWebsiteConnector implements WebsiteConnector {
     meta: Record<string, string>,
     pageUrl?: string
   ): NormalizedAddress {
-    // 1. Tenta extrair a partir da URL estruturada (muito comum e precisa no Brasil)
-    if (pageUrl) {
-      const fromUrl = extractAddressFromUrl(pageUrl);
-      if (fromUrl.city || fromUrl.neighborhood || fromUrl.state) {
-        return {
-          country: "Brasil",
-          city: fromUrl.city,
-          state: fromUrl.state,
-          neighborhood: fromUrl.neighborhood,
-          postalCode: meta["postal_code"] || undefined,
-        };
+    // 1. Extração de Coordenadas Geográficas (lat, lng / latitude, longitude)
+    let latitude: number | undefined;
+    let longitude: number | undefined;
+
+    const latMatch = html.match(/(?:\\?"latitude\\?"|\\?"lat\\?"):\s*(-?\d+\.\d+)/i);
+    const lngMatch = html.match(/(?:\\?"longitude\\?"|\\?"lng\\?"):\s*(-?\d+\.\d+)/i);
+    if (latMatch && lngMatch) {
+      const latVal = parseFloat(latMatch[1]);
+      const lngVal = parseFloat(lngMatch[1]);
+      if (latVal >= -35 && latVal <= 6 && lngVal >= -75 && lngVal <= -30) {
+        latitude = latVal;
+        longitude = lngVal;
       }
     }
 
+    if (!latitude || !longitude) {
+      const mapMatch = html.match(/maps\.google\.com[^\"]*?[?&](?:q|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/i);
+      if (mapMatch) {
+        latitude = parseFloat(mapMatch[1]);
+        longitude = parseFloat(mapMatch[2]);
+      } else if (meta["geo.position"]) {
+        const parts = meta["geo.position"].split(/[,; ]+/);
+        if (parts.length >= 2) {
+          latitude = parseFloat(parts[0]);
+          longitude = parseFloat(parts[1]);
+        }
+      }
+    }
+
+    // 2. Extração de CEP
+    const cepMatch = html.match(/(?:\\?"end_cep\\?"|\\?"cep\\?"):\s*\\?"(\d{5}-?\d{3})\\?"/i);
+    const postalCode = cepMatch ? cepMatch[1] : (meta["postal_code"] || undefined);
+
+    // 3. Extração de Número
+    const numMatch = html.match(/(?:\\?"end_numero\\?"|\\?"numero\\?"):\s*\\?"?(\d+)\\?"?/i);
+    const number = numMatch ? numMatch[1] : undefined;
+
+    // 4. Extração de Logradouro / Rua
+    const ruaMatch = html.match(/(?:\\?"end_logradouro\\?"|\\?"logradouro\\?"|\\?"rua\\?"|\\?"endereco\\?"):\\?"([^\\"]+)\\?"/i);
+    const descRuaMatch = html.match(/(?:localizado na|situado na|localizada na|situada na)\s+((?:avenida|av\.|rua|r\.|travessa|alameda|rodovia)\s+[^,<\n]+)/i);
+    const street = ruaMatch ? ruaMatch[1]?.trim() : (descRuaMatch ? descRuaMatch[1]?.trim() : undefined);
+
+    // 5. Extração de Bairro, Cidade e Estado
+    const bairroMatch = html.match(/(?:\\?"end_bairro\\?"|\\?"bairro\\?"):\s*\\?"([^\\"]+)\\?"/i);
+    const cidadeMatch = html.match(/(?:\\?"end_cidade\\?"|\\?"cidade\\?"):\s*\\?"([^\\"]+)\\?"/i);
+    const estadoMatch = html.match(/(?:\\?"end_estado\\?"|\\?"uf\\?"):\s*\\?"([a-zA-Z]{2})\\?"/i);
+
+    // Fallback via URL estruturada
+    const fromUrl = pageUrl ? extractAddressFromUrl(pageUrl) : {};
+
     const cleanText = this.stripHtmlTags(html);
-    // Procura por Bairro, Cidade - UF
     const locationMatch = /\b(?:bairro|localiza[cç][aã]o)[:\s]*([^<>\n,]+)(?:,\s*([^<>\n,-]+))?(?:\s*-\s*([a-zA-Z]{2}))?/i.exec(
       cleanText
     );
 
+    const neighborhood =
+      bairroMatch ? bairroMatch[1]?.trim() : (fromUrl.neighborhood || (locationMatch ? locationMatch[1]?.trim() : undefined));
+
+    let city =
+      cidadeMatch ? cidadeMatch[1]?.trim() : (fromUrl.city || (locationMatch && locationMatch[2] ? locationMatch[2]?.trim() : undefined));
+
+    if (city && /^(?:avenida|rua|travessa|alameda)/i.test(city)) {
+      city = fromUrl.city || "Pelotas";
+    }
+
+    const state =
+      estadoMatch ? estadoMatch[1]?.trim().toUpperCase() : (fromUrl.state || (locationMatch && locationMatch[3] ? locationMatch[3]?.trim().toUpperCase() : "RS"));
+
+    // Determina se a localização é pontual (exata) ou apenas uma região / bairro
+    const isExact = Boolean(street && number && number !== "0" && number !== "0000");
+
     return {
       country: "Brasil",
-      neighborhood: locationMatch ? locationMatch[1]?.trim() : undefined,
-      city: locationMatch && locationMatch[2] ? locationMatch[2]?.trim() : undefined,
-      state: locationMatch && locationMatch[3] ? locationMatch[3]?.trim().toUpperCase() : undefined,
-      postalCode: meta["postal_code"] || undefined,
+      state,
+      city,
+      neighborhood,
+      street,
+      number,
+      postalCode,
+      latitude,
+      longitude,
+      addressVisible: isExact,
     };
   }
 
