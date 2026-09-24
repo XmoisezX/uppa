@@ -27,10 +27,29 @@ const PROPERTY_TYPES: { id: PropertyType; label: string }[] = [
   { id: "farm", label: "Chácara / Sítio" },
 ];
 
-export function SearchSidebarFilters({ filters }: SearchSidebarFiltersProps) {
+export function SearchSidebarFilters({
+  filters,
+  cityName,
+  stateCode,
+  neighborhoodName,
+}: SearchSidebarFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // Alterna entre Comprar e Alugar preservando filtros compatíveis
+  const handleToggleTransaction = (target: "sale" | "rent") => {
+    if ((target === "sale" && !isRent) || (target === "rent" && isRent)) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", "1");
+    params.delete("priceMin");
+    params.delete("priceMax");
+
+    const targetRoute = target === "rent" ? "/alugar" : "/comprar";
+    const query = params.toString();
+    router.push(query ? `${targetRoute}?${query}` : targetRoute);
+  };
 
   // Estados colapsáveis para cada seção
   const [openSections, setOpenSections] = useState({
@@ -101,11 +120,15 @@ export function SearchSidebarFilters({ filters }: SearchSidebarFiltersProps) {
   };
 
   return (
-    <aside className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-5 shadow-xs">
+    <aside className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-4 shadow-xs">
+      {/* 0. CABEÇALHO FILTROS (Igual screenshot Chaves na Mão) */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-        <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px]">
-          Filtros de Busca
-        </h2>
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="h-4 w-4 text-slate-800 dark:text-white" />
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            Filtros
+          </h2>
+        </div>
         <button
           type="button"
           onClick={handleClearAll}
@@ -114,6 +137,43 @@ export function SearchSidebarFilters({ filters }: SearchSidebarFiltersProps) {
           <RotateCcw className="h-3 w-3" />
           <span>Limpar</span>
         </button>
+      </div>
+
+      {/* ABAS COMPRAR / ALUGAR */}
+      <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800">
+        <button
+          type="button"
+          onClick={() => handleToggleTransaction("sale")}
+          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            !isRent
+              ? "bg-white dark:bg-slate-900 text-slate-950 dark:text-white shadow-xs"
+              : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          Comprar
+        </button>
+        <button
+          type="button"
+          onClick={() => handleToggleTransaction("rent")}
+          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            isRent
+              ? "bg-white dark:bg-slate-900 text-slate-950 dark:text-white shadow-xs"
+              : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          Alugar
+        </button>
+      </div>
+
+      {/* BUSCA DE LOCALIZAÇÃO COM AUTOCOMPLETE (CIDADES E BAIRROS) */}
+      <div className="relative">
+        <LocationAutocomplete
+          initialCity={filters.city}
+          initialNeighborhood={filters.neighborhood}
+          cityName={cityName}
+          neighborhoodName={neighborhoodName}
+          placeholder="Digite cidade ou bairro..."
+        />
       </div>
 
       {/* 1. TIPO DE IMÓVEL */}

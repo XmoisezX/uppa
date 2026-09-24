@@ -151,7 +151,12 @@ export function SearchLayoutView({ result }: SearchLayoutViewProps) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* SIDEBAR DE FILTROS (DESKTOP) */}
           <div className="hidden lg:block lg:col-span-3 xl:col-span-3 sticky top-20">
-            <SearchSidebarFilters filters={currentResult.filters} />
+            <SearchSidebarFilters
+              filters={currentResult.filters}
+              cityName={cityName}
+              stateCode={stateCode}
+              neighborhoodName={neighborhoodName}
+            />
           </div>
 
           {/* LISTA DE RESULTADOS HORIZONTAIS */}
