@@ -133,17 +133,17 @@ export function SearchPropertyList({
         <SearchFilterChips filters={filters} />
       </div>
 
-      {/* SKELETON LOADING, EMPTY STATE OU LISTA DE CARDS HORIZONTAIS */}
+      {/* SKELETON LOADING, EMPTY STATE OU GRADE DE IMÓVEIS */}
       {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3, 4].map((n) => (
+        <div className="properties-grid">
+          {[1, 2, 3, 4, 5, 6].map((n) => (
             <SearchPropertyCardSkeleton key={n} />
           ))}
         </div>
       ) : properties.length === 0 ? (
         <SearchEmptyState />
       ) : (
-        <div className="space-y-3.5">
+        <div className="properties-grid">
           {properties.map((property) => (
             <SearchPropertyCard
               key={property.id}

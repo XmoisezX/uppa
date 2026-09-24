@@ -5,7 +5,7 @@ import { ShieldCheck, Heart } from "lucide-react";
 export function Footer() {
   return (
     <footer className="border-t border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="container py-12">
         {/* Grid Principal com as 6 Seções do Portal Nacional */}
         <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-6">
           {/* Seção 1: Comprar */}

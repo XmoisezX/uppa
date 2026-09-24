@@ -123,7 +123,7 @@ export default async function ComprarPage({ searchParams }: ComprarPageProps) {
       {/* Banner search_top — colapsa se não houver banner ativo */}
       <BannerSlot position="search_top" />
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="container">
         <SearchLayoutView
           key={`comprar-${filters.city || ""}-${filters.neighborhood || ""}-${filters.propertyType || ""}-${filters.page || 1}-${filters.priceMin || ""}-${filters.priceMax || ""}-${filters.orderBy || ""}`}
           result={result}

@@ -120,7 +120,7 @@ export default async function AlugarPage({ searchParams }: AlugarPageProps) {
       {/* Banner search_top — colapsa se não houver banner ativo */}
       <BannerSlot position="search_top" />
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="container">
         <SearchLayoutView
           key={`alugar-${filters.city || ""}-${filters.neighborhood || ""}-${filters.propertyType || ""}-${filters.page || 1}-${filters.priceMin || ""}-${filters.priceMax || ""}-${filters.orderBy || ""}`}
           result={result}

@@ -34,7 +34,7 @@ export async function BannerSlot({ position, className = '' }: BannerSlotProps) 
       className={`banner-slot banner-slot--${position} ${className}`}
       aria-label="Publicidade"
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3">
+      <div className="container py-3">
         {/* Badge de publicidade */}
         <p className="text-[10px] text-slate-400 dark:text-slate-600 text-right mb-1 select-none">
           Publicidade
