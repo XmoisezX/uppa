@@ -159,13 +159,13 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
   }
 
   // 4. FILTRO: CIDADE (city)
+  let resolvedCityId: string | null = null;
   if (filters.city) {
     const cleanCity = filters.city.trim();
     if (isUuid(cleanCity)) {
-      // Se for UUID válido, filtra diretamente pela chave estrangeira city_id
+      resolvedCityId = cleanCity;
       query = query.eq("city_id", cleanCity);
     } else {
-      // Caso contrário, resolve o ID buscando pelo slug no banco de dados
       const slugCity = cleanCity.toLowerCase();
       const { data: cityRow } = await supabase
         .from("cities")
@@ -174,6 +174,7 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
         .maybeSingle();
 
       if (cityRow?.id) {
+        resolvedCityId = cityRow.id;
         query = query.eq("city_id", cityRow.id);
       }
     }
@@ -181,7 +182,20 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
 
   // 5. FILTRO: BAIRRO (neighborhood)
   if (filters.neighborhood) {
-    query = query.eq("neighborhood_id", filters.neighborhood);
+    const cleanNeigh = filters.neighborhood.trim();
+    if (isUuid(cleanNeigh)) {
+      query = query.eq("neighborhood_id", cleanNeigh);
+    } else {
+      const slugNeigh = cleanNeigh.toLowerCase();
+      let nQuery = supabase.from("neighborhoods").select("id").eq("slug", slugNeigh);
+      if (resolvedCityId) {
+        nQuery = nQuery.eq("city_id", resolvedCityId);
+      }
+      const { data: neighRow } = await nQuery.limit(1).maybeSingle();
+      if (neighRow?.id) {
+        query = query.eq("neighborhood_id", neighRow.id);
+      }
+    }
   }
 
   // 6. FILTROS DE PREÇO (price_min e price_max)

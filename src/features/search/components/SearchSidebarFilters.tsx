@@ -2,12 +2,16 @@
 
 import React, { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
+import { ChevronDown, ChevronUp, RotateCcw, SlidersHorizontal } from "lucide-react";
 import type { SearchFilters } from "../types";
 import type { PropertyType } from "@/types/property";
+import { LocationAutocomplete } from "./LocationAutocomplete";
 
 interface SearchSidebarFiltersProps {
   filters: SearchFilters;
+  cityName?: string;
+  stateCode?: string;
+  neighborhoodName?: string;
 }
 
 const PROPERTY_TYPES: { id: PropertyType; label: string }[] = [
