@@ -662,50 +662,68 @@ export function WebsiteImportModal({
                     Imóveis Detectados
                   </span>
                   <p className="mt-1 text-sm font-black text-emerald-600 dark:text-emerald-400">
-                    {previewReport.listingsFound}
+                    {previewReport.listingsFound.toLocaleString("pt-BR")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Alerta de Confirmação e Sucesso da Descoberta */}
+              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                <div className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
+                  <p className="font-bold text-sm text-emerald-800 dark:text-emerald-300">
+                    {previewReport.listingsFound.toLocaleString("pt-BR")} imóveis encontrados no site!
+                  </p>
+                  <p className="mt-1 text-slate-600 dark:text-slate-300">
+                    Abaixo avaliamos uma <strong>amostra de teste rápida ({previewReport.sampleProperties.length} imóveis)</strong> para você conferir a formatação dos dados. Ao clicar no botão verde abaixo, todos os <strong>{previewReport.listingsFound.toLocaleString("pt-BR")} imóveis</strong> serão importados.
                   </p>
                 </div>
               </div>
 
               {/* Métricas de Qualidade */}
               <div>
-                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2.5">
-                  Indicadores de Qualidade da Amostra
-                </h4>
+                <div className="flex items-center justify-between mb-2.5">
+                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Indicadores da Amostra ({previewReport.sampleProperties.length} imóveis avaliados)
+                  </h4>
+                  <span className="text-[11px] text-slate-500">
+                    Validação prévia das informações
+                  </span>
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <div className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-                    <DollarSign className="h-4 w-4 text-emerald-500" />
+                    <DollarSign className="h-4 w-4 text-emerald-500 shrink-0" />
                     <span className="text-xs text-slate-600 dark:text-slate-400">
                       Com Preço:{" "}
                       <strong className="text-slate-900 dark:text-white">
-                        {previewReport.withPrice}
+                        {previewReport.withPrice}/{previewReport.sampleProperties.length}
                       </strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-                    <ImageIcon className="h-4 w-4 text-sky-500" />
+                    <ImageIcon className="h-4 w-4 text-sky-500 shrink-0" />
                     <span className="text-xs text-slate-600 dark:text-slate-400">
                       Com Fotos:{" "}
                       <strong className="text-slate-900 dark:text-white">
-                        {previewReport.withPhotos}
+                        {previewReport.withPhotos}/{previewReport.sampleProperties.length}
                       </strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-                    <Tag className="h-4 w-4 text-amber-500" />
+                    <Tag className="h-4 w-4 text-amber-500 shrink-0" />
                     <span className="text-xs text-slate-600 dark:text-slate-400">
                       Com Código:{" "}
                       <strong className="text-slate-900 dark:text-white">
-                        {previewReport.withCode}
+                        {previewReport.withCode}/{previewReport.sampleProperties.length}
                       </strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-                    <MapPin className="h-4 w-4 text-indigo-500" />
+                    <MapPin className="h-4 w-4 text-indigo-500 shrink-0" />
                     <span className="text-xs text-slate-600 dark:text-slate-400">
                       Com Localização:{" "}
                       <strong className="text-slate-900 dark:text-white">
-                        {previewReport.withLocation}
+                        {previewReport.withLocation}/{previewReport.sampleProperties.length}
                       </strong>
                     </span>
                   </div>
@@ -724,11 +742,16 @@ export function WebsiteImportModal({
                 </div>
               )}
 
-              {/* Amostra dos 5 Imóveis */}
+              {/* Amostra dos Imóveis */}
               <div>
-                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2.5">
-                  Amostra dos 5 Imóveis Extraídos
-                </h4>
+                <div className="flex items-center justify-between mb-2.5">
+                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Pré-visualização da Amostra ({previewReport.sampleProperties.length} de {previewReport.listingsFound.toLocaleString("pt-BR")} imóveis)
+                  </h4>
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                    Exibição preliminar
+                  </span>
+                </div>
                 <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
                   {previewReport.sampleProperties.length === 0 ? (
                     <p className="text-xs text-slate-400 italic">
@@ -792,10 +815,10 @@ export function WebsiteImportModal({
                   type="button"
                   onClick={handleConfirmImport}
                   disabled={isLoading}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-11 px-6 text-xs font-bold gap-2 cursor-pointer"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-11 px-6 text-xs font-bold gap-2 cursor-pointer shadow-sm shadow-emerald-600/20"
                 >
                   <Check className="h-4 w-4" />
-                  Confirmar e Iniciar Importação
+                  Confirmar e Importar {previewReport.listingsFound.toLocaleString("pt-BR")} Imóveis
                 </Button>
               </div>
             </div>

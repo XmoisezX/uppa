@@ -37,7 +37,7 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
   public async discoverListings(
     context: ConnectorContext
   ): Promise<ListingReference[]> {
-    const maxListings = context.maxListings ?? 2000;
+    const maxListings = context.maxListings ?? 10000;
     const discovered: Map<string, ListingReference> = new Map();
     const sitemapsToVisit = new Set<string>(context.sitemaps || []);
 

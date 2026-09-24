@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import dynamic from "next/dynamic";
 import { MapPin, Navigation, ExternalLink, ShieldCheck, Loader2 } from "lucide-react";

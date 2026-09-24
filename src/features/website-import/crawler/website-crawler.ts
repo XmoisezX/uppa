@@ -203,7 +203,7 @@ export class WebsiteCrawler {
         ? { customMaxListings: options }
         : options || {};
 
-    const customMaxListings = crawlOpts.customMaxListings || 2000;
+    const customMaxListings = crawlOpts.customMaxListings || 10000;
     const batchSize = Math.max(1, crawlOpts.batchSize || 15);
     const startIndex = Math.max(0, crawlOpts.startIndex || 0);
     const onProgress = crawlOpts.onProgress;
