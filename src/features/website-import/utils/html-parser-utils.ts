@@ -114,24 +114,73 @@ export function extractHtmlLinks(html: string, baseUrl: string): string[] {
 }
 
 /**
- * Extrai todas as tags <img> com URLs candidatas
+ * Extrai todas as tags <img> com URLs candidatas, descartando logos, ícones e assets de interface
  */
 export function extractImageUrls(html: string, baseUrl?: string): string[] {
   if (!html) return [];
   const urls: string[] = [];
-  const imgRegex =
-    /<img\s+[^>]*?(?:src|data-src|data-original)=["']([^"']+)["'][^>]*>/gi;
+  const seen = new Set<string>();
 
+  const imgRegex = /<img\s+([^>]*?)>/gi;
   let match: RegExpExecArray | null;
   while ((match = imgRegex.exec(html)) !== null) {
-    const src = match[1]?.trim();
-    if (src && !src.startsWith("data:")) {
-      try {
-        const resolved = baseUrl ? new URL(src, baseUrl).toString() : src;
+    const attrs = match[1];
+    const srcMatch = attrs.match(/(?:src|data-src|data-original)=["']([^"']+)["']/i);
+    if (!srcMatch) continue;
+    const src = srcMatch[1].trim();
+    if (!src || src.startsWith("data:")) continue;
+
+    // Inspeciona alt, class, id e src para filtrar logos e ícones de interface
+    const altMatch = attrs.match(/alt=["']([^"']*)["']/i);
+    const classMatch = attrs.match(/class=["']([^"']*)["']/i);
+    const idMatch = attrs.match(/id=["']([^"']*)["']/i);
+    const alt = (altMatch ? altMatch[1] : "").toLowerCase();
+    const cls = (classMatch ? classMatch[1] : "").toLowerCase();
+    const idStr = (idMatch ? idMatch[1] : "").toLowerCase();
+    const srcLower = src.toLowerCase();
+
+    if (
+      alt.includes("logo") ||
+      alt.includes("marca") ||
+      alt.includes("icone") ||
+      alt.includes("icon") ||
+      alt.includes("banner") ||
+      alt.includes("avatar") ||
+      alt.includes("tecnologia") ||
+      alt.includes("selo") ||
+      cls.includes("logo") ||
+      cls.includes("brand") ||
+      idStr.includes("logo") ||
+      srcLower.includes("loftsites.com.br/images") ||
+      srcLower.includes("loftsites.com.br/shared") ||
+      srcLower.includes("/logo") ||
+      srcLower.includes("favicon") ||
+      srcLower.includes("icon")
+    ) {
+      continue;
+    }
+
+    try {
+      const resolved = baseUrl ? new URL(src, baseUrl).toString() : src;
+      if (!seen.has(resolved)) {
+        seen.add(resolved);
         urls.push(resolved);
-      } catch {
+      }
+    } catch {
+      if (!seen.has(src)) {
+        seen.add(src);
         urls.push(src);
       }
+    }
+  }
+
+  // Também busca fotos do catálogo Vista / CRM / CMS embutidas em atributos JSON no HTML
+  const vistaFotoMatches = html.matchAll(/\\?"Foto\\?":\s*\\?"(https?:\/\/[^\s"\\]+)/gi);
+  for (const vm of vistaFotoMatches) {
+    const photoUrl = vm[1].replace(/\\/g, "");
+    if (photoUrl && !photoUrl.includes("_p.jpg") && !seen.has(photoUrl)) {
+      seen.add(photoUrl);
+      urls.push(photoUrl);
     }
   }
 
@@ -212,17 +261,13 @@ export function extractInteger(val: any): number | undefined {
  * Mapeia texto ou tipos livres para o enum TransactionType ("sale" | "rent" | "sale_or_rent")
  */
 export function inferTransactionType(text: string): TransactionType {
-  const lower = text.toLowerCase();
   const isSale =
-    lower.includes("venda") ||
-    lower.includes("comprar") ||
-    lower.includes("sale") ||
-    lower.includes("buy");
+    /\b(?:venda|vendas|vende-se|vender|comprar?|compra)\b/i.test(text) ||
+    /\b(?:sale|buy)\b/i.test(text);
+
   const isRent =
-    lower.includes("locacao") ||
-    lower.includes("locação") ||
-    lower.includes("aluguel") ||
-    lower.includes("rent");
+    /\b(?:loca[cç][aã]o|loca[cç][oõ]es|aluguel|aluga-se|alugar?)\b/i.test(text) ||
+    /\brent\b/i.test(text);
 
   if (isSale && isRent) return "sale_or_rent";
   if (isRent) return "rent";
@@ -415,14 +460,20 @@ export function isListingDetailUrl(rawUrl: string): boolean {
  * Ex: /imovel/apartamento/venda/pelotas/rs/centro/AP5986_UPIMOV
  */
 export function extractAddressFromUrl(rawUrl: string): Partial<NormalizedAddress> {
+  const UF_LIST = new Set([
+    "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+    "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+    "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+  ]);
+
   try {
     const parsed = new URL(rawUrl);
     const segments = parsed.pathname.split("/").filter(Boolean);
 
-    // Formato comum: ["imovel", tipo, transacao, cidade, uf, bairro, codigo]
+    // 1. Formato em múltiplos segmentos por barras: ["imovel", tipo, transacao, cidade, uf, bairro, codigo]
     if (segments.length >= 6 && segments[0] === "imovel") {
       const stateCandidate = segments.find(
-        (s) => s.length === 2 && /^[a-zA-Z]{2}$/.test(s)
+        (s) => s.length === 2 && UF_LIST.has(s.toUpperCase())
       );
       if (stateCandidate) {
         const stateIdx = segments.indexOf(stateCandidate);
@@ -445,6 +496,57 @@ export function extractAddressFromUrl(rawUrl: string): Partial<NormalizedAddress
           city: formatName(cityCandidate),
           neighborhood: formatName(neighborhoodCandidate),
         };
+      }
+    }
+
+    // 2. Formato com slug único hifenizado (ex: /imovel/casa-tres-vendas-pelotas-rs-3-quartos-215m2-4959)
+    const slug = segments[segments.length - 1] || "";
+    const parts = slug.split("-");
+
+    // Procura por UF válida entre os tokens (ex: rs, sc, sp)
+    let ufIdx = -1;
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[i].length === 2 && UF_LIST.has(parts[i].toUpperCase())) {
+        ufIdx = i;
+        break;
+      }
+    }
+
+    const formatName = (words: string[]) =>
+      words.length > 0
+        ? words
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(" ")
+        : undefined;
+
+    if (ufIdx !== -1) {
+      const state = parts[ufIdx].toUpperCase();
+      const beforeUf = parts.slice(1, ufIdx); // descarta o tipo inicial (casa, apto, etc)
+      if (beforeUf.length > 0) {
+        const cityIndex = beforeUf.findIndex((p) =>
+          ["pelotas", "bage", "porto", "caxias", "canoas", "rio", "capao"].includes(
+            p.toLowerCase()
+          )
+        );
+        if (cityIndex !== -1) {
+          const neighborhoodParts = beforeUf.slice(0, cityIndex);
+          const cityParts = beforeUf.slice(cityIndex);
+          return {
+            country: "Brasil",
+            state,
+            city: formatName(cityParts),
+            neighborhood: formatName(neighborhoodParts),
+          };
+        } else {
+          const cityParts = [beforeUf[beforeUf.length - 1]];
+          const neighborhoodParts = beforeUf.slice(0, beforeUf.length - 1);
+          return {
+            country: "Brasil",
+            state,
+            city: formatName(cityParts),
+            neighborhood: formatName(neighborhoodParts),
+          };
+        }
       }
     }
   } catch {
@@ -539,5 +641,72 @@ export function extractFullPropertyDescription(
 
   return candidates[0] || "";
 }
+
+/**
+ * Estrutura de metadados extraídos de elementos de rastreamento / CRM comuns em sites imobiliários
+ * (como Loft Sites, Vista, Imoview e Kenlo)
+ */
+export interface WebsiteTrackingMetadata {
+  id?: string;
+  title?: string;
+  type?: string;
+  transaction?: "sale" | "rent" | "sale_or_rent";
+  priceVenda?: number;
+  priceAluguel?: number;
+  condominiumFee?: number;
+  area?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  image?: string;
+}
+
+export function extractTrackingMetadata(html: string): WebsiteTrackingMetadata | null {
+  if (!html) return null;
+
+  // Procura elemento estruturado de tracking (padrão em plataformas Loft Sites / Vista / Imoview)
+  const trackMatch = html.match(/<div[^>]*id=["']property-details-tracking["'][^>]*>/i);
+  if (trackMatch) {
+    const tag = trackMatch[0];
+    const getAttr = (name: string) => {
+      const m = tag.match(new RegExp(`data-${name}=["']([^"']*)["']`, "i"));
+      return m ? m[1].trim() : undefined;
+    };
+
+    const hasVenda = getAttr("has-venda") === "1";
+    const hasAluguel = getAttr("has-aluguel") === "1";
+    const rawTx = (getAttr("transaction") || "").toLowerCase();
+
+    let transaction: "sale" | "rent" | "sale_or_rent" = "sale";
+    if (hasVenda && hasAluguel) transaction = "sale_or_rent";
+    else if (hasAluguel || rawTx.includes("loca") || rawTx.includes("aluguel")) transaction = "rent";
+    else if (hasVenda || rawTx.includes("venda")) transaction = "sale";
+
+    const priceVenda = parseCurrencyBrl(getAttr("price-venda"));
+    const priceAluguel = parseCurrencyBrl(getAttr("price-aluguel"));
+
+    return {
+      id: getAttr("id"),
+      title: getAttr("title"),
+      type: getAttr("type"),
+      transaction,
+      priceVenda,
+      priceAluguel,
+      condominiumFee: parseCurrencyBrl(getAttr("condo")),
+      area: parseCurrencyBrl(getAttr("area")),
+      bedrooms: parseInt(getAttr("bedrooms") || "0", 10) || undefined,
+      bathrooms: parseInt(getAttr("bathrooms") || "0", 10) || undefined,
+      neighborhood: getAttr("neighborhood"),
+      city: getAttr("city"),
+      state: getAttr("state")?.toUpperCase(),
+      image: getAttr("image"),
+    };
+  }
+
+  return null;
+}
+
 
 

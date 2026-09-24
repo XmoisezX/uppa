@@ -18,6 +18,9 @@ import {
   inferPropertyType,
   isListingDetailUrl,
   extractFullPropertyDescription,
+  extractTrackingMetadata,
+  extractImageUrls,
+  extractAddressFromUrl,
 } from "../utils/html-parser-utils";
 import { filterListingImages } from "../utils/media-filter";
 import { resolveWebsiteExternalId } from "../utils/external-id-resolver";
@@ -104,6 +107,7 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
     const html = await response.text();
     const meta = extractMetaTags(html);
     const jsonLdBlocks = extractJsonLdBlocks(html);
+    const tracking = extractTrackingMetadata(html);
 
     // Localiza o bloco de JSON-LD mais relevante para o imóvel
     const listingBlock = this.findBestJsonLdBlock(jsonLdBlocks);
@@ -118,6 +122,7 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
       listingBlock?.sku ||
       listingBlock?.identifier ||
       listingBlock?.productID ||
+      tracking?.id ||
       this.extractCodeFromText(listingBlock?.name || meta["page_title"] || "");
 
     const canonicalUrl = meta["canonical"] || reference.url;
@@ -146,6 +151,14 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
       }
     }
 
+    if (tracking?.image && !rawImageUrls.includes(tracking.image)) {
+      rawImageUrls.unshift(tracking.image);
+    }
+
+    if (rawImageUrls.length === 0) {
+      rawImageUrls.push(...extractImageUrls(html, reference.url));
+    }
+
     if (meta["og:image"]) rawImageUrls.push(meta["og:image"]);
 
     const images = filterListingImages(rawImageUrls, reference.url);
@@ -153,6 +166,7 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
     // 3. Normalização de Título e Descrição
     const title =
       listingBlock?.name ||
+      tracking?.title ||
       meta["og:title"] ||
       meta["page_title"] ||
       "Imóvel para Venda ou Locação";
@@ -169,16 +183,20 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
     const description = extractFullPropertyDescription(html, meta, listingBlock);
 
     // 4. Tipo de Transação e Tipo do Imóvel
-    const transactionType = inferTransactionType(
-      `${title} ${description} ${offers?.priceCurrency || ""} ${offers?.category || ""}`
-    );
+    const transactionType =
+      tracking?.transaction ||
+      inferTransactionType(
+        `${title} ${description} ${offers?.priceCurrency || ""} ${offers?.category || ""}`
+      );
 
     const propertyType = inferPropertyType(
-      `${listingBlock?.["@type"] || ""} ${title} ${listingBlock?.category || ""}`
+      `${tracking?.type || ""} ${listingBlock?.["@type"] || ""} ${title} ${listingBlock?.category || ""}`
     );
 
     // 5. Preços
-    const rawPrice = parseCurrencyBrl(offers?.price || listingBlock?.price);
+    const rawPrice =
+      parseCurrencyBrl(offers?.price || listingBlock?.price) ||
+      (transactionType === "sale" ? tracking?.priceVenda : tracking?.priceAluguel);
     let price: number | undefined;
     let rentPrice: number | undefined;
 
@@ -186,22 +204,24 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
       rentPrice = rawPrice;
     } else if (transactionType === "sale_or_rent") {
       price = rawPrice;
-      rentPrice = parseCurrencyBrl(offers?.rentPrice);
+      rentPrice = parseCurrencyBrl(offers?.rentPrice) || tracking?.priceAluguel;
     } else {
       price = rawPrice;
     }
 
     // 6. Especificações
-    const bedrooms = extractInteger(
-      listingBlock?.numberOfBedrooms ??
-        listingBlock?.numberOfRooms ??
-        listingBlock?.bedrooms
-    );
-    const bathrooms = extractInteger(
-      listingBlock?.numberOfBathroomsTotal ??
-        listingBlock?.numberOfBathrooms ??
-        listingBlock?.bathrooms
-    );
+    const bedrooms =
+      extractInteger(
+        listingBlock?.numberOfBedrooms ??
+          listingBlock?.numberOfRooms ??
+          listingBlock?.bedrooms
+      ) ?? tracking?.bedrooms;
+    const bathrooms =
+      extractInteger(
+        listingBlock?.numberOfBathroomsTotal ??
+          listingBlock?.numberOfBathrooms ??
+          listingBlock?.bathrooms
+      ) ?? tracking?.bathrooms;
     const suites = extractInteger(listingBlock?.numberOfSuites);
     const parkingSpaces = extractInteger(
       listingBlock?.parkingSpaces ??
@@ -216,7 +236,7 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
           listingBlock?.floorSize ??
           listingBlock?.livingArea?.value ??
           listingBlock?.livingArea
-      ) || undefined;
+      ) || tracking?.area || undefined;
 
     const totalArea =
       parseCurrencyBrl(
@@ -228,13 +248,15 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
     // 8. Endereço
     let lat: number | undefined = geoBlock.latitude ? parseFloat(geoBlock.latitude) : undefined;
     let lng: number | undefined = geoBlock.longitude ? parseFloat(geoBlock.longitude) : undefined;
+    let isApproximate = false;
 
     if (!lat || !lng) {
-      const latMatch = html.match(/(?:\\?"latitude\\?"|\\?"lat\\?"):\s*(-?\d+\.\d+)/i);
-      const lngMatch = html.match(/(?:\\?"longitude\\?"|\\?"lng\\?"):\s*(-?\d+\.\d+)/i);
-      if (latMatch && lngMatch) {
-        const lVal = parseFloat(latMatch[1]);
-        const gVal = parseFloat(lngMatch[1]);
+      const nextCoordsMatch = html.match(
+        /(?<!broker(?:Address)?|agency|office|imobiliaria)[^\w]latitude\\*"?:\s*\\*"?(-?\d+\.\d+)\\*"?[\s\S]{1,60}?(?<!broker(?:Address)?|agency|office|imobiliaria)[^\w]longitude\\*"?:\s*\\*"?(-?\d+\.\d+)\\*"?/i
+      );
+      if (nextCoordsMatch) {
+        const lVal = parseFloat(nextCoordsMatch[1]);
+        const gVal = parseFloat(nextCoordsMatch[2]);
         if (lVal >= -35 && lVal <= 6 && gVal >= -75 && gVal <= -30) {
           lat = lVal;
           lng = gVal;
@@ -242,18 +264,37 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
       }
     }
 
+    const exactMatch = html.match(/\\*"?showPropertyExactLocation\\*"?:\s*(true|false)/i);
+    if (exactMatch && exactMatch[1] === "false") {
+      isApproximate = true;
+    }
+
     const street = addressBlock.streetAddress || undefined;
     const number = addressBlock.streetNumber || undefined;
-    const isExact = Boolean(street && number && number !== "0" && number !== "0000");
+    const isExact = !isApproximate && Boolean(street && number && number !== "0" && number !== "0000");
+
+    const fromUrl = reference.url ? extractAddressFromUrl(reference.url) : {};
+    const domLocationMatch = html.match(/<h[2345][^>]*>([^<>\n]+),\s*([^<>\n]+)\s*-\s*([A-Za-z]{2})<\/h[2345]>/i);
 
     const address: NormalizedAddress = {
       country: "Brasil",
-      state: addressBlock.addressRegion || undefined,
-      city: addressBlock.addressLocality || undefined,
+      state:
+        addressBlock.addressRegion ||
+        tracking?.state ||
+        (domLocationMatch ? domLocationMatch[3]?.trim().toUpperCase() : undefined) ||
+        fromUrl.state ||
+        "RS",
+      city:
+        addressBlock.addressLocality ||
+        tracking?.city ||
+        (domLocationMatch ? domLocationMatch[2]?.trim() : undefined) ||
+        fromUrl.city,
       neighborhood:
         addressBlock.addressSublocality ||
         addressBlock.neighborhood ||
-        undefined,
+        tracking?.neighborhood ||
+        (domLocationMatch ? domLocationMatch[1]?.trim() : undefined) ||
+        fromUrl.neighborhood,
       street,
       number,
       postalCode: addressBlock.postalCode || undefined,

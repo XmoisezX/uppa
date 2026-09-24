@@ -20,6 +20,8 @@ import {
   isListingDetailUrl,
   extractAddressFromUrl,
   extractFullPropertyDescription,
+  extractTrackingMetadata,
+  type WebsiteTrackingMetadata,
 } from "../utils/html-parser-utils";
 import { filterListingImages } from "../utils/media-filter";
 import { resolveWebsiteExternalId } from "../utils/external-id-resolver";
@@ -155,12 +157,14 @@ export class GenericWebsiteConnector implements WebsiteConnector {
 
     const html = await response.text();
     const meta = extractMetaTags(html);
+    const tracking = extractTrackingMetadata(html);
 
     // 1. Título
     const h1Match = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html);
     const cleanH1 = h1Match ? this.stripHtmlTags(h1Match[1]) : "";
     const title =
       cleanH1 ||
+      tracking?.title ||
       meta["og:title"] ||
       meta["page_title"] ||
       "Imóvel Anunciado";
@@ -178,25 +182,65 @@ export class GenericWebsiteConnector implements WebsiteConnector {
     const description = extractFullPropertyDescription(html, meta);
 
     // 3. Tipo de transação e Tipo do imóvel
-    const transactionType = inferTransactionType(`${title} ${description}`);
-    const propertyType = inferPropertyType(`${title} ${description}`);
+    let transactionType: "sale" | "rent" | "sale_or_rent";
+    if (tracking?.transaction) {
+      transactionType = tracking.transaction;
+    } else {
+      // Verifica badges de finalidade no HTML (ex: <span id="finalidade">Venda</span>)
+      const finalidadeMatch =
+        html.match(/<(?:span|div|p|li)[^>]*id=["']finalidade["'][^>]*>([\s\S]*?)<\/(?:span|div|p|li)>/i) ||
+        html.match(/<(?:span|div|p|li)[^>]*class=["'][^"']*finalidade[^"']*["'][^>]*>([\s\S]*?)<\/(?:span|div|p|li)>/i);
+      const finalidadeText = finalidadeMatch ? this.stripHtmlTags(finalidadeMatch[1]).toLowerCase() : "";
 
-    // 4. Preços (Regex para R$ ...)
-    const { price, rentPrice } = this.extractPricesFromHtml(html, title, transactionType);
+      if (finalidadeText.includes("venda")) {
+        transactionType = "sale";
+      } else if (finalidadeText.includes("loca") || finalidadeText.includes("aluguel")) {
+        transactionType = "rent";
+      } else {
+        transactionType = inferTransactionType(`${title} ${description} ${reference.url}`);
+      }
+    }
+
+    const propertyType = inferPropertyType(
+      `${tracking?.type || ""} ${title} ${description}`
+    );
+
+    // 4. Preços
+    let price: number | undefined;
+    let rentPrice: number | undefined;
+
+    if (tracking?.priceVenda && transactionType !== "rent") {
+      price = tracking.priceVenda;
+    }
+    if (tracking?.priceAluguel && transactionType !== "sale") {
+      rentPrice = tracking.priceAluguel;
+    }
+
+    if (!price && !rentPrice) {
+      const extracted = this.extractPricesFromHtml(html, title, transactionType);
+      price = extracted.price;
+      rentPrice = extracted.rentPrice;
+    }
 
     // 5. Especificações (Quartos, banheiros, vagas, área)
-    // Suporta tanto "4 quartos" quanto "Quartos: 4"
-    const bedrooms = this.extractSpecificationMetric(html, ["quarto", "dormit[oó]rio", "dorm"]);
+    const bedrooms =
+      tracking?.bedrooms ??
+      this.extractSpecificationMetric(html, ["quarto", "dormit[oó]rio", "dorm"]);
     const suites = this.extractSpecificationMetric(html, ["su[ií]te"]);
-    const bathrooms = this.extractSpecificationMetric(html, ["banheiro", "bwc"]);
+    const bathrooms =
+      tracking?.bathrooms ??
+      this.extractSpecificationMetric(html, ["banheiro", "bwc"]);
     const parkingSpaces = this.extractSpecificationMetric(html, ["vaga", "garagem"]);
-    const usableArea = this.extractAreaFromHtml(html);
+    const usableArea = tracking?.area ?? this.extractAreaFromHtml(html);
 
-    // 6. Endereço (Extração precisa da URL com fallback para o HTML)
-    const address = this.extractAddressFromHtml(html, meta, reference.url);
+    // 6. Endereço (Tracking > DOM > URL > fallback)
+    const address = this.extractAddressFromHtml(html, meta, reference.url, tracking);
 
-    // 7. Mídias
+    // 7. Mídias (Fotos reais do imóvel, excluindo logos e banners)
     const rawImageUrls = extractImageUrls(html, reference.url);
+    if (tracking?.image && !rawImageUrls.includes(tracking.image)) {
+      rawImageUrls.unshift(tracking.image);
+    }
     if (meta["og:image"]) rawImageUrls.push(meta["og:image"]);
     const images = filterListingImages(rawImageUrls, reference.url);
 
@@ -286,10 +330,27 @@ export class GenericWebsiteConnector implements WebsiteConnector {
     let rentPrice: number | undefined;
 
     const lower = `${title} ${transactionType || ""}`.toLowerCase();
-    const isExplicitRent = lower.includes("aluguel") || lower.includes("loca") || lower.includes("rent");
-    const isExplicitSale = lower.includes("venda") || lower.includes("compra") || lower.includes("sale");
+    const isExplicitRent = transactionType === "rent" || lower.includes("aluguel") || lower.includes("loca");
+    const isExplicitSale = transactionType === "sale" || lower.includes("venda") || lower.includes("compra");
 
-    // Busca valores monetários no formato brasileiro
+    // 1. Tenta encontrar preços com rótulos explícitos (ex: "Valor de venda", "Venda:", "Locação:")
+    const saleLabelMatch = html.match(/(?:valor\s+(?:de\s+)?venda|preço\s+(?:de\s+)?venda|venda)[\s:]*R\$\s*([\d.]+,\d{2}|\d+[\d.]*)/i);
+    const rentLabelMatch = html.match(/(?:valor\s+(?:de\s+)?(?:loca[cç][aã]o|aluguel)|aluguel|loca[cç][aã]o)[\s:]*R\$\s*([\d.]+,\d{2}|\d+[\d.]*)/i);
+
+    if (saleLabelMatch && transactionType !== "rent") {
+      price = parseCurrencyBrl(saleLabelMatch[1]);
+    }
+    if (rentLabelMatch && transactionType !== "sale") {
+      rentPrice = parseCurrencyBrl(rentLabelMatch[1]);
+    }
+
+    if (price || rentPrice) {
+      if (transactionType === "sale") rentPrice = undefined;
+      if (transactionType === "rent") price = undefined;
+      return { price, rentPrice };
+    }
+
+    // 2. Busca valores monetários no formato brasileiro
     const priceMatches = html.matchAll(/R\$\s*([\d.]+,\d{2}|\d+[\d.]*)/gi);
     for (const match of priceMatches) {
       const val = parseCurrencyBrl(match[1]);
@@ -309,6 +370,9 @@ export class GenericWebsiteConnector implements WebsiteConnector {
 
       if (price && rentPrice) break;
     }
+
+    if (transactionType === "sale") rentPrice = undefined;
+    if (transactionType === "rent") price = undefined;
 
     return { price, rentPrice };
   }
@@ -355,21 +419,31 @@ export class GenericWebsiteConnector implements WebsiteConnector {
   private extractAddressFromHtml(
     html: string,
     meta: Record<string, string>,
-    pageUrl?: string
+    pageUrl?: string,
+    tracking?: WebsiteTrackingMetadata | null
   ): NormalizedAddress {
     // 1. Extração de Coordenadas Geográficas (lat, lng / latitude, longitude)
     let latitude: number | undefined;
     let longitude: number | undefined;
+    let isApproximate = false;
 
-    const latMatch = html.match(/(?:\\?"latitude\\?"|\\?"lat\\?"):\s*(-?\d+\.\d+)/i);
-    const lngMatch = html.match(/(?:\\?"longitude\\?"|\\?"lng\\?"):\s*(-?\d+\.\d+)/i);
-    if (latMatch && lngMatch) {
-      const latVal = parseFloat(latMatch[1]);
-      const lngVal = parseFloat(lngMatch[1]);
+    // A. Procura coordenadas do imóvel no payload de renderização (ex: Loft Sites / Next.js)
+    // Ignorando estritamente coordenadas da imobiliária / corretores
+    const nextCoordsMatch = html.match(
+      /(?<!broker(?:Address)?|agency|office|imobiliaria)[^\w]latitude\\*"?:\s*\\*"?(-?\d+\.\d+)\\*"?[\s\S]{1,60}?(?<!broker(?:Address)?|agency|office|imobiliaria)[^\w]longitude\\*"?:\s*\\*"?(-?\d+\.\d+)\\*"?/i
+    );
+    if (nextCoordsMatch) {
+      const latVal = parseFloat(nextCoordsMatch[1]);
+      const lngVal = parseFloat(nextCoordsMatch[2]);
       if (latVal >= -35 && latVal <= 6 && lngVal >= -75 && lngVal <= -30) {
         latitude = latVal;
         longitude = lngVal;
       }
+    }
+
+    const exactMatch = html.match(/\\*"?showPropertyExactLocation\\*"?:\s*(true|false)/i);
+    if (exactMatch && exactMatch[1] === "false") {
+      isApproximate = true;
     }
 
     if (!latitude || !longitude) {
@@ -404,6 +478,9 @@ export class GenericWebsiteConnector implements WebsiteConnector {
     const cidadeMatch = html.match(/(?:\\?"end_cidade\\?"|\\?"cidade\\?"):\s*\\?"([^\\"]+)\\?"/i);
     const estadoMatch = html.match(/(?:\\?"end_estado\\?"|\\?"uf\\?"):\s*\\?"([a-zA-Z]{2})\\?"/i);
 
+    // Extração via DOM típico (ex: <h3 ...>Três Vendas, Pelotas - RS</h3>)
+    const domLocationMatch = html.match(/<h[2345][^>]*>([^<>\n]+),\s*([^<>\n]+)\s*-\s*([A-Za-z]{2})<\/h[2345]>/i);
+
     // Fallback via URL estruturada
     const fromUrl = pageUrl ? extractAddressFromUrl(pageUrl) : {};
 
@@ -413,20 +490,32 @@ export class GenericWebsiteConnector implements WebsiteConnector {
     );
 
     const neighborhood =
-      bairroMatch ? bairroMatch[1]?.trim() : (fromUrl.neighborhood || (locationMatch ? locationMatch[1]?.trim() : undefined));
+      tracking?.neighborhood ||
+      (bairroMatch ? bairroMatch[1]?.trim() : undefined) ||
+      (domLocationMatch ? domLocationMatch[1]?.trim() : undefined) ||
+      fromUrl.neighborhood ||
+      (locationMatch ? locationMatch[1]?.trim() : undefined);
 
     let city =
-      cidadeMatch ? cidadeMatch[1]?.trim() : (fromUrl.city || (locationMatch && locationMatch[2] ? locationMatch[2]?.trim() : undefined));
+      tracking?.city ||
+      (cidadeMatch ? cidadeMatch[1]?.trim() : undefined) ||
+      (domLocationMatch ? domLocationMatch[2]?.trim() : undefined) ||
+      fromUrl.city ||
+      (locationMatch && locationMatch[2] ? locationMatch[2]?.trim() : undefined);
 
     if (city && /^(?:avenida|rua|travessa|alameda)/i.test(city)) {
       city = fromUrl.city || "Pelotas";
     }
 
     const state =
-      estadoMatch ? estadoMatch[1]?.trim().toUpperCase() : (fromUrl.state || (locationMatch && locationMatch[3] ? locationMatch[3]?.trim().toUpperCase() : "RS"));
+      tracking?.state ||
+      (estadoMatch ? estadoMatch[1]?.trim().toUpperCase() : undefined) ||
+      (domLocationMatch ? domLocationMatch[3]?.trim().toUpperCase() : undefined) ||
+      fromUrl.state ||
+      (locationMatch && locationMatch[3] ? locationMatch[3]?.trim().toUpperCase() : "RS");
 
     // Determina se a localização é pontual (exata) ou apenas uma região / bairro
-    const isExact = Boolean(street && number && number !== "0" && number !== "0000");
+    const isExact = !isApproximate && Boolean(street && number && number !== "0" && number !== "0000");
 
     return {
       country: "Brasil",
