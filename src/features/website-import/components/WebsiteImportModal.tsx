@@ -160,14 +160,16 @@ export function WebsiteImportModal({
             updated: data.jobProgress.updated,
             failed: data.jobProgress.failed,
             currentProperty: data.jobProgress.currentProperty || prev.currentProperty,
-            logs: data.jobProgress.currentProperty
-              ? [
-                  data.jobProgress.currentProperty,
-                  ...prev.logs
-                    .filter((l) => l !== data.jobProgress.currentProperty)
-                    .slice(0, 8),
-                ]
-              : prev.logs,
+            logs:
+              data.jobProgress.currentProperty &&
+              prev.logs[0] !== data.jobProgress.currentProperty
+                ? [
+                    data.jobProgress.currentProperty,
+                    ...prev.logs
+                      .filter((l) => l !== data.jobProgress.currentProperty)
+                      .slice(0, 8),
+                  ]
+                : prev.logs,
           }));
         } else if (data.latestRun) {
           setImportProgress((prev) => ({
@@ -412,9 +414,16 @@ export function WebsiteImportModal({
               }
             } else if (eventType === "progress") {
               setImportProgress((prev) => {
-                const newLogs = data.currentProperty
-                  ? [data.currentProperty, ...prev.logs.slice(0, 9)]
-                  : prev.logs;
+                const newLogs =
+                  data.currentProperty &&
+                  prev.logs[0] !== data.currentProperty
+                    ? [
+                        data.currentProperty,
+                        ...prev.logs
+                          .filter((l) => l !== data.currentProperty)
+                          .slice(0, 8),
+                      ]
+                    : prev.logs;
 
                 return {
                   current: data.current ?? prev.current,

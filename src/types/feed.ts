@@ -107,6 +107,7 @@ export interface NormalizedProperty {
   features: string[];
 
   sourceUpdatedAt?: Date | string;
+  isUnavailable?: boolean;
 }
 
 export interface FeedWithLatestRun extends Feed {

@@ -269,6 +269,21 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
       listingBlock?.datePosted ||
       new Date().toISOString();
 
+    // 11. Detecção de Imóvel Indisponível / Desativado / Vendido
+    const lowerTitle = title.toLowerCase();
+    const lowerHtml = html.toLowerCase();
+    const isUnavailable =
+      lowerTitle.includes("indisponível") ||
+      lowerTitle.includes("indisponivel") ||
+      lowerTitle.includes("não está mais disponível") ||
+      lowerTitle.includes("nao esta mais disponivel") ||
+      lowerTitle.includes("não encontrado") ||
+      lowerTitle.includes("desativado") ||
+      lowerTitle.includes("imóvel indisponível") ||
+      lowerTitle.includes("imovel indisponivel") ||
+      lowerHtml.includes("este imóvel não está mais disponível") ||
+      lowerHtml.includes("este imovel nao esta mais disponivel");
+
     return {
       externalId,
       code: explicitCode || externalId,
@@ -289,6 +304,7 @@ export class UniversalStructuredDataConnector implements WebsiteConnector {
       images,
       features,
       sourceUpdatedAt,
+      isUnavailable,
     };
   }
 

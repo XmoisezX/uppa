@@ -15,6 +15,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import type { NormalizedProperty } from "@/types/feed";
+import type { PropertyStatus } from "@/types/property";
 import type { CrawlResult, CrawlRunStatus } from "../types";
 import { computePropertyContentHash } from "../utils/content-hash";
 
@@ -296,18 +297,20 @@ export class WebsitePropertyImporter {
       }
     }
 
+    const targetStatus: PropertyStatus = prop.isUnavailable ? "inactive" : "active";
+
     if (existing) {
       const propertyId = existing.id;
 
       // HASH CHECK: Se o content hash for idêntico, poupa writes pesados
       if (existing.content_hash === contentHash) {
-        // Apenas marca que o imóvel foi visto nesta execução e limpa marcação de ausência
+        // Apenas marca que o imóvel foi visto nesta execução, limpa marcação de ausência e atualiza status
         await this.supabase
           .from("properties")
           .update({
             last_seen_at: nowIso,
             missing_from_feed_at: null,
-            status: existing.status === "inactive" ? "active" : existing.status,
+            status: targetStatus,
           })
           .eq("id", propertyId);
 
@@ -368,6 +371,7 @@ export class WebsitePropertyImporter {
           description: prop.description || null,
           transaction_type: prop.transactionType,
           property_type: prop.propertyType,
+          status: targetStatus,
           price: prop.price || null,
           rent_price: prop.rentPrice || null,
           condominium_fee: prop.condominiumFee || null,
@@ -470,7 +474,7 @@ export class WebsitePropertyImporter {
           description: prop.description || null,
           transaction_type: prop.transactionType,
           property_type: prop.propertyType,
-          status: "active",
+          status: targetStatus,
           price: prop.price || null,
           rent_price: prop.rentPrice || null,
           condominium_fee: prop.condominiumFee || null,
