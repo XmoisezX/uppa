@@ -167,10 +167,12 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
       query = query.eq("city_id", cleanCity);
     } else {
       const slugCity = cleanCity.toLowerCase();
+      // Tenta por slug e, caso não localize, por nome
       const { data: cityRow } = await supabase
         .from("cities")
         .select("id")
-        .eq("slug", slugCity)
+        .or(`slug.eq.${slugCity},name.ilike.${cleanCity}`)
+        .limit(1)
         .maybeSingle();
 
       if (cityRow?.id) {
@@ -187,7 +189,10 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
       query = query.eq("neighborhood_id", cleanNeigh);
     } else {
       const slugNeigh = cleanNeigh.toLowerCase();
-      let nQuery = supabase.from("neighborhoods").select("id").eq("slug", slugNeigh);
+      let nQuery = supabase
+        .from("neighborhoods")
+        .select("id")
+        .or(`slug.eq.${slugNeigh},name.ilike.${cleanNeigh}`);
       if (resolvedCityId) {
         nQuery = nQuery.eq("city_id", resolvedCityId);
       }
@@ -271,6 +276,9 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
   const { data, count, error } = await query.range(offset, offset + limit - 1);
 
   if (error || !data) {
+    if (error) {
+      console.error("[searchProperties] Erro na consulta do Supabase:", error);
+    }
     return {
       properties: [],
       total: 0,

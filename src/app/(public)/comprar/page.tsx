@@ -6,6 +6,9 @@ import { BannerSlot } from "@/features/banners/components/BannerSlot";
 import type { SearchFilters } from "@/features/search/types";
 import type { PropertyType } from "@/types/property";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface ComprarPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
@@ -121,7 +124,10 @@ export default async function ComprarPage({ searchParams }: ComprarPageProps) {
       <BannerSlot position="search_top" />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <SearchLayoutView result={result} />
+        <SearchLayoutView
+          key={`comprar-${filters.city || ""}-${filters.neighborhood || ""}-${filters.propertyType || ""}-${filters.page || 1}-${filters.priceMin || ""}-${filters.priceMax || ""}-${filters.orderBy || ""}`}
+          result={result}
+        />
       </div>
     </main>
   );

@@ -232,35 +232,16 @@ export function LocationAutocomplete({
 
   // Seleciona Cidade
   const handleSelectCity = (city: AutocompleteCity) => {
-    const isCurrentlySelected =
-      (initialCity === city.slug || initialCity === city.id || cityName === city.name) &&
-      !initialNeighborhood;
-
-    if (isCurrentlySelected) {
-      // Se já estava selecionada, desmarca
-      applyLocation(undefined, undefined, "");
-    } else {
-      applyLocation(city.slug, undefined, city.name);
-    }
+    applyLocation(city.slug, undefined, city.name);
   };
 
   // Seleciona Bairro
   const handleSelectNeighborhood = (neighborhood: AutocompleteNeighborhood) => {
-    const isCurrentlySelected =
-      (initialNeighborhood === neighborhood.slug ||
-        initialNeighborhood === neighborhood.id ||
-        neighborhoodName === neighborhood.name);
-
-    if (isCurrentlySelected) {
-      // Mantém apenas a cidade
-      applyLocation(neighborhood.citySlug, undefined, neighborhood.cityName);
-    } else {
-      applyLocation(
-        neighborhood.citySlug,
-        neighborhood.slug,
-        `${neighborhood.name}, ${neighborhood.cityName}`
-      );
-    }
+    applyLocation(
+      neighborhood.citySlug,
+      neighborhood.slug,
+      `${neighborhood.name}, ${neighborhood.cityName}`
+    );
   };
 
   // Limpa localização

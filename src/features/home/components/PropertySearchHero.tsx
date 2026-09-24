@@ -41,7 +41,8 @@ export function PropertySearchHero({
     if (selectedCitySlug) {
       params.set("city", selectedCitySlug);
     } else if (selectedCityName.trim()) {
-      params.set("city", selectedCityName.trim().toLowerCase());
+      const cleanCity = selectedCityName.replace(/\s*\([A-Za-z]{2}\)\s*$/i, "").trim().toLowerCase();
+      if (cleanCity) params.set("city", cleanCity);
     }
 
     if (selectedNeighborhoodSlug) {

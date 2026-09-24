@@ -69,6 +69,7 @@ export function PopularCities({ cities }: PopularCitiesProps) {
                 <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2 text-xs">
                   <Link
                     href={`/comprar?city=${cityParam}`}
+                    prefetch={false}
                     className="flex items-center justify-between font-semibold text-slate-700 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 py-1 transition-colors"
                   >
                     <span className="flex items-center gap-1.5">
@@ -80,6 +81,7 @@ export function PopularCities({ cities }: PopularCitiesProps) {
 
                   <Link
                     href={`/alugar?city=${cityParam}`}
+                    prefetch={false}
                     className="flex items-center justify-between font-semibold text-slate-700 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 py-1 transition-colors"
                   >
                     <span className="flex items-center gap-1.5">

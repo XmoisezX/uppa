@@ -21,17 +21,21 @@ export function SearchLayoutView({ result }: SearchLayoutViewProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [currentResult, setCurrentResult] = useState<SearchResult>(result);
+  // Guarda exclusivamente resultados gerados dinamicamente via mapa interativo ("buscar nesta área")
+  const [spatialResult, setSpatialResult] = useState<SearchResult | null>(null);
   const [hoveredPropertyId, setHoveredPropertyId] = useState<string | null>(null);
   const [isMapMode, setIsMapMode] = useState<boolean>(false);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [isSearchingArea, setIsSearchingArea] = useState<boolean>(false);
 
-  // Sincroniza estado quando os resultados do Server Component mudam
+  // Limpa busca espacial sempre que os resultados do Server Component mudarem
   useEffect(() => {
-    setCurrentResult(result);
+    setSpatialResult(null);
   }, [result]);
+
+  // Se houver busca manual no mapa, utiliza spatialResult; caso contrário, consome result diretamente do servidor
+  const currentResult = spatialResult ?? result;
 
   // Se houver parâmetro bbox na URL inicial, ativa modo mapa
   useEffect(() => {
@@ -103,17 +107,17 @@ export function SearchLayoutView({ result }: SearchLayoutViewProps) {
       const response = await fetch(`/api/search/map?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
-        setCurrentResult((prev) => ({
-          ...prev,
+        setSpatialResult({
+          ...currentResult,
           properties: data.properties || [],
           total: data.total ?? data.properties?.length ?? 0,
           page: 1,
-          totalPages: Math.ceil((data.total || data.properties?.length || 1) / (prev.limit || 12)),
+          totalPages: Math.ceil((data.total || data.properties?.length || 1) / (result.limit || 12)),
           filters: {
-            ...prev.filters,
+            ...currentResult.filters,
             bbox: viewport,
           },
-        }));
+        });
       }
     } catch (err) {
       console.error("Erro ao buscar no viewport do mapa:", err);
