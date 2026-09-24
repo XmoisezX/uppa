@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { X, SlidersHorizontal, RotateCcw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LocationAutocomplete } from "./LocationAutocomplete";
 import type { SearchFilters } from "../types";
 import type { PropertyType } from "@/types/property";
 
@@ -105,6 +106,25 @@ export function SearchFilterDrawer({
 
         {/* CORPO DE FILTROS COM SCROLL */}
         <div className="flex-1 overflow-y-auto p-5 space-y-6 text-xs">
+          {/* LOCALIZAÇÃO (AUTOCOMPLETE CIDADES E BAIRROS) */}
+          <div>
+            <label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">
+              Localização
+            </label>
+            <LocationAutocomplete
+              initialCity={localFilters.city}
+              initialNeighborhood={localFilters.neighborhood}
+              placeholder="Digite cidade ou bairro..."
+              onLocationChange={({ city, neighborhood }) => {
+                setLocalFilters((prev) => ({
+                  ...prev,
+                  city: city || undefined,
+                  neighborhood: neighborhood || undefined,
+                }));
+              }}
+            />
+          </div>
+
           {/* 1. TIPO DE IMÓVEL */}
           <div>
             <label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">

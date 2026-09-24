@@ -2,9 +2,10 @@
 
 import React, { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Search, MapPin, SlidersHorizontal, Map, List, X } from "lucide-react";
+import { SlidersHorizontal, Map, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { LocationAutocomplete } from "./LocationAutocomplete";
 import type { SearchFilters } from "../types";
 import type { PropertyType } from "@/types/property";
 
@@ -53,9 +54,6 @@ export function SearchHeader({
   const searchParams = useSearchParams();
 
   const isRent = filters.transactionType === "rent";
-  const [locationInput, setLocationInput] = useState(
-    neighborhoodName || cityName || filters.city || filters.state || ""
-  );
 
   // Constrói o título dinâmico com contagem real (Seção 7)
   const buildDynamicTitle = () => {
@@ -98,42 +96,6 @@ export function SearchHeader({
     router.push(query ? `${targetRoute}?${query}` : targetRoute);
   };
 
-  // Submete busca de localização (Seção 3)
-  const handleLocationSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanLocation = locationInput.trim();
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", "1");
-
-    if (!cleanLocation) {
-      params.delete("city");
-      params.delete("state");
-      params.delete("neighborhood");
-    } else {
-      // Se for sigla de 2 letras, trata como estado
-      if (cleanLocation.length === 2 && /^[a-zA-Z]+$/.test(cleanLocation)) {
-        params.set("state", cleanLocation.toUpperCase());
-        params.delete("city");
-        params.delete("neighborhood");
-      } else {
-        params.set("city", cleanLocation);
-        params.delete("neighborhood");
-      }
-    }
-
-    router.push(`${pathname}?${params.toString()}`);
-  };
-
-  const handleClearLocation = () => {
-    setLocationInput("");
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", "1");
-    params.delete("city");
-    params.delete("state");
-    params.delete("neighborhood");
-    router.push(`${pathname}?${params.toString()}`);
-  };
-
   return (
     <div className="space-y-4">
       {/* BARRA SUPERIOR: ABAS COMPRAR/ALUGAR + BUSCA POR LOCALIZAÇÃO */}
@@ -164,33 +126,16 @@ export function SearchHeader({
           </button>
         </div>
 
-        {/* BUSCA POR LOCALIZAÇÃO */}
-        <form onSubmit={handleLocationSubmit} className="flex-1 relative flex items-center">
-          <MapPin className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            value={locationInput}
-            onChange={(e) => setLocationInput(e.target.value)}
-            placeholder="Cidade, bairro ou estado..."
-            className="w-full h-10 pl-9.5 pr-20 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+        {/* BUSCA POR LOCALIZAÇÃO COM AUTOCOMPLETE */}
+        <div className="flex-1 min-w-[240px]">
+          <LocationAutocomplete
+            initialCity={filters.city}
+            initialNeighborhood={filters.neighborhood}
+            cityName={cityName}
+            neighborhoodName={neighborhoodName}
+            placeholder="Digite cidade ou bairro..."
           />
-          {locationInput && (
-            <button
-              type="button"
-              onClick={handleClearLocation}
-              className="absolute right-12 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
-              title="Limpar localização"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-          <button
-            type="submit"
-            className="absolute right-1.5 h-7 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition-colors cursor-pointer"
-          >
-            Buscar
-          </button>
-        </form>
+        </div>
 
         {/* CONTROLES MOBILE / TABLET / MAPA */}
         <div className="flex items-center gap-2 shrink-0">
