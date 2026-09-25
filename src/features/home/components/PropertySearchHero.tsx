@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Search,
   Building,
   Building2,
   Home,
@@ -23,7 +22,7 @@ import type { ActiveCitySummary } from "../services";
 const PROPERTY_TYPE_OPTIONS = [
   {
     value: "",
-    label: "Todos os tipos",
+    label: "Todos os imóveis",
     description: "Casas, apartamentos, terrenos e mais",
     icon: Building,
   },
@@ -154,15 +153,9 @@ export function PropertySearchHero({
   };
 
   return (
-    <section
-      className={`relative border-b border-slate-200/80 pt-10 pb-12 sm:pt-16 sm:pb-20 dark:border-slate-800 overflow-hidden ${
-        backgroundImage
-          ? "bg-slate-950"
-          : "bg-gradient-to-b from-slate-50 via-white to-white dark:from-slate-950 dark:via-slate-950 dark:to-slate-950"
-      }`}
-    >
-      {/* Imagem de Fundo (Atrás do Filtro) Sem Blur */}
-      {backgroundImage && (
+    <section className="relative w-full min-h-[580px] sm:min-h-[620px] lg:min-h-[660px] flex items-center overflow-hidden border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950">
+      {/* 1. IMAGEM DE FUNDO (Atrás do Filtro, Natural e Nítida sem blur) */}
+      {backgroundImage ? (
         <div className="absolute inset-0 z-0">
           <img
             src={backgroundImage}
@@ -170,90 +163,90 @@ export function PropertySearchHero({
             className="w-full h-full object-cover object-center"
           />
         </div>
+      ) : (
+        <div className="absolute inset-0 z-0 bg-gradient-to-br from-slate-100 via-white to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950" />
       )}
 
-      <div className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
-        {/* Headline Protagonista */}
-        <h1
-          className={`text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl ${
-            backgroundImage
-              ? "text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)]"
-              : "text-slate-950 dark:text-white"
-          }`}
-        >
-          {headline || "Encontre o imóvel ideal para comprar ou alugar"}
-        </h1>
-        <p
-          className={`mt-3 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed ${
-            backgroundImage
-              ? "text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)] font-medium"
-              : "text-slate-600 dark:text-slate-400"
-          }`}
-        >
-          {subheadline ||
-            "Milhares de casas, apartamentos, terrenos e salas comerciais com informações 100% transparentes e contato direto com imobiliárias parceiras."}
-        </p>
+      {/* 2. CONTEÚDO SOBRE A IMAGEM: Card Flutuante Estilo Zap com Sombra Suave Realista */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+        <div className="w-full max-w-[480px]">
+          {/* Card Flutuante com Sombra Suave e Profunda (Parece estar na frente da imagem) */}
+          <div className="rounded-3xl bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.24),0_12px_28px_-8px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.05] dark:ring-white/[0.08] transition-all">
+            {/* Título Principal Integrado Dentro do Card */}
+            <h1 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white leading-tight mb-5 tracking-tight">
+              {headline || "Encontre o imóvel ideal para você."}{" "}
+              <span className="font-normal text-slate-600 dark:text-slate-300">
+                {subheadline || "Só na UPPA você encontra as melhores opções."}
+              </span>
+            </h1>
 
-        {/* Card de Busca Principal */}
-        <div className="mt-8 mx-auto max-w-4xl text-left">
-          {/* Abas de Operação (Estilo Pills da Página de Compra) */}
-          <div
-            className={`inline-flex rounded-xl p-1 border mb-2 ${
-              backgroundImage
-                ? "bg-slate-900/80 backdrop-blur-md border-white/20"
-                : "bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
-            }`}
-          >
-            <button
-              type="button"
-              onClick={() => setActiveTab("comprar")}
-              className={`rounded-lg px-5 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                activeTab === "comprar"
-                  ? "bg-white text-slate-950 shadow-xs dark:bg-slate-900 dark:text-white"
-                  : backgroundImage
-                  ? "text-slate-300 hover:text-white"
-                  : "text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
-              }`}
-            >
-              Comprar
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("alugar")}
-              className={`rounded-lg px-5 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                activeTab === "alugar"
-                  ? "bg-white text-slate-950 shadow-xs dark:bg-slate-900 dark:text-white"
-                  : backgroundImage
-                  ? "text-slate-300 hover:text-white"
-                  : "text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
-              }`}
-            >
-              Alugar
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("lancamentos")}
-              className={`rounded-lg px-5 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                activeTab === "lancamentos"
-                  ? "bg-white text-slate-950 shadow-xs dark:bg-slate-900 dark:text-white"
-                  : backgroundImage
-                  ? "text-slate-300 hover:text-white"
-                  : "text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
-              }`}
-            >
-              Lançamentos
-            </button>
-          </div>
+            {/* Abas Horizontais com Indicador Inferior (Estilo Zap) */}
+            <div className="flex items-center gap-6 border-b border-slate-100 dark:border-slate-800 mb-6">
+              <button
+                type="button"
+                onClick={() => setActiveTab("comprar")}
+                className={`pb-3 text-sm sm:text-base font-bold transition-all relative cursor-pointer ${
+                  activeTab === "comprar"
+                    ? "text-indigo-600 dark:text-indigo-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-indigo-600 dark:after:bg-indigo-400"
+                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                }`}
+              >
+                Comprar
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("alugar")}
+                className={`pb-3 text-sm sm:text-base font-bold transition-all relative cursor-pointer ${
+                  activeTab === "alugar"
+                    ? "text-indigo-600 dark:text-indigo-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-indigo-600 dark:after:bg-indigo-400"
+                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                }`}
+              >
+                Alugar
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("lancamentos")}
+                className={`pb-3 text-sm sm:text-base font-bold transition-all relative cursor-pointer ${
+                  activeTab === "lancamentos"
+                    ? "text-indigo-600 dark:text-indigo-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-indigo-600 dark:after:bg-indigo-400"
+                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                }`}
+              >
+                Imóvel novo
+              </button>
+            </div>
 
-          {/* Container do Formulário de Busca */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-5 shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-            <form
-              onSubmit={handleSearch}
-              className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center"
-            >
-              {/* Seletor de Tipo de Imóvel com Menu Customizado */}
-              <div ref={typeDropdownRef} className="sm:col-span-4 relative">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1 px-1">
+            {/* Formulário Vertical Limpo */}
+            <form onSubmit={handleSearch} className="space-y-4">
+              {/* Campo 1: Onde deseja morar? */}
+              <div>
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 px-0.5">
+                  Onde deseja morar?
+                </label>
+                <LocationAutocomplete
+                  placeholder="Busque uma localização"
+                  suggestedCities={suggestedCities}
+                  cityName={selectedCityName}
+                  initialCity={selectedCitySlug}
+                  onLocationChange={(loc) => {
+                    setSelectedCitySlug(loc.city || "");
+                    setSelectedCityName(loc.displayText || loc.city || "");
+                    setSelectedNeighborhoodSlug(loc.neighborhood || "");
+                  }}
+                  onInputChange={(val) => {
+                    setSelectedCityName(val);
+                    if (!val) {
+                      setSelectedCitySlug("");
+                      setSelectedNeighborhoodSlug("");
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Campo 2: Tipo de imóvel */}
+              <div ref={typeDropdownRef} className="relative">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 px-0.5">
                   Tipo de imóvel
                 </label>
                 <div
@@ -277,7 +270,7 @@ export function PropertySearchHero({
                   />
                 </div>
 
-                {/* DROPDOWN MENU COM CATEGORIAS (Estilo idêntico ao LocationAutocomplete) */}
+                {/* Dropdown Menu com Categorias */}
                 {isTypeOpen && (
                   <div className="absolute top-full left-0 mt-1.5 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in-50 zoom-in-95 duration-150">
                     <div className="py-2">
@@ -308,7 +301,6 @@ export function PropertySearchHero({
                               </div>
                             </div>
 
-                            {/* CHECKBOX */}
                             <div
                               className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
                                 checked
@@ -326,37 +318,13 @@ export function PropertySearchHero({
                 )}
               </div>
 
-              {/* Input de Localização com Autocomplete idêntico ao da Página de Compra */}
-              <div className="sm:col-span-5 relative">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1 px-1">
-                  Onde você procura?
-                </label>
-                <LocationAutocomplete
-                  placeholder="Digite cidade, bairro ou estado..."
-                  suggestedCities={suggestedCities}
-                  cityName={selectedCityName}
-                  initialCity={selectedCitySlug}
-                  onLocationChange={(loc) => {
-                    setSelectedCitySlug(loc.city || "");
-                    setSelectedCityName(loc.displayText || loc.city || "");
-                    setSelectedNeighborhoodSlug(loc.neighborhood || "");
-                  }}
-                  onInputChange={(val) => {
-                    setSelectedCityName(val);
-                    if (!val) {
-                      setSelectedCitySlug("");
-                      setSelectedNeighborhoodSlug("");
-                    }
-                  }}
-                />
-              </div>
-
-              {/* Botão de Busca Interativo */}
-              <div className="sm:col-span-3 sm:self-end">
+              {/* Botão Buscar (Estilo Zap Pill Roxo/Índigo com Efeito Interativo) */}
+              <div className="pt-2">
                 <InteractiveHoverButton
                   type="submit"
-                  text="Buscar Imóveis"
-                  className="w-full h-[46px] min-h-[46px] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-bold text-sm shadow-sm hover:border-indigo-600 dark:hover:border-indigo-500 transition-all cursor-pointer flex items-center justify-center"
+                  text="Buscar"
+                  variant="solid"
+                  className="w-full h-12 min-h-[48px] text-base cursor-pointer"
                 />
               </div>
             </form>
@@ -366,4 +334,3 @@ export function PropertySearchHero({
     </section>
   );
 }
-
