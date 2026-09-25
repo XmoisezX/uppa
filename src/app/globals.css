@@ -91,3 +91,83 @@ body {
     gap: 16px;
   }
 }
+
+/* ===================================================
+   Balões Imobiliários Flutuantes (Hero UPPA)
+   Animações CSS suaves, aceleração por GPU e acessibilidade
+   =================================================== */
+@keyframes bubbleFloat1 {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-6px, -14px, 0);
+  }
+  100% {
+    transform: translate3d(6px, -6px, 0);
+  }
+}
+
+@keyframes bubbleFloat2 {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(8px, 12px, 0);
+  }
+  100% {
+    transform: translate3d(-5px, -10px, 0);
+  }
+}
+
+@keyframes bubbleFloat3 {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-8px, 10px, 0);
+  }
+  100% {
+    transform: translate3d(5px, -12px, 0);
+  }
+}
+
+@keyframes bubbleFloat4 {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(6px, -12px, 0);
+  }
+  100% {
+    transform: translate3d(-6px, 8px, 0);
+  }
+}
+
+.animate-bubble-1 {
+  animation: bubbleFloat1 8.5s ease-in-out infinite alternate;
+}
+.animate-bubble-2 {
+  animation: bubbleFloat2 11s ease-in-out infinite alternate;
+}
+.animate-bubble-3 {
+  animation: bubbleFloat3 9.5s ease-in-out infinite alternate;
+}
+.animate-bubble-4 {
+  animation: bubbleFloat4 12s ease-in-out infinite alternate;
+}
+
+/* Pausa no hover para permitir leitura confortável das informações */
+.bubble-float-wrapper:hover {
+  animation-play-state: paused !important;
+}
+
+/* Respeito estrito às preferências de acessibilidade do usuário */
+@media (prefers-reduced-motion: reduce) {
+  .animate-bubble-1,
+  .animate-bubble-2,
+  .animate-bubble-3,
+  .animate-bubble-4 {
+    animation: none !important;
+  }
+}

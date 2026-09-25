@@ -10,3 +10,6 @@ export * from "./HomeCityGuidesSection";
 export * from "./HomeToolsSection";
 export * from "./AgencyCTA";
 export * from "./PublicFAQ";
+export * from "./FloatingPropertyPreview";
+export * from "./FloatingPropertyBubble";
+export * from "./FloatingPropertyBubbles";

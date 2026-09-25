@@ -246,3 +246,99 @@ export const getRecentActiveProperties = unstable_cache(
   { revalidate: 60, tags: ["properties"] }
 );
 
+export interface HeroBubbleProperty {
+  id: string;
+  slug: string;
+  title: string;
+  propertyType: string;
+  transactionType: string;
+  price: number | null;
+  rentPrice: number | null;
+  cityName: string | null;
+  neighborhoodName: string | null;
+  imageUrl: string;
+}
+
+/**
+ * Retorna uma seleção diversa de imóveis ativos com fotos reais para os balões flutuantes do Hero.
+ * Prioriza diversidade de tipos (casa, apartamento, condomínio, etc.) e fotos reais.
+ */
+async function fetchHeroBubbleProperties(limit = 10): Promise<HeroBubbleProperty[]> {
+  try {
+    const supabase = createPublicServerClient();
+
+    const { data, error } = await supabase
+      .from("properties")
+      .select(`
+        id,
+        slug,
+        title,
+        property_type,
+        transaction_type,
+        price,
+        rent_price,
+        city:cities!city_id (name),
+        neighborhood:neighborhoods!neighborhood_id (name),
+        media:property_media (id, url, is_cover, position)
+      `)
+      .eq("status", "active")
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .limit(60);
+
+    if (error || !data) return [];
+
+    const valid = (data as any[]).filter(
+      (p) => Array.isArray(p.media) && p.media.length > 0 && Boolean(p.media[0]?.url)
+    );
+
+    const byType = new Map<string, any[]>();
+    for (const item of valid) {
+      const type = item.property_type || "other";
+      if (!byType.has(type)) byType.set(type, []);
+      byType.get(type)!.push(item);
+    }
+
+    const selected: any[] = [];
+    const types = Array.from(byType.keys());
+    let index = 0;
+    while (selected.length < limit && selected.length < valid.length) {
+      let addedInRound = false;
+      for (const t of types) {
+        const list = byType.get(t);
+        if (list && list[index]) {
+          selected.push(list[index]);
+          addedInRound = true;
+          if (selected.length >= limit) break;
+        }
+      }
+      if (!addedInRound) break;
+      index++;
+    }
+
+    return selected.map((p) => {
+      const cover = p.media.find((m: any) => m.is_cover)?.url || p.media[0]?.url;
+      return {
+        id: p.id,
+        slug: p.slug,
+        title: p.title,
+        propertyType: p.property_type,
+        transactionType: p.transaction_type,
+        price: p.price,
+        rentPrice: p.rent_price,
+        cityName: p.city?.name || null,
+        neighborhoodName: p.neighborhood?.name || null,
+        imageUrl: cover,
+      };
+    });
+  } catch (err) {
+    console.error("Erro ao carregar imóveis para os balões do Hero:", err);
+    return [];
+  }
+}
+
+export const getHeroBubbleProperties = unstable_cache(
+  fetchHeroBubbleProperties,
+  ["hero-bubble-properties"],
+  { revalidate: 120, tags: ["properties"] }
+);
+

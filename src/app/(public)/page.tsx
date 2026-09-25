@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import {
   getActiveCitiesWithCounts,
   getRecentActiveProperties,
+  getHeroBubbleProperties,
 } from "@/features/home/services";
 import { getSiteSettings } from "@/features/admin/services/site";
 import { BannerSlot } from "@/features/banners/components/BannerSlot";
@@ -31,15 +32,21 @@ export const metadata: Metadata = {
 // Reduz o tempo de resposta da página inicial para milissegundos
 export const revalidate = 60;
 
-export default async function HomePage() {
-  // Carrega dados 100% reais do banco de dados em paralelo
-  const [activeCities, recentProperties, siteSettings] = await Promise.all([
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ hero?: string }>;
+}) {
+  const resolvedParams = searchParams ? await searchParams : {};
+  const [activeCities, recentProperties, siteSettings, bubbleProperties] = await Promise.all([
     getActiveCitiesWithCounts(),
     getRecentActiveProperties(6),
     getSiteSettings(),
+    getHeroBubbleProperties(10),
   ]);
 
   const heroBg = siteSettings?.hero_background_color || '#FAF7F5';
+  const initialVariant = resolvedParams.hero === 'classic' ? 'classic' : 'bubbles';
 
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-slate-950">
@@ -59,6 +66,8 @@ export default async function HomePage() {
         backgroundColor={heroBg}
         headline={siteSettings?.hero_headline}
         subheadline={siteSettings?.hero_subheadline}
+        bubbleProperties={bubbleProperties}
+        initialVariant={initialVariant}
       />
 
       {/* 2. BANNER PUBLICITÁRIO — HOME HERO (colapsa se não houver banner ativo) */}
