@@ -373,14 +373,14 @@ export function PropertySearchHero({
             </div>
           </div>
 
-          {/* Coluna da Direita: Imagem ao Lado do Filtro (Estilo Zap) */}
+          {/* Coluna da Direita: Imagem ao Lado do Filtro (Apenas delimitação, sem marcação de fundo ou borda) */}
           {imageLayout === 'side' && backgroundImage && (
             <div className="w-full lg:flex-1 hidden lg:flex items-center justify-center">
-              <div className="relative w-full max-w-[560px] h-[460px] rounded-[36px] overflow-hidden shadow-2xl shadow-black/10 ring-1 ring-black/5 group">
+              <div className="relative w-full max-w-[560px] h-[480px] flex items-center justify-center">
                 <img
                   src={backgroundImage}
                   alt="Portal Imobiliário UPPA"
-                  className={`w-full h-full ${imageFit === 'contain' ? 'object-contain bg-white/40' : 'object-cover'} object-center group-hover:scale-102 transition-transform duration-500`}
+                  className={`max-w-full max-h-full ${imageFit === 'cover' ? 'w-full h-full object-cover' : 'object-contain'} object-center select-none`}
                 />
               </div>
             </div>
