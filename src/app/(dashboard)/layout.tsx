@@ -83,10 +83,10 @@ export default async function DashboardLayout({
               <Image
                 src="/logo-uppa.png"
                 alt="UPPA"
-                width={110}
-                height={36}
+                width={130}
+                height={42}
                 priority
-                className="h-8 w-auto object-contain dark:brightness-0 dark:invert transition-transform group-hover:scale-105"
+                className="h-9 md:h-10 w-auto object-contain dark:brightness-0 dark:invert transition-transform group-hover:scale-105"
               />
             </Link>
 

@@ -71,10 +71,10 @@ export function Header() {
             <Image
               src="/logo-uppa.png"
               alt="UPPA"
-              width={140}
-              height={44}
+              width={160}
+              height={50}
               priority
-              className="h-9 md:h-10 w-auto object-contain dark:brightness-0 dark:invert transition-transform duration-200 group-hover:scale-105"
+              className="h-11 md:h-12 w-auto object-contain dark:brightness-0 dark:invert transition-transform duration-200 group-hover:scale-105"
             />
           </Link>
 

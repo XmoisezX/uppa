@@ -111,10 +111,10 @@ export function AdminSidebar({ adminUser, mobileOpen, onMobileClose }: SidebarPr
           <NextImage
             src="/logo-uppa.png"
             alt="UPPA"
-            width={90}
-            height={32}
+            width={100}
+            height={35}
             priority
-            className="h-7 w-auto object-contain transition-transform group-hover:scale-105"
+            className="h-8 w-auto object-contain transition-transform group-hover:scale-105"
           />
           <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
             Admin

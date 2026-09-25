@@ -287,9 +287,9 @@ export function Footer() {
               <Image
                 src="/logo-uppa.png"
                 alt="UPPA"
-                width={100}
-                height={32}
-                className="h-7 w-auto object-contain dark:brightness-0 dark:invert opacity-90 group-hover:opacity-100 transition-opacity"
+                width={120}
+                height={38}
+                className="h-8 md:h-9 w-auto object-contain dark:brightness-0 dark:invert opacity-90 group-hover:opacity-100 transition-opacity"
               />
             </Link>
             <span className="hidden sm:inline text-slate-300 dark:text-slate-700">|</span>

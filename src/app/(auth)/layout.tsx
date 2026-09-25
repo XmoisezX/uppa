@@ -14,10 +14,10 @@ export default function AuthLayout({
           <Image
             src="/logo-uppa.png"
             alt="UPPA"
-            width={160}
-            height={55}
+            width={180}
+            height={62}
             priority
-            className="h-12 w-auto object-contain dark:brightness-0 dark:invert transition-transform duration-200 group-hover:scale-105"
+            className="h-14 md:h-16 w-auto object-contain dark:brightness-0 dark:invert transition-transform duration-200 group-hover:scale-105"
           />
         </Link>
       </div>
