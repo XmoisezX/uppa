@@ -62,9 +62,13 @@ export function buildSearchSummaryTitle(
   }
 
   // Resolver localização
+  // Bairro só deve aparecer se o filtro de bairro estiver explicitamente ativo pelo usuário
+  const neighborhood = filters.neighborhood
+    ? (neighborhoodName || (typeof filters.neighborhood === "string" ? filters.neighborhood : undefined))
+    : undefined;
+
   const city = cityName || (filters.city ? filters.city : firstProperty?.city?.name);
   const uf = stateCode || (filters.state ? filters.state : firstProperty?.state?.code);
-  const neighborhood = neighborhoodName || filters.neighborhood || firstProperty?.neighborhood?.name;
 
   let locationText = "";
   if (neighborhood && city) {
