@@ -1,4 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { calculatePropertyRanking } from '@/features/ranking/engine';
+import { getRankingConfig } from '@/features/ranking/services';
 
 export interface AdminPropertyItem {
   id: string;
@@ -23,6 +25,19 @@ export interface AdminPropertyItem {
   agency_name: string | null;
   feed_id: string | null;
   feed_type: string | null;
+  agency_verified: boolean;
+  ranking_score: number;
+  ranking_breakdown: {
+    relevance: number;
+    quality: number;
+    featured: number;
+    verified_brokerage: number;
+    freshness: number;
+    completeness: number;
+    media: number;
+    price: number;
+    engagement: number;
+  };
   created_at: string;
   updated_at: string;
 }
@@ -62,6 +77,8 @@ export async function getAdminProperties(params: PropertyFilterParams = {}): Pro
       // ignore
     }
 
+    const rankingConfig = await getRankingConfig();
+
     let query = supabase
       .from('properties')
       .select(
@@ -70,6 +87,7 @@ export async function getAdminProperties(params: PropertyFilterParams = {}): Pro
         slug,
         external_id,
         title,
+        description,
         status,
         property_type,
         transaction_type,
@@ -84,10 +102,11 @@ export async function getAdminProperties(params: PropertyFilterParams = {}): Pro
         source,
         created_at,
         updated_at,
-        city:cities!city_id (id, name),
-        state:states!state_id (id, code),
-        neighborhood:neighborhoods!neighborhood_id (id, name),
-        agency:agencies!agency_id (id, name)
+        city:cities!city_id (id, name, slug),
+        state:states!state_id (id, code, name),
+        neighborhood:neighborhoods!neighborhood_id (id, name, slug),
+        agency:agencies!agency_id (id, name, verified_at),
+        media:property_media (id, url, is_cover, position)
       `,
         { count: 'exact' }
       )
@@ -113,32 +132,80 @@ export async function getAdminProperties(params: PropertyFilterParams = {}): Pro
       return { data: [], total: 0 };
     }
 
-    const formatted: AdminPropertyItem[] = (data as any[]).map((row) => ({
-      id: row.id,
-      code: row.external_id,
-      slug: row.slug,
-      title: row.title,
-      status: row.status,
-      featured: featuredIds.includes(row.id),
-      type: row.property_type,
-      transaction_type: row.transaction_type,
-      price_sale: row.price,
-      price_rent: row.rent_price,
-      city: row.city?.name || null,
-      state: row.state?.code || null,
-      neighborhood: row.neighborhood?.name || null,
-      bedrooms: row.bedrooms,
-      suites: row.suites,
-      bathrooms: row.bathrooms,
-      parking_spots: row.parking_spaces,
-      usable_area: row.usable_area,
-      agency_id: row.agency_id,
-      agency_name: row.agency?.name || null,
-      feed_id: null,
-      feed_type: row.source === 'manual' ? null : row.source,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-    }));
+    const formatted: AdminPropertyItem[] = (data as any[]).map((row) => {
+      const isFeatured = featuredIds.includes(row.id);
+      const isAgencyVerified = Boolean(row.agency?.verified_at);
+      const mediaList = ((row.media as any[]) || []).map((m: any) => ({
+        id: m.id,
+        url: m.url,
+        isCover: Boolean(m.is_cover),
+        position: m.position || 0,
+      }));
+
+      const ranking = calculatePropertyRanking(
+        {
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          propertyType: row.property_type,
+          transactionType: row.transaction_type,
+          price: row.price,
+          rentPrice: row.rent_price,
+          usableArea: row.usable_area,
+          bedrooms: row.bedrooms,
+          suites: row.suites,
+          bathrooms: row.bathrooms,
+          parkingSpaces: row.parking_spaces,
+          publishedAt: row.created_at,
+          updatedAt: row.updated_at,
+          city: row.city,
+          neighborhood: row.neighborhood,
+          state: row.state,
+          agency: {
+            id: row.agency_id || '',
+            name: row.agency?.name || '',
+            slug: '',
+            verifiedAt: row.agency?.verified_at || null,
+          },
+          media: mediaList,
+        },
+        {
+          rankingConfig,
+          isFeatured,
+          isAgencyVerified,
+        }
+      );
+
+      return {
+        id: row.id,
+        code: row.external_id,
+        slug: row.slug,
+        title: row.title,
+        status: row.status,
+        featured: isFeatured,
+        type: row.property_type,
+        transaction_type: row.transaction_type,
+        price_sale: row.price,
+        price_rent: row.rent_price,
+        city: row.city?.name || null,
+        state: row.state?.code || null,
+        neighborhood: row.neighborhood?.name || null,
+        bedrooms: row.bedrooms,
+        suites: row.suites,
+        bathrooms: row.bathrooms,
+        parking_spots: row.parking_spaces,
+        usable_area: row.usable_area,
+        agency_id: row.agency_id,
+        agency_name: row.agency?.name || null,
+        agency_verified: isAgencyVerified,
+        feed_id: null,
+        feed_type: row.source === 'manual' ? null : row.source,
+        ranking_score: ranking.score,
+        ranking_breakdown: ranking.breakdown,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      };
+    });
 
     return {
       data: formatted,

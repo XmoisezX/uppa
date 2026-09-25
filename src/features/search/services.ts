@@ -1,5 +1,14 @@
 import { createClient, createPublicServerClient } from "@/lib/supabase/server";
 import type { SearchFilters, SearchPropertyItem, SearchResult } from "./types";
+import {
+  calculatePropertyRanking,
+  sortPropertiesByRanking,
+} from "@/features/ranking/engine";
+import {
+  getRankingConfig,
+  getCohortPriceStats,
+  getPropertiesEngagementBatch,
+} from "@/features/ranking/services";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -71,6 +80,8 @@ const SEARCH_PROPERTIES_SELECT = `
   latitude,
   longitude,
   published_at,
+  updated_at,
+  description,
   city:cities!city_id (
     id,
     name,
@@ -260,143 +271,198 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
       .lte("longitude", east);
   }
 
-  // 11. ORDENAÇÃO
-  if (filters.orderBy === "price_asc") {
-    query = query.order(priceColumn, { ascending: true, nullsFirst: false });
-  } else if (filters.orderBy === "price_desc") {
-    query = query.order(priceColumn, { ascending: false, nullsFirst: false });
-  } else if (filters.orderBy === "area_desc") {
-    query = query.order("usable_area", { ascending: false, nullsFirst: false });
+  // 11. ORDENAÇÃO E PIPELINE DE RANKING
+  const isCustomSort =
+    filters.orderBy === "price_asc" ||
+    filters.orderBy === "price_desc" ||
+    filters.orderBy === "area_desc";
+
+  // Obter configurações de ranking e destaques em paralelo
+  const [rankingConfig, featuredResult] = await Promise.all([
+    getRankingConfig(),
+    supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "featured_property_ids")
+      .maybeSingle(),
+  ]);
+
+  let featuredIds: string[] = [];
+  if (featuredResult?.data?.value && Array.isArray(featuredResult.data.value)) {
+    featuredIds = featuredResult.data.value;
+  }
+
+  let rawData: any[] = [];
+  let totalCount = 0;
+
+  if (isCustomSort) {
+    if (filters.orderBy === "price_asc") {
+      query = query.order(priceColumn, { ascending: true, nullsFirst: false });
+    } else if (filters.orderBy === "price_desc") {
+      query = query.order(priceColumn, { ascending: false, nullsFirst: false });
+    } else if (filters.orderBy === "area_desc") {
+      query = query.order("usable_area", { ascending: false, nullsFirst: false });
+    }
+    const { data, count, error } = await query.range(offset, offset + limit - 1);
+    if (error || !data) {
+      if (error) console.error("[searchProperties] Erro na consulta do Supabase:", error);
+      return { properties: [], total: 0, page, totalPages: 0, limit, filters };
+    }
+    rawData = data;
+    totalCount = count || 0;
   } else {
-    // Padrão: mais recentes primeiro
+    // FLUXO OBRIGATÓRIO DE RANKING (0 a 100 pontos):
+    // Busca do Usuário -> Aplicação dos Filtros -> Identificação dos Elegíveis ->
+    // Cálculo do Score -> Ordenação por Score -> Paginação -> Resultados
+    const candidateLimit = Math.max(offset + limit, 150);
     query = query.order("published_at", { ascending: false, nullsFirst: false });
+
+    const { data, count, error } = await query.range(0, candidateLimit - 1);
+    if (error || !data) {
+      if (error) console.error("[searchProperties] Erro na consulta do Supabase:", error);
+      return { properties: [], total: 0, page, totalPages: 0, limit, filters };
+    }
+    rawData = data;
+    totalCount = count || 0;
   }
 
-  // 12. PAGINAÇÃO COM RANGE
-  const { data, count, error } = await query.range(offset, offset + limit - 1);
+  // Obter dados de engajamento em lote para os candidatos da busca
+  const candidateIds = rawData.map((r: any) => r.id);
+  const engagementMap = await getPropertiesEngagementBatch(candidateIds);
 
-  if (error || !data) {
-    if (error) {
-      console.error("[searchProperties] Erro na consulta do Supabase:", error);
-    }
-    return {
-      properties: [],
-      total: 0,
-      page,
-      totalPages: 0,
-      limit,
-      filters,
-    };
+  // Obter coorte estatística de preços se aplicável
+  let cohortStats = null;
+  const targetType = Array.isArray(filters.propertyType)
+    ? filters.propertyType[0]
+    : filters.propertyType;
+  if (resolvedCityId && targetType && filters.transactionType) {
+    cohortStats = await getCohortPriceStats(
+      resolvedCityId,
+      targetType,
+      filters.transactionType
+    );
   }
 
-    let featuredIds: string[] = [];
-    try {
-      const { data: featRow } = await supabase
-        .from("site_settings")
-        .select("value")
-        .eq("key", "featured_property_ids")
-        .maybeSingle();
-      if (featRow?.value && Array.isArray(featRow.value)) {
-        featuredIds = featRow.value;
-      }
-    } catch {
-      // ignore
-    }
-
-    // Formata o resultado aplicando privacidade estrita de endereço
-    const properties: SearchPropertyItem[] = data.map((row: any) => {
-      const rawMedia = (row.media as any[]) || [];
-      const sortedMedia = rawMedia
-        .map((m) => ({
-          id: m.id,
-          url: m.url,
-          isCover: Boolean(m.is_cover),
-          position: m.position || 0,
-        }))
-        .sort((a, b) => {
-          if (a.isCover) return -1;
-          if (b.isCover) return 1;
-          return a.position - b.position;
-        });
-
-      // Privacidade de Endereço (Seção 44 do MASTER_PLAN):
-      // Se address_visible for false, oculta número/logradouro e aplica coordenadas aproximadas
-      let lat = row.latitude;
-      let lng = row.longitude;
-      let street = row.street;
-      let number = row.number;
-
-      if (!row.address_visible && lat && lng) {
-        const approx = getApproximateCoordinates(row.id, lat, lng);
-        lat = approx.latitude;
-        lng = approx.longitude;
-        street = null;
-        number = null;
-      }
-
-      return {
-        id: row.id,
-        featured: featuredIds.includes(row.id),
-        slug: row.slug,
-        externalId: row.external_id,
-        title: row.title,
-        transactionType: row.transaction_type,
-        propertyType: row.property_type,
-        price: row.price,
-        rentPrice: row.rent_price,
-        condominiumFee: row.condominium_fee,
-        usableArea: row.usable_area,
-        totalArea: row.total_area,
-        bedrooms: row.bedrooms || 0,
-        suites: row.suites || 0,
-        bathrooms: row.bathrooms || 0,
-        parkingSpaces: row.parking_spaces || 0,
-        financiable: Boolean(row.financiable),
-        furnished: Boolean(row.furnished),
-        acceptsExchange: Boolean(row.accepts_exchange),
-        addressVisible: Boolean(row.address_visible),
-        street,
-        number,
-        latitude: lat,
-        longitude: lng,
-        publishedAt: row.published_at,
-        city: row.city,
-        neighborhood: row.neighborhood,
-        state: row.state,
-        agency: row.agency
-          ? {
-              id: row.agency.id,
-              name: row.agency.name,
-              slug: row.agency.slug,
-              logoUrl: row.agency.logo_url,
-              creci: row.agency.creci,
-              verifiedAt: row.agency.verified_at,
-              phone: row.agency.phone,
-            }
-          : null,
-        media: sortedMedia,
-      };
-    });
-
-    if (!filters.orderBy || filters.orderBy === "recent") {
-      properties.sort((a, b) => {
-        if (a.featured && !b.featured) return -1;
-        if (!a.featured && b.featured) return 1;
-        return 0;
+  // Mapeia os dados brutos e calcula o ranking determinístico de cada imóvel
+  const itemsWithRanking = rawData.map((row: any) => {
+    const rawMedia = (row.media as any[]) || [];
+    const sortedMedia = rawMedia
+      .map((m) => ({
+        id: m.id,
+        url: m.url,
+        isCover: Boolean(m.is_cover),
+        position: m.position || 0,
+      }))
+      .sort((a, b) => {
+        if (a.isCover) return -1;
+        if (b.isCover) return 1;
+        return a.position - b.position;
       });
+
+    let lat = row.latitude;
+    let lng = row.longitude;
+    let street = row.street;
+    let number = row.number;
+
+    if (!row.address_visible && lat && lng) {
+      const approx = getApproximateCoordinates(row.id, lat, lng);
+      lat = approx.latitude;
+      lng = approx.longitude;
+      street = null;
+      number = null;
     }
 
-    const total = count || 0;
-    const totalPages = Math.ceil(total / limit);
+    const isFeatured = featuredIds.includes(row.id);
+    const isAgencyVerified = Boolean(row.agency?.verified_at);
+
+    const propertyItem: SearchPropertyItem = {
+      id: row.id,
+      featured: isFeatured,
+      slug: row.slug,
+      externalId: row.external_id,
+      title: row.title,
+      transactionType: row.transaction_type,
+      propertyType: row.property_type,
+      price: row.price,
+      rentPrice: row.rent_price,
+      condominiumFee: row.condominium_fee,
+      usableArea: row.usable_area,
+      totalArea: row.total_area,
+      bedrooms: row.bedrooms || 0,
+      suites: row.suites || 0,
+      bathrooms: row.bathrooms || 0,
+      parkingSpaces: row.parking_spaces || 0,
+      financiable: Boolean(row.financiable),
+      furnished: Boolean(row.furnished),
+      acceptsExchange: Boolean(row.accepts_exchange),
+      addressVisible: Boolean(row.address_visible),
+      street,
+      number,
+      latitude: lat,
+      longitude: lng,
+      publishedAt: row.published_at,
+      city: row.city,
+      neighborhood: row.neighborhood,
+      state: row.state,
+      agency: row.agency
+        ? {
+            id: row.agency.id,
+            name: row.agency.name,
+            slug: row.agency.slug,
+            logoUrl: row.agency.logo_url,
+            creci: row.agency.creci,
+            verifiedAt: row.agency.verified_at,
+            phone: row.agency.phone,
+          }
+        : null,
+      media: sortedMedia,
+    };
+
+    const ranking = calculatePropertyRanking(
+      {
+        ...propertyItem,
+        description: row.description,
+        updatedAt: row.updated_at,
+      },
+      {
+        filters,
+        rankingConfig,
+        cohortStats: cohortStats || undefined,
+        engagementData: engagementMap.get(row.id),
+        isFeatured,
+        isAgencyVerified,
+      }
+    );
+
+    propertyItem.rankingScore = ranking.score;
+    propertyItem.rankingBreakdown = ranking.breakdown;
 
     return {
-      properties,
-      total,
-      page,
-      totalPages,
-      limit,
-      filters,
+      item: propertyItem,
+      ranking,
     };
+  });
+
+  let finalProperties: SearchPropertyItem[] = [];
+
+  if (isCustomSort) {
+    finalProperties = itemsWithRanking.map((w) => w.item);
+  } else {
+    // Ordenação determinística com todos os 8 critérios de desempate
+    const sorted = sortPropertiesByRanking(itemsWithRanking);
+    finalProperties = sorted.slice(offset, offset + limit);
+  }
+
+  const totalPages = Math.ceil(totalCount / limit);
+
+  return {
+    properties: finalProperties,
+    total: totalCount,
+    page,
+    totalPages,
+    limit,
+    filters,
+  };
 }
 
 /**
@@ -483,7 +549,20 @@ export async function searchPropertiesSpatial(filters: SearchFilters): Promise<{
           : [],
       }));
 
-      return { properties: items, total: items.length };
+      const rankingConfig = await getRankingConfig();
+      const itemsWithRanking = items.map((item) => {
+        const ranking = calculatePropertyRanking(item, {
+          filters,
+          rankingConfig,
+        });
+        item.rankingScore = ranking.score;
+        item.rankingBreakdown = ranking.breakdown;
+        return { item, ranking };
+      });
+
+      const sorted = sortPropertiesByRanking(itemsWithRanking);
+
+      return { properties: sorted, total: sorted.length };
     }
   } catch (e) {
     // Fallback gracioso caso RPC não esteja ativa

@@ -14,6 +14,8 @@ import {
   AlertCircle,
   Briefcase,
   Radio,
+  Award,
+  X,
 } from 'lucide-react';
 import {
   togglePropertyFeaturedAction,
@@ -32,6 +34,7 @@ export function PropertiesClient({ initialProperties, total }: Props) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isPending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [selectedRankingProperty, setSelectedRankingProperty] = useState<AdminPropertyItem | null>(null);
 
   const showNotice = (message: string, type: 'success' | 'error' = 'success') => {
     setFeedback({ type, message });
@@ -167,6 +170,7 @@ export function PropertiesClient({ initialProperties, total }: Props) {
                   <th className="px-4 py-3">Valores</th>
                   <th className="px-4 py-3">Origem & Anunciante</th>
                   <th className="px-4 py-3 text-center">Destaque</th>
+                  <th className="px-4 py-3 text-center">Ranking</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Ver</th>
                 </tr>
@@ -234,6 +238,27 @@ export function PropertiesClient({ initialProperties, total }: Props) {
                       </button>
                     </td>
 
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRankingProperty(prop)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all shadow-xs cursor-pointer ${
+                          (prop.ranking_score ?? 0) >= 80
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
+                            : (prop.ranking_score ?? 0) >= 60
+                            ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20'
+                            : (prop.ranking_score ?? 0) >= 40
+                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'
+                            : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
+                        }`}
+                        title="Ver diagnóstico detalhado do ranking"
+                      >
+                        <Award className="w-3 h-3" />
+                        <span className="font-mono">{prop.ranking_score ?? 0}</span>
+                        <span className="text-[9px] opacity-70">/100</span>
+                      </button>
+                    </td>
+
                     <td className="px-4 py-3">
                       <select
                         value={prop.status}
@@ -268,6 +293,163 @@ export function PropertiesClient({ initialProperties, total }: Props) {
           </div>
         )}
       </div>
+
+      {/* Modal de Diagnóstico de Ranking */}
+      {selectedRankingProperty && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Diagnóstico de Ranking</h3>
+                  <p className="text-[11px] text-slate-500">Auditoria completa dos 9 critérios do algoritmo</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedRankingProperty(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-slate-900 text-xs truncate max-w-[280px]">
+                    {selectedRankingProperty.title}
+                  </div>
+                  <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                    <span>{selectedRankingProperty.agency_name || 'Particular'}</span>
+                    {selectedRankingProperty.agency_verified && (
+                      <span className="text-blue-500 font-semibold flex items-center gap-0.5">
+                        <CheckCircle2 className="w-3 h-3 inline" /> Verificada
+                      </span>
+                    )}
+                    {selectedRankingProperty.featured && (
+                      <span className="text-amber-500 font-semibold flex items-center gap-0.5">
+                        <Star className="w-3 h-3 inline fill-amber-400" /> Destaque
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-black text-slate-900 font-mono">
+                    {selectedRankingProperty.ranking_score ?? 0}
+                    <span className="text-xs text-slate-400 font-normal">/100</span>
+                  </div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Score Total</div>
+                </div>
+              </div>
+
+              {/* Lista dos 9 Critérios */}
+              <div className="space-y-2.5">
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Discriminação dos 9 Critérios
+                </div>
+
+                {[
+                  {
+                    key: 'relevance',
+                    label: 'Relevância da Busca',
+                    score: selectedRankingProperty.ranking_breakdown?.relevance ?? 25,
+                    max: 25,
+                    color: 'bg-indigo-500',
+                  },
+                  {
+                    key: 'quality',
+                    label: 'Qualidade do Anúncio',
+                    score: selectedRankingProperty.ranking_breakdown?.quality ?? 0,
+                    max: 15,
+                    color: 'bg-emerald-500',
+                  },
+                  {
+                    key: 'featured',
+                    label: 'Imóvel em Destaque',
+                    score: selectedRankingProperty.ranking_breakdown?.featured ?? 0,
+                    max: 15,
+                    color: 'bg-amber-500',
+                  },
+                  {
+                    key: 'verified_brokerage',
+                    label: 'Imobiliária Verificada',
+                    score: selectedRankingProperty.ranking_breakdown?.verified_brokerage ?? 0,
+                    max: 10,
+                    color: 'bg-blue-500',
+                  },
+                  {
+                    key: 'freshness',
+                    label: 'Atualização / Recência',
+                    score: selectedRankingProperty.ranking_breakdown?.freshness ?? 0,
+                    max: 10,
+                    color: 'bg-teal-500',
+                  },
+                  {
+                    key: 'completeness',
+                    label: 'Completude dos Dados',
+                    score: selectedRankingProperty.ranking_breakdown?.completeness ?? 0,
+                    max: 5,
+                    color: 'bg-violet-500',
+                  },
+                  {
+                    key: 'media',
+                    label: 'Qualidade de Mídia',
+                    score: selectedRankingProperty.ranking_breakdown?.media ?? 0,
+                    max: 5,
+                    color: 'bg-pink-500',
+                  },
+                  {
+                    key: 'price',
+                    label: 'Competitividade de Preço',
+                    score: selectedRankingProperty.ranking_breakdown?.price ?? 0,
+                    max: 5,
+                    color: 'bg-orange-500',
+                  },
+                  {
+                    key: 'engagement',
+                    label: 'Engajamento do Anúncio',
+                    score: selectedRankingProperty.ranking_breakdown?.engagement ?? 0,
+                    max: 5,
+                    color: 'bg-purple-500',
+                  },
+                ].map((crit) => {
+                  const pct = Math.min(100, Math.max(0, (crit.score / crit.max) * 100));
+                  return (
+                    <div key={crit.key} className="bg-slate-50/70 border border-slate-100 rounded-lg p-2.5">
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="font-medium text-slate-700">{crit.label}</span>
+                        <span className="font-mono font-bold text-slate-900">
+                          {crit.score} <span className="text-slate-400 font-normal">/ {crit.max}</span>
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${crit.color} transition-all duration-300 rounded-full`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedRankingProperty(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

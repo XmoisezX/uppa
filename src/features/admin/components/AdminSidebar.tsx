@@ -23,6 +23,7 @@ import {
   ChevronRight,
   Shield,
   FolderPlus,
+  Award,
 } from 'lucide-react';
 import type { AdminUser } from '@/types/admin';
 
@@ -35,6 +36,7 @@ interface SidebarProps {
 const NAV_MAIN = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, permission: 'dashboard.view' },
   { label: 'Imóveis', href: '/admin/imoveis', icon: Building2, permission: 'properties.manage' },
+  { label: 'Ranking de Imóveis', href: '/admin/ranking', icon: Award, permission: 'settings.manage' },
   { label: 'Agências', href: '/admin/agencias', icon: Briefcase, permission: 'agencies.manage' },
   { label: 'Leads', href: '/admin/leads', icon: Inbox, permission: 'leads.manage' },
   { label: 'Feeds / VRSync', href: '/admin/feeds', icon: RefreshCw, permission: 'feeds.manage' },

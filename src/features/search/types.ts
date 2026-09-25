@@ -18,7 +18,7 @@ export interface SearchFilters {
   acceptsExchange?: boolean;
   page?: number;
   limit?: number;
-  orderBy?: "recent" | "price_asc" | "price_desc" | "area_desc";
+  orderBy?: "recent" | "ranking" | "price_asc" | "price_desc" | "area_desc";
   bbox?: {
     north: number;
     south: number;
@@ -54,6 +54,18 @@ export interface SearchPropertyItem {
   longitude?: number | null;
   publishedAt?: string | null;
   featured?: boolean;
+  rankingScore?: number;
+  rankingBreakdown?: {
+    relevance: number;
+    quality: number;
+    featured: number;
+    verified_brokerage: number;
+    freshness: number;
+    completeness: number;
+    media: number;
+    price: number;
+    engagement: number;
+  };
   city?: {
     id: string;
     name: string;

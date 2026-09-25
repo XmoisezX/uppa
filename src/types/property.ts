@@ -58,6 +58,8 @@ export interface Property {
   propertyType: PropertyType;
   status: PropertyStatus;
   featured?: boolean;
+  rankingScore?: number;
+  rankingBreakdown?: Record<string, number>;
   price?: number | null;
   rentPrice?: number | null;
   condominiumFee?: number | null;
