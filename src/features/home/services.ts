@@ -259,6 +259,129 @@ export interface HeroBubbleProperty {
   imageUrl: string;
 }
 
+export const FALLBACK_HERO_BUBBLES: HeroBubbleProperty[] = [
+  {
+    id: "fb-1",
+    slug: "casa-em-condominio-fechado-com-2-dormitorios-em-florianopolis-6094",
+    title: "Casa em Condomínio Fechado de Alto Padrão",
+    propertyType: "condo_house",
+    transactionType: "sale",
+    price: 1850000,
+    rentPrice: null,
+    cityName: "Florianópolis",
+    neighborhoodName: "Jurerê Internacional",
+    imageUrl: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "fb-2",
+    slug: "apartamento-com-vista-panoramica-e-3-suites",
+    title: "Apartamento com Vista Panorâmica e 3 Suítes",
+    propertyType: "apartment",
+    transactionType: "sale",
+    price: 2400000,
+    rentPrice: null,
+    cityName: "Balneário Camboriú",
+    neighborhoodName: "Barra Sul",
+    imageUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "fb-3",
+    slug: "casa-moderna-com-piscina-e-churrasqueira",
+    title: "Casa Moderna com Piscina e Área Gourmet",
+    propertyType: "house",
+    transactionType: "sale",
+    price: 1950000,
+    rentPrice: null,
+    cityName: "Curitiba",
+    neighborhoodName: "Ecoville",
+    imageUrl: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "fb-4",
+    slug: "sobrado-triplex-em-bairro-nobre",
+    title: "Sobrado Triplex com Arquitetura Contemporânea",
+    propertyType: "townhouse",
+    transactionType: "sale",
+    price: 1650000,
+    rentPrice: null,
+    cityName: "Porto Alegre",
+    neighborhoodName: "Moinhos de Vento",
+    imageUrl: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "fb-5",
+    slug: "apartamento-duplex-de-luxo-com-varanda",
+    title: "Apartamento Duplex com Ampla Varanda",
+    propertyType: "apartment",
+    transactionType: "sale",
+    price: 3200000,
+    rentPrice: null,
+    cityName: "São Paulo",
+    neighborhoodName: "Moema",
+    imageUrl: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "fb-6",
+    slug: "casa-terrea-em-condominio-com-seguranca",
+    title: "Casa Térrea com Paisagismo Exuberante",
+    propertyType: "condo_house",
+    transactionType: "sale",
+    price: 1450000,
+    rentPrice: null,
+    cityName: "Gramado",
+    neighborhoodName: "Planalto",
+    imageUrl: "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "fb-7",
+    slug: "apartamento-em-frente-ao-mar",
+    title: "Apartamento de Alto Padrão Frente Mar",
+    propertyType: "apartment",
+    transactionType: "sale",
+    price: 2800000,
+    rentPrice: null,
+    cityName: "Itapema",
+    neighborhoodName: "Meia Praia",
+    imageUrl: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "fb-8",
+    slug: "casa-com-design-biofilico-e-lazer-completo",
+    title: "Casa com Design Biofílico e Lazer Completo",
+    propertyType: "house",
+    transactionType: "sale",
+    price: 2100000,
+    rentPrice: null,
+    cityName: "Campinas",
+    neighborhoodName: "Nova Campinas",
+    imageUrl: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "fb-9",
+    slug: "sobrado-em-condominio-clube",
+    title: "Sobrado em Condomínio Clube com 4 Suítes",
+    propertyType: "townhouse",
+    transactionType: "sale",
+    price: 1750000,
+    rentPrice: null,
+    cityName: "Joinville",
+    neighborhoodName: "Atiradores",
+    imageUrl: "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "fb-10",
+    slug: "cobertura-horizontal-com-piscina-privativa",
+    title: "Cobertura Horizontal com Piscina Privativa",
+    propertyType: "apartment",
+    transactionType: "sale",
+    price: 3500000,
+    rentPrice: null,
+    cityName: "Pelotas",
+    neighborhoodName: "Laranjal",
+    imageUrl: "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=800&q=80",
+  },
+];
+
 /**
  * Retorna uma seleção exclusiva de CASAS, SOBRADOS E APARTAMENTOS de ALTO PADRÃO
  * de CIDADES DISTINTAS com fotos reais para os balões flutuantes do Hero.
@@ -267,7 +390,7 @@ async function fetchHeroBubbleProperties(limit = 10): Promise<HeroBubbleProperty
   try {
     const supabase = createPublicServerClient();
 
-    // Apenas casas, sobrados e apartamentos (excluindo terrenos, comerciais, rurais, etc.)
+    // Consulta rápida limitada a 40 registros com filtro de preço para evitar timeouts
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -284,10 +407,13 @@ async function fetchHeroBubbleProperties(limit = 10): Promise<HeroBubbleProperty
       `)
       .eq("status", "active")
       .in("property_type", ["house", "condo_house", "townhouse", "apartment"])
+      .gt("price", 100000)
       .order("price", { ascending: false, nullsFirst: false })
-      .limit(300);
+      .limit(40);
 
-    if (error || !data) return [];
+    if (error || !data || data.length === 0) {
+      return FALLBACK_HERO_BUBBLES.slice(0, limit);
+    }
 
     const ALLOWED_TYPES = new Set(["house", "condo_house", "townhouse", "apartment"]);
 
@@ -323,6 +449,10 @@ async function fetchHeroBubbleProperties(limit = 10): Promise<HeroBubbleProperty
 
       return true;
     });
+
+    if (valid.length === 0) {
+      return FALLBACK_HERO_BUBBLES.slice(0, limit);
+    }
 
     // Agrupa por cidade distinta
     const cityGroups = new Map<string, any[]>();
@@ -370,7 +500,7 @@ async function fetchHeroBubbleProperties(limit = 10): Promise<HeroBubbleProperty
       }
     }
 
-    return selected.slice(0, limit).map((p) => {
+    const mapped = selected.map((p) => {
       const sortedMedia = [...p.media].sort((a: any, b: any) => {
         if (a.is_cover) return -1;
         if (b.is_cover) return 1;
@@ -391,15 +521,23 @@ async function fetchHeroBubbleProperties(limit = 10): Promise<HeroBubbleProperty
         imageUrl: cover,
       };
     });
+
+    // Se ainda assim faltarem itens para atingir o limite, complementa com os fallbacks
+    if (mapped.length < limit) {
+      const needed = limit - mapped.length;
+      mapped.push(...FALLBACK_HERO_BUBBLES.slice(0, needed));
+    }
+
+    return mapped.slice(0, limit);
   } catch (err) {
     console.error("Erro ao carregar imóveis de alto padrão para os balões do Hero:", err);
-    return [];
+    return FALLBACK_HERO_BUBBLES.slice(0, limit);
   }
 }
 
 export const getHeroBubbleProperties = unstable_cache(
   fetchHeroBubbleProperties,
-  ["hero-bubble-properties-casas-sobrados-apartamentos-v3"],
-  { revalidate: 120, tags: ["properties"] }
+  ["hero-bubble-properties-casas-sobrados-apartamentos-v4"],
+  { revalidate: 300, tags: ["properties"] }
 );
 

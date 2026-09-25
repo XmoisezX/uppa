@@ -2,7 +2,7 @@
 
 import React from "react";
 import { FloatingPropertyBubble, type FloatingPropertyBubbleProps } from "./FloatingPropertyBubble";
-import type { HeroBubbleProperty } from "../services";
+import { type HeroBubbleProperty, FALLBACK_HERO_BUBBLES } from "../services";
 
 interface FloatingPropertyBubblesProps {
   properties: HeroBubbleProperty[];
