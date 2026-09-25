@@ -9,7 +9,6 @@ import {
   Maximize,
   Building2,
   Heart,
-  Camera,
   MessageCircle,
   ChevronLeft,
   ChevronRight,
@@ -69,12 +68,17 @@ export function SearchPropertyCard({
     return stateCode ? joined + "/" + stateCode : joined || "Brasil";
   })();
 
-  const streetAddress = (() => {
-    if (property.addressVisible && property.street) {
-      return property.number ? `${property.street}, ${property.number}` : property.street;
-    }
-    return null;
-  })();
+  const hasCompleteAddress = Boolean(
+    property.addressVisible &&
+    property.street &&
+    property.street.trim() !== "" &&
+    property.number &&
+    property.number.trim() !== ""
+  );
+
+  const streetAddress = hasCompleteAddress
+    ? `${property.street}, ${property.number}`
+    : "Endereço indisponível";
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -134,32 +138,34 @@ export function SearchPropertyCard({
             prefetch={false}
             className="block h-full w-full relative"
           >
-            <img
-              src={currentPhoto}
-              alt={`${property.title} - foto ${currentPhotoIndex + 1}`}
-              loading="lazy"
-              decoding="async"
-              onError={() => setImageError(true)}
-              className={`absolute inset-0 h-full w-full object-cover transition-all duration-300 ${
-                isLastPhoto
-                  ? "brightness-[0.45] contrast-[1.05] filter backdrop-blur-[1px]"
-                  : "group-hover:scale-[1.03]"
-              }`}
-            />
+            <div key={currentPhotoIndex} className="absolute inset-0 h-full w-full overflow-hidden">
+              <img
+                src={currentPhoto}
+                alt={`${property.title} - foto ${currentPhotoIndex + 1}`}
+                loading="lazy"
+                decoding="async"
+                onError={() => setImageError(true)}
+                className={`absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03] ${
+                  isLastPhoto
+                    ? "brightness-[0.45] contrast-[1.05]"
+                    : ""
+                }`}
+              />
 
-            {/* FILTRO E ÍCONE '+' NA ÚLTIMA FOTO */}
-            {isLastPhoto && (
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-[1.5px] flex flex-col items-center justify-center text-white pointer-events-none transition-all">
-                <div className="h-13 w-13 rounded-full bg-white/20 border-2 border-white/70 flex items-center justify-center shadow-2xl backdrop-blur-md mb-2 group-hover:scale-110 transition-transform">
-                  <Plus className="h-7 w-7 text-white stroke-[3]" />
+              {/* FILTRO E ÍCONE '+' NA ÚLTIMA FOTO (JÁ APLICADO DESDE O INÍCIO) */}
+              {isLastPhoto && (
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-[1.5px] flex flex-col items-center justify-center text-white pointer-events-none">
+                  <div className="h-12 w-12 rounded-full bg-white/20 border-2 border-white/70 flex items-center justify-center shadow-2xl backdrop-blur-md mb-2 group-hover:scale-110 transition-transform">
+                    <Plus className="h-6 w-6 text-white stroke-[3]" />
+                  </div>
+                  <span className="text-xs font-black text-white uppercase tracking-wider drop-shadow-md">
+                    {totalPhotos > photos.length
+                      ? `+${totalPhotos - photos.length + 1} fotos`
+                      : "Ver todas as fotos"}
+                  </span>
                 </div>
-                <span className="text-xs font-black text-white uppercase tracking-wider drop-shadow-md">
-                  {totalPhotos > photos.length
-                    ? `+${totalPhotos - photos.length + 1} fotos`
-                    : "Ver todas as fotos"}
-                </span>
-              </div>
-            )}
+              )}
+            </div>
           </Link>
         ) : (
           <div className="h-full w-full min-h-[180px] flex flex-col items-center justify-center text-slate-400 bg-slate-100 dark:bg-slate-800 gap-1">
@@ -196,54 +202,6 @@ export function SearchPropertyCard({
               <ChevronRight className="h-5 w-5" />
             </button>
           </>
-        )}
-
-        {/* CONTROLES ESTILO CHAVES NA MÃO: [ < ] [ > ] NO CANTO INFERIOR DIREITO */}
-        {photos.length > 1 && (
-          <div className="absolute bottom-3 right-3 z-20 flex items-center gap-0.5 bg-black/65 backdrop-blur-md rounded-xl p-1 border border-white/20 shadow-md">
-            <button
-              type="button"
-              onClick={handlePrevPhoto}
-              aria-label="Foto anterior"
-              className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-white/20 text-white transition-colors cursor-pointer"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={handleNextPhoto}
-              aria-label="Próxima foto"
-              className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-white/20 text-white transition-colors cursor-pointer"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-
-        {/* Indicador de Fotos (Ex: 1/5) no canto inferior esquerdo */}
-        {totalPhotos > 0 && (
-          <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-black/65 text-white text-[11px] font-semibold backdrop-blur-xs">
-            <Camera className="h-3.5 w-3.5" />
-            <span>
-              {currentPhotoIndex + 1}/{totalPhotos}
-            </span>
-          </div>
-        )}
-
-        {/* Indicadores de pontinhos no rodapé da imagem */}
-        {photos.length > 1 && (
-          <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2 z-10 hidden sm:flex items-center gap-1.5 pointer-events-none">
-            {photos.map((_, idx) => (
-              <span
-                key={idx}
-                className={`h-1.5 rounded-full transition-all ${
-                  idx === currentPhotoIndex
-                    ? "w-4 bg-white"
-                    : "w-1.5 bg-white/60"
-                }`}
-              />
-            ))}
-          </div>
         )}
       </div>
 
@@ -295,11 +253,15 @@ export function SearchPropertyCard({
             <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
               {locationBold}
             </p>
-            {streetAddress && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                {streetAddress}
-              </p>
-            )}
+            <p
+              className={`text-xs truncate ${
+                hasCompleteAddress
+                  ? "text-slate-500 dark:text-slate-400"
+                  : "text-slate-400 dark:text-slate-500"
+              }`}
+            >
+              {streetAddress}
+            </p>
           </div>
 
           {/* ESPECIFICAÇÕES FÍSICAS COM ÍCONES */}
