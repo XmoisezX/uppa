@@ -304,11 +304,11 @@ export function LocationAutocomplete({
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           placeholder={placeholder}
-          className="flex-1 bg-transparent py-2.5 pr-2 text-sm font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
+          className="flex-1 min-w-0 bg-transparent py-2.5 pr-2 text-sm font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
         />
 
         {/* BOTÃO LIMPAR (X) OU SPINNER */}
-        <div className="mr-3 flex items-center gap-1">
+        <div className="mr-2 flex items-center gap-1 shrink-0">
           {isLoading && (
             <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
           )}
@@ -316,7 +316,7 @@ export function LocationAutocomplete({
             <button
               type="button"
               onClick={handleClear}
-              className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
               title="Limpar localização"
             >
               <X className="h-4 w-4" />

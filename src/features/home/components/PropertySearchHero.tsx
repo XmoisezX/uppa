@@ -103,7 +103,7 @@ export function PropertySearchHero({
   const router = useRouter();
   const heroVariant = variant;
   const [activeTab, setActiveTab] = useState<"comprar" | "alugar" | "lancamentos">("comprar");
-  const [propertyType, setPropertyType] = useState<string>("");
+  const [selectedPropertyTypes, setSelectedPropertyTypes] = useState<string[]>([]);
   const [isTypeOpen, setIsTypeOpen] = useState(false);
   const typeDropdownRef = useRef<HTMLDivElement>(null);
   const [selectedCitySlug, setSelectedCitySlug] = useState<string>("");
@@ -123,17 +123,28 @@ export function PropertySearchHero({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const selectedTypeOption =
-    PROPERTY_TYPE_OPTIONS.find((t) => t.value === propertyType) ||
-    PROPERTY_TYPE_OPTIONS[0];
-  const SelectedTypeIcon = selectedTypeOption.icon;
+  const firstSelectedOption =
+    selectedPropertyTypes.length === 1
+      ? PROPERTY_TYPE_OPTIONS.find((t) => t.value === selectedPropertyTypes[0])
+      : null;
+  const SelectedTypeIcon = firstSelectedOption?.icon || Building;
+
+  const displayTypeLabel =
+    selectedPropertyTypes.length === 0
+      ? "Todos os imóveis"
+      : selectedPropertyTypes.length === 1
+      ? firstSelectedOption?.label || "1 tipo selecionado"
+      : `${selectedPropertyTypes.length} tipos selecionados`;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams();
 
     if (activeTab === "lancamentos") {
-      params.set("propertyType", propertyType || "condo_house");
+      params.set(
+        "propertyType",
+        selectedPropertyTypes.length > 0 ? selectedPropertyTypes.join(",") : "condo_house"
+      );
       if (selectedCitySlug) params.set("city", selectedCitySlug);
       else if (selectedCityName.trim()) params.set("city", selectedCityName.trim().toLowerCase());
       if (selectedNeighborhoodSlug) params.set("neighborhood", selectedNeighborhoodSlug);
@@ -141,8 +152,8 @@ export function PropertySearchHero({
       return;
     }
 
-    if (propertyType) {
-      params.set("propertyType", propertyType);
+    if (selectedPropertyTypes.length > 0) {
+      params.set("propertyType", selectedPropertyTypes.join(","));
     }
 
     if (selectedCitySlug) {
@@ -261,8 +272,13 @@ export function PropertySearchHero({
               <SelectedTypeIcon className="h-4 w-4" />
             </div>
             <span className="flex-1 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-              {selectedTypeOption.label}
+              {displayTypeLabel}
             </span>
+            {selectedPropertyTypes.length > 1 && (
+              <span className="mr-2 px-2 py-0.5 text-xs font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 rounded-full shrink-0">
+                {selectedPropertyTypes.length}
+              </span>
+            )}
             <ChevronDown
               className={`mr-3.5 h-4 w-4 text-slate-400 transition-transform duration-200 shrink-0 ${
                 isTypeOpen ? "rotate-180 text-indigo-600 dark:text-indigo-400" : ""
@@ -278,14 +294,24 @@ export function PropertySearchHero({
                   Categorias
                 </div>
                 {PROPERTY_TYPE_OPTIONS.map((item) => {
-                  const checked = propertyType === item.value;
+                  const checked =
+                    item.value === ""
+                      ? selectedPropertyTypes.length === 0
+                      : selectedPropertyTypes.includes(item.value);
                   const ItemIcon = item.icon;
                   return (
                     <div
-                      key={item.value}
+                      key={item.value || "all"}
                       onClick={() => {
-                        setPropertyType(item.value);
-                        setIsTypeOpen(false);
+                        if (item.value === "") {
+                          setSelectedPropertyTypes([]);
+                        } else {
+                          setSelectedPropertyTypes((prev) =>
+                            prev.includes(item.value)
+                              ? prev.filter((t) => t !== item.value)
+                              : [...prev, item.value]
+                          );
+                        }
                       }}
                       className="flex items-center justify-between px-3.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors select-none group"
                     >
@@ -313,6 +339,24 @@ export function PropertySearchHero({
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Botões do Rodapé para facilitar a seleção múltipla */}
+              <div className="p-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPropertyTypes([])}
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white px-2 py-1 cursor-pointer transition-colors"
+                >
+                  Limpar seleção
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsTypeOpen(false)}
+                  className="px-3.5 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+                >
+                  Pronto
+                </button>
               </div>
             </div>
           )}

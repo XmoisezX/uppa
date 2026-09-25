@@ -1,14 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { ArrowUpDown, ChevronLeft, ChevronRight, Map, List } from "lucide-react";
+import { ArrowUpDown, Map, List, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchPropertyCard } from "./SearchPropertyCard";
 import { SearchPropertyCardSkeleton } from "./SearchPropertyCardSkeleton";
 import { SearchEmptyState } from "./SearchEmptyState";
 import { SearchFilterChips } from "./SearchFilterChips";
-import type { SearchResult } from "../types";
+import type { SearchResult, SearchPropertyItem } from "../types";
 
 interface SearchPropertyListProps {
   result: SearchResult;
@@ -33,42 +33,87 @@ export function SearchPropertyList({
 
   const { properties, total, page, totalPages, filters } = result;
 
-  const handlePageChange = (newPage: number) => {
-    if (newPage < 1 || newPage > totalPages) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", String(newPage));
-    router.push(`${pathname}?${params.toString()}`);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  // Estado interno para suportar carregamento infinito contínuo
+  const [propertiesList, setPropertiesList] = useState<SearchPropertyItem[]>(properties);
+  const [currentPage, setCurrentPage] = useState<number>(page || 1);
+  const [hasMore, setHasMore] = useState<boolean>(properties.length < total);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Sincroniza estado quando a busca do servidor ou os filtros mudarem
+  useEffect(() => {
+    setPropertiesList(result.properties);
+    setCurrentPage(result.page || 1);
+    setHasMore(result.properties.length < result.total);
+    setIsLoadingMore(false);
+  }, [result]);
+
+  // Função assíncrona para buscar a próxima página de imóveis
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+
+    const nextPage = currentPage + 1;
+    setIsLoadingMore(true);
+
+    try {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", String(nextPage));
+      params.set("limit", "12");
+
+      const res = await fetch(`/api/properties?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        const incoming: SearchPropertyItem[] = data.properties || [];
+
+        if (incoming.length > 0) {
+          setPropertiesList((prev) => {
+            const existingIds = new Set(prev.map((p) => p.id));
+            const newItems = incoming.filter((p) => !existingIds.has(p.id));
+            const updated = [...prev, ...newItems];
+            if (updated.length >= data.total || incoming.length === 0) {
+              setHasMore(false);
+            }
+            return updated;
+          });
+          setCurrentPage(nextPage);
+        } else {
+          setHasMore(false);
+        }
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("[SearchPropertyList] Erro ao carregar mais imóveis:", err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [currentPage, hasMore, isLoadingMore, searchParams]);
+
+  // Observer do sentinel para acionar o carregamento infinito ao rolar
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore || isLoadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          loadMore();
+        }
+      },
+      {
+        rootMargin: "350px", // Pré-carrega suavemente antes de chegar ao fim
+      }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, loadMore]);
 
   const handleOrderChange = (order: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("orderBy", order);
     params.set("page", "1");
     router.push(`${pathname}?${params.toString()}`);
-  };
-
-  // Gera lista de números de páginas para paginação amigável
-  const renderPaginationNumbers = () => {
-    const pages: (number | string)[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (page > 3) pages.push("...");
-
-      const start = Math.max(2, page - 1);
-      const end = Math.min(totalPages - 1, page + 1);
-
-      for (let i = start; i <= end; i++) pages.push(i);
-
-      if (page < totalPages - 2) pages.push("...");
-      pages.push(totalPages);
-    }
-
-    return pages;
   };
 
   return (
@@ -79,7 +124,7 @@ export function SearchPropertyList({
           <div className="text-xs text-slate-500">
             Mostrando{" "}
             <strong className="text-slate-900 dark:text-white font-semibold">
-              {properties.length}
+              {propertiesList.length}
             </strong>{" "}
             de{" "}
             <strong className="text-slate-900 dark:text-white font-semibold">{total}</strong>{" "}
@@ -140,11 +185,11 @@ export function SearchPropertyList({
             <SearchPropertyCardSkeleton key={n} />
           ))}
         </div>
-      ) : properties.length === 0 ? (
+      ) : propertiesList.length === 0 ? (
         <SearchEmptyState />
       ) : (
         <div className="properties-list space-y-4 w-full">
-          {properties.map((property) => (
+          {propertiesList.map((property) => (
             <SearchPropertyCard
               key={property.id}
               property={property}
@@ -155,67 +200,25 @@ export function SearchPropertyList({
         </div>
       )}
 
-      {/* PAGINAÇÃO NUMERADA INTELIGENTE (Seção 19) */}
-      {totalPages > 1 && (
-        <nav aria-label="Paginação" className="flex items-center justify-center gap-1 pt-6 pb-2">
-          {/* BOTÃO ANTERIOR */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(page - 1)}
-            disabled={page <= 1}
-            className="h-9 px-3 rounded-xl text-xs font-semibold gap-1 cursor-pointer disabled:opacity-40"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Anterior</span>
-          </Button>
+      {/* SENTINELA PARA CARREGAMENTO INFINITO VIA INTERSECTION OBSERVER */}
+      <div ref={sentinelRef} className="h-4 w-full pointer-events-none" />
 
-          {/* NÚMEROS DE PÁGINA */}
-          <div className="flex items-center gap-1 px-1">
-            {renderPaginationNumbers().map((num, idx) => {
-              if (num === "...") {
-                return (
-                  <span
-                    key={`ellipsis-${idx}`}
-                    className="h-9 w-9 flex items-center justify-center text-xs text-slate-400 select-none"
-                  >
-                    ...
-                  </span>
-                );
-              }
-
-              const isCurrent = page === num;
-              return (
-                <button
-                  key={`page-${num}`}
-                  type="button"
-                  onClick={() => handlePageChange(Number(num))}
-                  className={`h-9 w-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    isCurrent
-                      ? "bg-indigo-600 text-white shadow-2xs"
-                      : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  }`}
-                >
-                  {num}
-                </button>
-              );
-            })}
+      {/* SKELETON / INDICADOR DE CARREGAMENTO DE NOVOS IMÓVEIS */}
+      {isLoadingMore && (
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center justify-center gap-2 py-3 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/40 animate-pulse">
+            <Loader2 className="h-4 w-4 animate-spin text-indigo-600 dark:text-indigo-400" />
+            <span>Carregando mais imóveis...</span>
           </div>
+          <SearchPropertyCardSkeleton />
+        </div>
+      )}
 
-          {/* BOTÃO PRÓXIMA */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(page + 1)}
-            disabled={page >= totalPages}
-            className="h-9 px-3 rounded-xl text-xs font-semibold gap-1 cursor-pointer disabled:opacity-40"
-          >
-            <span className="hidden sm:inline">Próxima</span>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </nav>
+      {/* MENSAGEM QUANDO TODOS OS IMÓVEIS FOREM CARREGADOS */}
+      {!hasMore && propertiesList.length > 0 && propertiesList.length >= total && (
+        <div className="py-8 text-center text-xs font-medium text-slate-400 border-t border-slate-100 dark:border-slate-800 mt-6">
+          Você visualizou todos os {total} imóveis encontrados.
+        </div>
       )}
     </div>
   );

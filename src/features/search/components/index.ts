@@ -10,3 +10,4 @@ export * from "./SearchEmptyState";
 export * from "./SearchMap";
 export * from "./SearchLayoutView";
 export * from "./LocationAutocomplete";
+export * from "./PriceRangeHistogramFilter";

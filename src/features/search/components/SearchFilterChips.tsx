@@ -65,12 +65,32 @@ export function SearchFilterChips({ filters }: SearchFilterChipsProps) {
 
   // Tipo do Imóvel
   if (filters.propertyType) {
-    const pType = typeof filters.propertyType === "string" ? filters.propertyType : filters.propertyType[0];
-    const label = PROPERTY_TYPE_LABELS[pType] || pType;
-    chips.push({
-      label,
-      onRemove: () => removeFilter("propertyType"),
-    });
+    if (Array.isArray(filters.propertyType)) {
+      filters.propertyType.forEach((pType) => {
+        const label = PROPERTY_TYPE_LABELS[pType] || pType;
+        chips.push({
+          label,
+          onRemove: () => {
+            const next = (filters.propertyType as PropertyType[]).filter((t) => t !== pType);
+            const params = new URLSearchParams(searchParams.toString());
+            if (next.length > 0) {
+              params.set("propertyType", next.join(","));
+            } else {
+              params.delete("propertyType");
+            }
+            params.set("page", "1");
+            router.push(`${pathname}?${params.toString()}`);
+          },
+        });
+      });
+    } else {
+      const pType = filters.propertyType;
+      const label = PROPERTY_TYPE_LABELS[pType] || pType;
+      chips.push({
+        label,
+        onRemove: () => removeFilter("propertyType"),
+      });
+    }
   }
 
   // Preço

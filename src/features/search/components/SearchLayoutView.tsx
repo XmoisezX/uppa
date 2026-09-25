@@ -153,8 +153,8 @@ export function SearchLayoutView({ result }: SearchLayoutViewProps) {
       {!isMapMode ? (
         /* MODO PADRÃO PORTAL: SIDEBAR ESQUERDA + RESULTADOS HORIZONTAIS */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* SIDEBAR DE FILTROS (DESKTOP) */}
-          <div className="hidden lg:block lg:col-span-3 xl:col-span-3 sticky top-20">
+          {/* SIDEBAR DE FILTROS (DESKTOP) - ROLAGEM INDEPENDENTE */}
+          <div className="hidden lg:block lg:col-span-3 xl:col-span-3 sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overflow-x-hidden pr-1.5 overscroll-contain [scrollbar-width:thin]">
             <SearchSidebarFilters
               filters={currentResult.filters}
               cityName={cityName}

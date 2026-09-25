@@ -36,9 +36,23 @@ function parseSearchParams(params: Record<string, string | string[] | undefined>
         }
       : undefined;
 
+  const rawPropertyType = params.propertyType;
+  let parsedPropertyType: PropertyType | PropertyType[] | undefined;
+  if (Array.isArray(rawPropertyType)) {
+    const flat = rawPropertyType.flatMap((t) => t.split(",")).map((t) => t.trim()).filter(Boolean) as PropertyType[];
+    parsedPropertyType = flat.length > 1 ? flat : flat[0];
+  } else if (typeof rawPropertyType === "string" && rawPropertyType.trim()) {
+    if (rawPropertyType.includes(",")) {
+      const split = rawPropertyType.split(",").map((t) => t.trim()).filter(Boolean) as PropertyType[];
+      parsedPropertyType = split.length > 1 ? split : split[0];
+    } else {
+      parsedPropertyType = rawPropertyType.trim() as PropertyType;
+    }
+  }
+
   return {
     transactionType: "sale",
-    propertyType: getSingle(params.propertyType) as PropertyType | undefined,
+    propertyType: parsedPropertyType,
     state: getSingle(params.state),
     city: getSingle(params.city),
     neighborhood: getSingle(params.neighborhood),

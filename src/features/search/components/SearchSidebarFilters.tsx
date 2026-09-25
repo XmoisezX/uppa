@@ -2,10 +2,28 @@
 
 import React, { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { ChevronDown, ChevronUp, RotateCcw, SlidersHorizontal } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  RotateCcw,
+  SlidersHorizontal,
+  Home,
+  Building2,
+  ShieldCheck,
+  LandPlot,
+  Layers,
+  Trees,
+  Building,
+  Crown,
+  Maximize2,
+  DoorOpen,
+  Store,
+  Check,
+} from "lucide-react";
 import type { SearchFilters } from "../types";
 import type { PropertyType } from "@/types/property";
 import { LocationAutocomplete } from "./LocationAutocomplete";
+import { PriceRangeHistogramFilter } from "./PriceRangeHistogramFilter";
 
 interface SearchSidebarFiltersProps {
   filters: SearchFilters;
@@ -14,17 +32,21 @@ interface SearchSidebarFiltersProps {
   neighborhoodName?: string;
 }
 
-const PROPERTY_TYPES: { id: PropertyType; label: string }[] = [
-  { id: "apartment", label: "Apartamento" },
-  { id: "house", label: "Casa" },
-  { id: "condo_house", label: "Casa em Condomínio" },
-  { id: "townhouse", label: "Sobrado" },
-  { id: "land", label: "Terreno" },
-  { id: "penthouse", label: "Cobertura" },
-  { id: "studio", label: "Studio" },
-  { id: "kitnet", label: "Kitnet" },
-  { id: "commercial", label: "Comercial" },
-  { id: "farm", label: "Chácara / Sítio" },
+const PRIMARY_PROPERTY_TYPES: { id: PropertyType; label: string; icon: any }[] = [
+  { id: "house", label: "Casa", icon: Home },
+  { id: "apartment", label: "Apartamento", icon: Building2 },
+  { id: "condo_house", label: "Casa em Condomínio", icon: ShieldCheck },
+  { id: "land", label: "Terrenos", icon: LandPlot },
+  { id: "loft", label: "Loft", icon: Layers },
+  { id: "farm", label: "Chácara", icon: Trees },
+];
+
+const MORE_PROPERTY_TYPES: { id: PropertyType; label: string; icon: any }[] = [
+  { id: "townhouse", label: "Sobrado", icon: Building },
+  { id: "penthouse", label: "Cobertura", icon: Crown },
+  { id: "studio", label: "Studio", icon: Maximize2 },
+  { id: "kitnet", label: "Kitnet", icon: DoorOpen },
+  { id: "commercial", label: "Comercial", icon: Store },
 ];
 
 export function SearchSidebarFilters({
@@ -64,6 +86,23 @@ export function SearchSidebarFilters({
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const [showMoreTypes, setShowMoreTypes] = useState(false);
+
+  const selectedTypes: PropertyType[] = React.useMemo(() => {
+    if (!filters.propertyType) return [];
+    if (Array.isArray(filters.propertyType)) return filters.propertyType;
+    return [filters.propertyType];
+  }, [filters.propertyType]);
+
+  const handleToggleType = (typeId: PropertyType) => {
+    const next = selectedTypes.includes(typeId)
+      ? selectedTypes.filter((t) => t !== typeId)
+      : [...selectedTypes, typeId];
+    updateFilters({
+      propertyType: next.length > 0 ? (next as any) : undefined,
+    });
+  };
+
   const isRent = filters.transactionType === "rent";
 
   // Preço local para inputs numéricos
@@ -89,6 +128,12 @@ export function SearchSidebarFilters({
     Object.entries(updates).forEach(([key, val]) => {
       if (val === undefined || val === null || val === "" || val === false) {
         params.delete(key);
+      } else if (Array.isArray(val)) {
+        if (val.length === 0) {
+          params.delete(key);
+        } else {
+          params.set(key, val.join(","));
+        }
       } else {
         params.set(key, String(val));
       }
@@ -178,47 +223,106 @@ export function SearchSidebarFilters({
 
       {/* 1. TIPO DE IMÓVEL */}
       <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
-        <button
-          type="button"
-          onClick={() => toggleSection("type")}
-          className="w-full flex items-center justify-between py-1 text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer"
-        >
-          <span>Tipo de Imóvel</span>
-          {openSections.type ? (
-            <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
-          ) : (
-            <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-          )}
-        </button>
+        <div className="flex items-center justify-between py-1">
+          <button
+            type="button"
+            onClick={() => toggleSection("type")}
+            className="flex-1 flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer"
+          >
+            <div className="flex items-center gap-1.5">
+              <span>Tipo de Imóvel</span>
+              {selectedTypes.length > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 rounded-full">
+                  {selectedTypes.length}
+                </span>
+              )}
+            </div>
+            {openSections.type ? (
+              <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+            )}
+          </button>
+        </div>
 
         {openSections.type && (
-          <div className="mt-3 space-y-1.5 max-h-48 overflow-y-auto pr-1">
-            {PROPERTY_TYPES.map((t) => {
-              const isChecked = filters.propertyType === t.id;
-              return (
-                <label
-                  key={t.id}
-                  className="flex items-center gap-2 py-1 px-1.5 rounded-lg text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer select-none transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() =>
-                      updateFilters({
-                        propertyType: isChecked ? undefined : t.id,
-                      })
-                    }
-                    className="h-4 w-4 rounded-sm border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                  />
-                  <span>{t.label}</span>
-                </label>
-              );
-            })}
+          <div className="mt-3 space-y-2">
+            {/* GRID DE ÍCONES PRINCIPAIS: Casa, Apartamento, Casa em Condomínio, Terrenos, Loft, Chácara */}
+            <div className="grid grid-cols-2 gap-2">
+              {PRIMARY_PROPERTY_TYPES.map((t) => {
+                const isSelected = selectedTypes.includes(t.id);
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => handleToggleType(t.id)}
+                    className={`relative flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all cursor-pointer select-none ${
+                      isSelected
+                        ? "border-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-200 ring-2 ring-indigo-500/20 shadow-xs"
+                        : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    {isSelected && (
+                      <div className="absolute top-1.5 right-1.5 flex items-center justify-center w-3.5 h-3.5 rounded-full bg-indigo-600 text-white">
+                        <Check className="w-2 h-2 stroke-[3]" />
+                      </div>
+                    )}
+                    <Icon className={`w-5 h-5 mb-1 ${isSelected ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-slate-500"}`} />
+                    <span className="text-[11px] font-bold leading-tight line-clamp-1">
+                      {t.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* DEMAIS TIPOS EXPANDÍVEIS (VER MAIS) */}
+            {showMoreTypes && (
+              <div className="grid grid-cols-2 gap-2 pt-1 animate-in fade-in duration-200">
+                {MORE_PROPERTY_TYPES.map((t) => {
+                  const isSelected = selectedTypes.includes(t.id);
+                  const Icon = t.icon;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => handleToggleType(t.id)}
+                      className={`relative flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all cursor-pointer select-none ${
+                        isSelected
+                          ? "border-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-200 ring-2 ring-indigo-500/20 shadow-xs"
+                          : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      {isSelected && (
+                        <div className="absolute top-1.5 right-1.5 flex items-center justify-center w-3.5 h-3.5 rounded-full bg-indigo-600 text-white">
+                          <Check className="w-2 h-2 stroke-[3]" />
+                        </div>
+                      )}
+                      <Icon className={`w-5 h-5 mb-1 ${isSelected ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-slate-500"}`} />
+                      <span className="text-[11px] font-bold leading-tight line-clamp-1">
+                        {t.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* BOTÃO VER MAIS / VER MENOS */}
+            <button
+              type="button"
+              onClick={() => setShowMoreTypes((prev) => !prev)}
+              className="w-full py-1.5 px-3 rounded-lg border border-dashed border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center gap-1"
+            >
+              <span>{showMoreTypes ? "Ver menos tipos" : `Ver mais (+${MORE_PROPERTY_TYPES.length})`}</span>
+              {showMoreTypes ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
           </div>
         )}
       </div>
 
-      {/* 2. FAIXA DE PREÇO */}
+      {/* 2. FAIXA DE PREÇO COM VELAS VERTICAIS E RANGER */}
       <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
         <button
           type="button"
@@ -234,72 +338,13 @@ export function SearchSidebarFilters({
         </button>
 
         {openSections.price && (
-          <div className="mt-3 space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] font-semibold text-slate-400 block mb-1">
-                  Mínimo (R$)
-                </label>
-                <input
-                  type="number"
-                  placeholder={isRent ? "500" : "100.000"}
-                  value={minPrice}
-                  onChange={(e) => setMinPrice(e.target.value)}
-                  onBlur={handlePriceBlur}
-                  className="w-full h-8 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-semibold text-slate-400 block mb-1">
-                  Máximo (R$)
-                </label>
-                <input
-                  type="number"
-                  placeholder={isRent ? "5.000" : "1.000.000"}
-                  value={maxPrice}
-                  onChange={(e) => setMaxPrice(e.target.value)}
-                  onBlur={handlePriceBlur}
-                  className="w-full h-8 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-            </div>
-
-            {/* Presets rápidos */}
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {isRent ? (
-                <>
-                  {[1500, 2500, 4000, 6000].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => {
-                        setMaxPrice(String(val));
-                        updateFilters({ priceMax: val });
-                      }}
-                      className="px-2 py-1 rounded-md text-[10px] font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
-                    >
-                      Até R$ {val.toLocaleString("pt-BR")}
-                    </button>
-                  ))}
-                </>
-              ) : (
-                <>
-                  {[300000, 500000, 750000, 1000000].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => {
-                        setMaxPrice(String(val));
-                        updateFilters({ priceMax: val });
-                      }}
-                      className="px-2 py-1 rounded-md text-[10px] font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
-                    >
-                      Até R$ {val >= 1000000 ? "1M" : `${val / 1000}k`}
-                    </button>
-                  ))}
-                </>
-              )}
-            </div>
+          <div className="mt-3">
+            <PriceRangeHistogramFilter
+              isRent={isRent}
+              minPrice={filters.priceMin}
+              maxPrice={filters.priceMax}
+              onChange={updateFilters}
+            />
           </div>
         )}
       </div>
