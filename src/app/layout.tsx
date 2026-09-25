@@ -76,8 +76,9 @@ export default async function RootLayout({
     >
       <head>
         <link rel="icon" href={faviconUrl} />
+        <meta name="color-scheme" content="light" />
       </head>
-      <body className="flex min-h-full flex-col bg-white text-slate-900 selection:bg-indigo-600 selection:text-white dark:bg-slate-950 dark:text-slate-100 font-sans">
+      <body className="flex min-h-full flex-col bg-white text-slate-900 selection:bg-indigo-600 selection:text-white font-sans">
         <Providers>
           {children}
         </Providers>

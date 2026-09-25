@@ -86,7 +86,7 @@ export default async function DashboardLayout({
                 width={130}
                 height={42}
                 priority
-                className="h-9 md:h-10 w-auto object-contain dark:brightness-0 dark:invert transition-transform group-hover:scale-105"
+                className="h-9 md:h-10 w-auto object-contain transition-transform group-hover:scale-105"
               />
             </Link>
 

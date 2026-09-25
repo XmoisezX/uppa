@@ -289,7 +289,7 @@ export function Footer() {
                 alt="UPPA"
                 width={120}
                 height={38}
-                className="h-8 md:h-9 w-auto object-contain dark:brightness-0 dark:invert opacity-90 group-hover:opacity-100 transition-opacity"
+                className="h-8 md:h-9 w-auto object-contain opacity-90 group-hover:opacity-100 transition-opacity"
               />
             </Link>
             <span className="hidden sm:inline text-slate-300 dark:text-slate-700">|</span>
