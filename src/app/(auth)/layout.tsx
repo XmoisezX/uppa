@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Building2 } from "lucide-react";
+import Image from "next/image";
 
 export default function AuthLayout({
   children,
@@ -10,13 +10,15 @@ export default function AuthLayout({
   return (
     <div className="flex min-h-[calc(100vh-4rem)] flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link href="/" className="inline-flex items-center gap-2.5 group">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 group-hover:scale-105 transition-transform">
-            <Building2 className="h-6 w-6" />
-          </div>
-          <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-            UPPA
-          </span>
+        <Link href="/" className="inline-flex items-center justify-center group" title="Página Inicial da UPPA">
+          <Image
+            src="/logo-uppa.png"
+            alt="UPPA"
+            width={160}
+            height={55}
+            priority
+            className="h-12 w-auto object-contain dark:brightness-0 dark:invert transition-transform duration-200 group-hover:scale-105"
+          />
         </Link>
       </div>
 

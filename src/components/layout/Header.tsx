@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -66,10 +67,15 @@ export function Header() {
         {/* Lado Esquerdo: Marca UPPA + Navegação Principal */}
         <div className="flex items-center gap-8">
           {/* Logo UPPA */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <span className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-              UPPA
-            </span>
+          <Link href="/" className="flex items-center group">
+            <Image
+              src="/logo-uppa.png"
+              alt="UPPA"
+              width={140}
+              height={44}
+              priority
+              className="h-9 md:h-10 w-auto object-contain dark:brightness-0 dark:invert transition-transform duration-200 group-hover:scale-105"
+            />
           </Link>
 
           {/* Navegação Desktop */}

@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -78,13 +79,15 @@ export default async function DashboardLayout({
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Lado Esquerdo: Logo UPPA + Badge de Contexto */}
           <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2 group">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white font-black text-sm shadow-md shadow-indigo-600/20 group-hover:scale-105 transition-transform">
-                UP
-              </div>
-              <span className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
-                UPPA
-              </span>
+            <Link href="/" className="flex items-center group" title="Ir para a página inicial">
+              <Image
+                src="/logo-uppa.png"
+                alt="UPPA"
+                width={110}
+                height={36}
+                priority
+                className="h-8 w-auto object-contain dark:brightness-0 dark:invert transition-transform group-hover:scale-105"
+              />
             </Link>
 
             <span className="h-5 w-px bg-slate-200 dark:bg-slate-700 hidden sm:inline-block" />

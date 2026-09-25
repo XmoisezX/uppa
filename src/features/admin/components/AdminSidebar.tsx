@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import NextImage from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -106,16 +107,18 @@ export function AdminSidebar({ adminUser, mobileOpen, onMobileClose }: SidebarPr
     <div className="flex flex-col h-full bg-white border-r border-slate-200 text-slate-700 select-none">
       {/* Brand Header */}
       <div className="h-[60px] flex items-center justify-between px-5 border-b border-slate-100">
-        <Link href="/admin" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white font-extrabold text-sm group-hover:scale-105 transition-transform">
-            U
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-black text-slate-900 text-[17px] tracking-wider">UPPA</span>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">
-              Admin
-            </span>
-          </div>
+        <Link href="/admin" className="flex items-center gap-2 group">
+          <NextImage
+            src="/logo-uppa.png"
+            alt="UPPA"
+            width={90}
+            height={32}
+            priority
+            className="h-7 w-auto object-contain transition-transform group-hover:scale-105"
+          />
+          <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+            Admin
+          </span>
         </Link>
 
         {mobileOpen && (

@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ShieldCheck, Heart } from "lucide-react";
 
 export function Footer() {
@@ -282,9 +283,15 @@ export function Footer() {
         {/* Linha Inferior com Marca, Proposta de Valor e Copyright */}
         <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
-            <span className="text-lg font-black tracking-tight text-slate-950 dark:text-white">
-              UPPA
-            </span>
+            <Link href="/" className="inline-flex items-center group" title="Página Inicial da UPPA">
+              <Image
+                src="/logo-uppa.png"
+                alt="UPPA"
+                width={100}
+                height={32}
+                className="h-7 w-auto object-contain dark:brightness-0 dark:invert opacity-90 group-hover:opacity-100 transition-opacity"
+              />
+            </Link>
             <span className="hidden sm:inline text-slate-300 dark:text-slate-700">|</span>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
               O portal imobiliário nacional para encontrar, comprar e alugar imóveis diretamente com anunciantes credenciados.
