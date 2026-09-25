@@ -91,6 +91,9 @@ export interface SiteSettingsData {
   hero_subheadline?: string;
   hero_search_placeholder?: string;
   hero_background_image?: string | null;
+  hero_image_layout?: 'side' | 'cover' | 'right';
+  hero_image_fit?: 'cover' | 'contain';
+  hero_background_color?: string;
   home_sections?: {
     id: string;
     label: string;

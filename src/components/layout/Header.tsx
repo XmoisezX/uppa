@@ -50,7 +50,18 @@ export function Header() {
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
+    <header
+      className={`sticky top-0 z-50 w-full transition-colors ${
+        pathname === "/"
+          ? "border-b border-black/[0.04] dark:border-white/[0.05]"
+          : "border-b border-slate-200 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95"
+      }`}
+      style={
+        pathname === "/"
+          ? { backgroundColor: "var(--hero-bg-color, #FAF7F5)" }
+          : undefined
+      }
+    >
       <div className="container flex h-16 items-center justify-between">
         {/* Lado Esquerdo: Marca UPPA + Navegação Principal */}
         <div className="flex items-center gap-8">

@@ -79,6 +79,9 @@ const PROPERTY_TYPE_OPTIONS = [
 interface PropertySearchHeroProps {
   suggestedCities?: ActiveCitySummary[];
   backgroundImage?: string | null;
+  imageLayout?: 'side' | 'cover' | 'right';
+  imageFit?: 'cover' | 'contain';
+  backgroundColor?: string;
   headline?: string;
   subheadline?: string;
 }
@@ -86,6 +89,9 @@ interface PropertySearchHeroProps {
 export function PropertySearchHero({
   suggestedCities = [],
   backgroundImage,
+  imageLayout = 'side',
+  imageFit = 'cover',
+  backgroundColor,
   headline,
   subheadline,
 }: PropertySearchHeroProps) {
@@ -152,183 +158,233 @@ export function PropertySearchHero({
     router.push(destination);
   };
 
+  // Higieniza o texto para remover a frase longa conforme solicitado pelo usuário
+  const cleanSubheadline = subheadline?.includes("Milhares de casas")
+    ? "Só na UPPA você encontra as melhores opções."
+    : subheadline;
+
+  const displayHeadline = headline?.includes("Milhares de casas")
+    ? "Encontre o imóvel ideal para você."
+    : (headline || "Encontre o imóvel ideal para você.");
+
+  const displaySubheadline = cleanSubheadline === undefined || cleanSubheadline === null
+    ? "Só na UPPA você encontra as melhores opções."
+    : cleanSubheadline;
+
+  const effectiveBgColor = backgroundColor || 'var(--hero-bg-color, #FAF7F5)';
+
   return (
-    <section className="relative w-full min-h-[580px] sm:min-h-[620px] lg:min-h-[660px] flex items-center overflow-hidden border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950">
-      {/* 1. IMAGEM DE FUNDO (Atrás do Filtro, Natural e Nítida sem blur) */}
-      {backgroundImage ? (
+    <section
+      className="relative w-full min-h-[580px] sm:min-h-[620px] lg:min-h-[660px] flex items-center overflow-hidden border-b border-black/[0.04] dark:border-slate-800 transition-colors"
+      style={{ backgroundColor: effectiveBgColor }}
+    >
+      {/* 1. LAYOUT 'COVER': Imagem cobrindo todo o fundo */}
+      {imageLayout === 'cover' && backgroundImage && (
         <div className="absolute inset-0 z-0">
           <img
             src={backgroundImage}
             alt="Portal Imobiliário UPPA"
-            className="w-full h-full object-cover object-center"
+            className={`w-full h-full ${imageFit === 'contain' ? 'object-contain' : 'object-cover'} object-center`}
           />
         </div>
-      ) : (
-        <div className="absolute inset-0 z-0 bg-gradient-to-br from-slate-100 via-white to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950" />
       )}
 
-      {/* 2. CONTEÚDO SOBRE A IMAGEM: Card Flutuante Estilo Zap com Sombra Suave Realista */}
+      {/* 2. LAYOUT 'RIGHT': Imagem ancorada à direita no fundo com transição suave */}
+      {imageLayout === 'right' && backgroundImage && (
+        <div className="absolute inset-y-0 right-0 w-full lg:w-3/5 z-0">
+          <img
+            src={backgroundImage}
+            alt="Portal Imobiliário UPPA"
+            className={`w-full h-full ${imageFit === 'contain' ? 'object-contain' : 'object-cover'} object-center lg:object-right`}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none hidden lg:block"
+            style={{
+              background: `linear-gradient(to right, ${effectiveBgColor} 0%, transparent 60%)`,
+            }}
+          />
+        </div>
+      )}
+
+      {/* 3. CONTEÚDO PRINCIPAL (Card e Imagem ao Lado) */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-        <div className="w-full max-w-[480px]">
-          {/* Card Flutuante com Sombra Suave e Profunda (Parece estar na frente da imagem) */}
-          <div className="rounded-3xl bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.24),0_12px_28px_-8px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.05] dark:ring-white/[0.08] transition-all">
-            {/* Título Principal Integrado Dentro do Card */}
-            <h1 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white leading-tight mb-5 tracking-tight">
-              {headline || "Encontre o imóvel ideal para você."}{" "}
-              <span className="font-normal text-slate-600 dark:text-slate-300">
-                {subheadline || "Só na UPPA você encontra as melhores opções."}
-              </span>
-            </h1>
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12">
+          {/* Card Flutuante com Sombra Suave e Profunda (Estilo Zap) */}
+          <div className="w-full max-w-[480px] shrink-0 mx-auto lg:mx-0">
+            <div className="rounded-3xl bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.20),0_12px_28px_-8px_rgba(0,0,0,0.10)] ring-1 ring-black/[0.04] dark:ring-white/[0.08] transition-all">
+              {/* Título Principal Integrado Dentro do Card */}
+              <h1 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white leading-tight mb-5 tracking-tight">
+                {displayHeadline}{" "}
+                {displaySubheadline && (
+                  <span className="font-normal text-slate-600 dark:text-slate-300">
+                    {displaySubheadline}
+                  </span>
+                )}
+              </h1>
 
-            {/* Abas Horizontais com Indicador Inferior (Estilo Zap) */}
-            <div className="flex items-center gap-6 border-b border-slate-100 dark:border-slate-800 mb-6">
-              <button
-                type="button"
-                onClick={() => setActiveTab("comprar")}
-                className={`pb-3 text-sm sm:text-base font-bold transition-all relative cursor-pointer ${
-                  activeTab === "comprar"
-                    ? "text-indigo-600 dark:text-indigo-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-indigo-600 dark:after:bg-indigo-400"
-                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                }`}
-              >
-                Comprar
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("alugar")}
-                className={`pb-3 text-sm sm:text-base font-bold transition-all relative cursor-pointer ${
-                  activeTab === "alugar"
-                    ? "text-indigo-600 dark:text-indigo-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-indigo-600 dark:after:bg-indigo-400"
-                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                }`}
-              >
-                Alugar
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("lancamentos")}
-                className={`pb-3 text-sm sm:text-base font-bold transition-all relative cursor-pointer ${
-                  activeTab === "lancamentos"
-                    ? "text-indigo-600 dark:text-indigo-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-indigo-600 dark:after:bg-indigo-400"
-                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                }`}
-              >
-                Imóvel novo
-              </button>
-            </div>
-
-            {/* Formulário Vertical Limpo */}
-            <form onSubmit={handleSearch} className="space-y-4">
-              {/* Campo 1: Onde deseja morar? */}
-              <div>
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 px-0.5">
-                  Onde deseja morar?
-                </label>
-                <LocationAutocomplete
-                  placeholder="Busque uma localização"
-                  suggestedCities={suggestedCities}
-                  cityName={selectedCityName}
-                  initialCity={selectedCitySlug}
-                  onLocationChange={(loc) => {
-                    setSelectedCitySlug(loc.city || "");
-                    setSelectedCityName(loc.displayText || loc.city || "");
-                    setSelectedNeighborhoodSlug(loc.neighborhood || "");
-                  }}
-                  onInputChange={(val) => {
-                    setSelectedCityName(val);
-                    if (!val) {
-                      setSelectedCitySlug("");
-                      setSelectedNeighborhoodSlug("");
-                    }
-                  }}
-                />
-              </div>
-
-              {/* Campo 2: Tipo de imóvel */}
-              <div ref={typeDropdownRef} className="relative">
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 px-0.5">
-                  Tipo de imóvel
-                </label>
-                <div
-                  onClick={() => setIsTypeOpen((prev) => !prev)}
-                  className={`relative flex items-center w-full min-h-[46px] rounded-xl border transition-all cursor-pointer bg-white dark:bg-slate-900 select-none ${
-                    isTypeOpen
-                      ? "border-slate-400 dark:border-slate-600 shadow-sm ring-2 ring-slate-100 dark:ring-slate-800"
-                      : "border-slate-300 dark:border-slate-700 hover:border-slate-400"
+              {/* Abas Horizontais com Indicador Inferior (Estilo Zap) */}
+              <div className="flex items-center gap-6 border-b border-slate-100 dark:border-slate-800 mb-6">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("comprar")}
+                  className={`pb-3 text-sm sm:text-base font-bold transition-all relative cursor-pointer ${
+                    activeTab === "comprar"
+                      ? "text-indigo-600 dark:text-indigo-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-indigo-600 dark:after:bg-indigo-400"
+                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                   }`}
                 >
-                  <div className="ml-2.5 mr-2 flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 shrink-0">
-                    <SelectedTypeIcon className="h-4 w-4" />
-                  </div>
-                  <span className="flex-1 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                    {selectedTypeOption.label}
-                  </span>
-                  <ChevronDown
-                    className={`mr-3.5 h-4 w-4 text-slate-400 transition-transform duration-200 shrink-0 ${
-                      isTypeOpen ? "rotate-180 text-indigo-600 dark:text-indigo-400" : ""
-                    }`}
+                  Comprar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("alugar")}
+                  className={`pb-3 text-sm sm:text-base font-bold transition-all relative cursor-pointer ${
+                    activeTab === "alugar"
+                      ? "text-indigo-600 dark:text-indigo-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-indigo-600 dark:after:bg-indigo-400"
+                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                  }`}
+                >
+                  Alugar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("lancamentos")}
+                  className={`pb-3 text-sm sm:text-base font-bold transition-all relative cursor-pointer ${
+                    activeTab === "lancamentos"
+                      ? "text-indigo-600 dark:text-indigo-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-indigo-600 dark:after:bg-indigo-400"
+                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                  }`}
+                >
+                  Imóvel novo
+                </button>
+              </div>
+
+              {/* Formulário Vertical Limpo */}
+              <form onSubmit={handleSearch} className="space-y-4">
+                {/* Campo 1: Onde deseja morar? */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 px-0.5">
+                    Onde deseja morar?
+                  </label>
+                  <LocationAutocomplete
+                    placeholder="Busque uma localização"
+                    suggestedCities={suggestedCities}
+                    cityName={selectedCityName}
+                    initialCity={selectedCitySlug}
+                    onLocationChange={(loc) => {
+                      setSelectedCitySlug(loc.city || "");
+                      setSelectedCityName(loc.displayText || loc.city || "");
+                      setSelectedNeighborhoodSlug(loc.neighborhood || "");
+                    }}
+                    onInputChange={(val) => {
+                      setSelectedCityName(val);
+                      if (!val) {
+                        setSelectedCitySlug("");
+                        setSelectedNeighborhoodSlug("");
+                      }
+                    }}
                   />
                 </div>
 
-                {/* Dropdown Menu com Categorias */}
-                {isTypeOpen && (
-                  <div className="absolute top-full left-0 mt-1.5 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in-50 zoom-in-95 duration-150">
-                    <div className="py-2">
-                      <div className="px-3.5 py-1 text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
-                        Categorias
-                      </div>
-                      {PROPERTY_TYPE_OPTIONS.map((item) => {
-                        const checked = propertyType === item.value;
-                        const ItemIcon = item.icon;
-                        return (
-                          <div
-                            key={item.value}
-                            onClick={() => {
-                              setPropertyType(item.value);
-                              setIsTypeOpen(false);
-                            }}
-                            className="flex items-center justify-between px-3.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors select-none group"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <ItemIcon className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors shrink-0" />
-                              <div className="flex flex-col truncate">
-                                <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                                  {item.label}
-                                </span>
-                                <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                                  {item.description}
-                                </span>
+                {/* Campo 2: Tipo de imóvel */}
+                <div ref={typeDropdownRef} className="relative">
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 px-0.5">
+                    Tipo de imóvel
+                  </label>
+                  <div
+                    onClick={() => setIsTypeOpen((prev) => !prev)}
+                    className={`relative flex items-center w-full min-h-[46px] rounded-xl border transition-all cursor-pointer bg-white dark:bg-slate-900 select-none ${
+                      isTypeOpen
+                        ? "border-slate-400 dark:border-slate-600 shadow-sm ring-2 ring-slate-100 dark:ring-slate-800"
+                        : "border-slate-300 dark:border-slate-700 hover:border-slate-400"
+                    }`}
+                  >
+                    <div className="ml-2.5 mr-2 flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 shrink-0">
+                      <SelectedTypeIcon className="h-4 w-4" />
+                    </div>
+                    <span className="flex-1 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                      {selectedTypeOption.label}
+                    </span>
+                    <ChevronDown
+                      className={`mr-3.5 h-4 w-4 text-slate-400 transition-transform duration-200 shrink-0 ${
+                        isTypeOpen ? "rotate-180 text-indigo-600 dark:text-indigo-400" : ""
+                      }`}
+                    />
+                  </div>
+
+                  {/* Dropdown Menu com Categorias */}
+                  {isTypeOpen && (
+                    <div className="absolute top-full left-0 mt-1.5 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in-50 zoom-in-95 duration-150">
+                      <div className="py-2">
+                        <div className="px-3.5 py-1 text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
+                          Categorias
+                        </div>
+                        {PROPERTY_TYPE_OPTIONS.map((item) => {
+                          const checked = propertyType === item.value;
+                          const ItemIcon = item.icon;
+                          return (
+                            <div
+                              key={item.value}
+                              onClick={() => {
+                                setPropertyType(item.value);
+                                setIsTypeOpen(false);
+                              }}
+                              className="flex items-center justify-between px-3.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors select-none group"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <ItemIcon className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors shrink-0" />
+                                <div className="flex flex-col truncate">
+                                  <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                                    {item.label}
+                                  </span>
+                                  <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                                    {item.description}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div
+                                className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
+                                  checked
+                                    ? "bg-slate-900 border-slate-900 text-white dark:bg-white dark:border-white dark:text-slate-900"
+                                    : "border-slate-300 dark:border-slate-600 group-hover:border-slate-400"
+                                }`}
+                              >
+                                {checked && <Check className="h-3.5 w-3.5 stroke-[3]" />}
                               </div>
                             </div>
-
-                            <div
-                              className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
-                                checked
-                                  ? "bg-slate-900 border-slate-900 text-white dark:bg-white dark:border-white dark:text-slate-900"
-                                  : "border-slate-300 dark:border-slate-600 group-hover:border-slate-400"
-                              }`}
-                            >
-                              {checked && <Check className="h-3.5 w-3.5 stroke-[3]" />}
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
 
-              {/* Botão Buscar (Estilo Zap Pill Roxo/Índigo com Efeito Interativo) */}
-              <div className="pt-2">
-                <InteractiveHoverButton
-                  type="submit"
-                  text="Buscar"
-                  variant="solid"
-                  className="w-full h-12 min-h-[48px] text-base cursor-pointer"
+                {/* Botão Buscar com Animação Fluida */}
+                <div className="pt-2">
+                  <InteractiveHoverButton
+                    type="submit"
+                    text="Buscar"
+                    variant="solid"
+                    className="w-full h-12 min-h-[48px] text-base cursor-pointer"
+                  />
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* Coluna da Direita: Imagem ao Lado do Filtro (Estilo Zap) */}
+          {imageLayout === 'side' && backgroundImage && (
+            <div className="w-full lg:flex-1 hidden lg:flex items-center justify-center">
+              <div className="relative w-full max-w-[560px] h-[460px] rounded-[36px] overflow-hidden shadow-2xl shadow-black/10 ring-1 ring-black/5 group">
+                <img
+                  src={backgroundImage}
+                  alt="Portal Imobiliário UPPA"
+                  className={`w-full h-full ${imageFit === 'contain' ? 'object-contain bg-white/40' : 'object-cover'} object-center group-hover:scale-102 transition-transform duration-500`}
                 />
               </div>
-            </form>
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </section>

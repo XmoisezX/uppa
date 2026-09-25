@@ -101,10 +101,13 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
         hero_subheadline: settings.hero_subheadline,
         hero_search_placeholder: settings.hero_search_placeholder,
         hero_background_image: settings.hero_background_image,
+        hero_image_layout: settings.hero_image_layout || 'side',
+        hero_image_fit: settings.hero_image_fit || 'cover',
+        hero_background_color: settings.hero_background_color || '#FAF7F5',
       });
 
       if (res.success) {
-        showNotice('Textos e fundo da Home salvos com sucesso!');
+        showNotice('Textos e visual da Home salvos com sucesso!');
       } else {
         showNotice(res.error || 'Erro ao salvar.', 'error');
       }
@@ -278,14 +281,73 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
             />
           </div>
 
+          {/* Cor de Fundo Unificada (Do Menu até o Fim do Filtro) */}
+          <div className="space-y-3 pt-3 border-t border-slate-200">
+            <div>
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                Cor de Fundo do Topo & Hero (Menu ao Filtro)
+              </label>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Escolha uma cor de fundo personalizável (HEX ou RGB). Ela engloba a navbar do menu até o término do filtro atrás, criando um fundo contínuo elegante estilo Zap.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1.5 pr-3">
+                <input
+                  type="color"
+                  value={settings.hero_background_color?.startsWith('#') ? settings.hero_background_color : '#FAF7F5'}
+                  onChange={(e) => setSettings({ ...settings, hero_background_color: e.target.value })}
+                  className="w-8 h-8 rounded-lg border-0 cursor-pointer bg-transparent"
+                />
+                <input
+                  type="text"
+                  value={settings.hero_background_color || '#FAF7F5'}
+                  onChange={(e) => setSettings({ ...settings, hero_background_color: e.target.value })}
+                  placeholder="#FAF7F5 ou rgb(250, 247, 245)"
+                  className="w-44 bg-transparent text-xs font-mono font-semibold text-slate-800 focus:outline-none"
+                />
+              </div>
+
+              {/* Sugestões Rápidas de Cores */}
+              <div className="flex items-center gap-1.5">
+                {[
+                  { name: 'Creme Zap', value: '#FAF7F5' },
+                  { name: 'Branco Puro', value: '#FFFFFF' },
+                  { name: 'Cinza Slate', value: '#F8FAFC' },
+                  { name: 'Azul Suave', value: '#EEF2FF' },
+                  { name: 'Dark Mode', value: '#0B0F19' },
+                ].map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => setSettings({ ...settings, hero_background_color: preset.value })}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                      settings.hero_background_color === preset.value
+                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full border border-black/10 shrink-0"
+                      style={{ backgroundColor: preset.value }}
+                    />
+                    {preset.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Imagem de Fundo / Lado do Filtro */}
           <div className="space-y-3 pt-3 border-t border-slate-200">
             <div className="flex items-center justify-between">
               <div>
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                  Imagem de Fundo do Portal (Hero)
+                  Imagem do Portal (Hero)
                 </label>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Faça o upload de uma foto para o fundo do portal (atrás dos filtros de busca). O arquivo é otimizado e gravado diretamente no banco de dados.
+                  Faça o upload da foto e escolha se deseja posicioná-la ao lado do filtro (estilo Zap) ou ocupando o fundo inteiro.
                 </p>
               </div>
               {settings.hero_background_image && (
@@ -301,28 +363,62 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
             </div>
 
             {settings.hero_background_image ? (
-              <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 group shadow-sm">
-                <img
-                  src={settings.hero_background_image}
-                  alt="Pré-visualização do Fundo"
-                  className="w-full h-56 object-cover object-center opacity-85 group-hover:scale-102 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/40 to-transparent flex flex-col justify-end p-4">
-                  <div className="flex items-center justify-between text-white text-xs">
-                    <span className="font-semibold flex items-center gap-1.5">
-                      <ImageIcon className="w-4 h-4 text-emerald-400" />
-                      Imagem Ativa no Portal
-                    </span>
-                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-bold cursor-pointer transition-colors">
-                      <Upload className="w-3.5 h-3.5" />
-                      Substituir Imagem
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="hidden"
-                        onChange={handleImageUpload}
-                      />
+              <div className="space-y-4">
+                <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 group shadow-sm">
+                  <img
+                    src={settings.hero_background_image}
+                    alt="Pré-visualização da Imagem"
+                    className="w-full h-56 object-cover object-center opacity-85 group-hover:scale-102 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/40 to-transparent flex flex-col justify-end p-4">
+                    <div className="flex items-center justify-between text-white text-xs">
+                      <span className="font-semibold flex items-center gap-1.5">
+                        <ImageIcon className="w-4 h-4 text-emerald-400" />
+                        Imagem Ativa no Portal
+                      </span>
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-bold cursor-pointer transition-colors">
+                        <Upload className="w-3.5 h-3.5" />
+                        Substituir Imagem
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={handleImageUpload}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Opções de Posicionamento e Tamanho */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Como a imagem vai ficar (Posição)
                     </label>
+                    <select
+                      value={settings.hero_image_layout || 'side'}
+                      onChange={(e) => setSettings({ ...settings, hero_image_layout: e.target.value as any })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-400"
+                    >
+                      <option value="side">Ao lado do filtro (Estilo Zap — Recomendado)</option>
+                      <option value="cover">Fundo todo (Atrás do filtro cobrindo a tela)</option>
+                      <option value="right">Alinhada à direita no fundo (Com fade suave)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Enquadramento da Imagem (Tamanho / Fit)
+                    </label>
+                    <select
+                      value={settings.hero_image_fit || 'cover'}
+                      onChange={(e) => setSettings({ ...settings, hero_image_fit: e.target.value as any })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-400"
+                    >
+                      <option value="cover">Cover — Preencher espaço (Proporcional com corte)</option>
+                      <option value="contain">Contain — Conter imagem inteira sem cortes</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -332,7 +428,7 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
                   <Upload className="w-6 h-6" />
                 </div>
                 <span className="text-sm font-bold text-slate-800">
-                  Clique ou arraste uma foto para o fundo do portal
+                  Clique ou arraste uma foto para o hero do portal
                 </span>
                 <span className="text-xs text-slate-500 mt-1 max-w-sm">
                   Formatos aceitos: JPG, PNG ou WEBP em alta resolução (1920x1080).
@@ -350,7 +446,7 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
           <button
             onClick={handleSaveHomeTexts}
             disabled={isPending}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
           >
             <Save className="w-4 h-4" />
             {isPending ? 'Salvando...' : 'Salvar Alterações da Home'}

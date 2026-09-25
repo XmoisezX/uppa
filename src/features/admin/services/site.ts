@@ -2,10 +2,13 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import type { SiteFAQ, SiteSettingsData } from '@/types/admin';
 
 export const DEFAULT_SITE_SETTINGS: SiteSettingsData = {
-  hero_headline: 'Encontre o imóvel ideal no maior portal imobiliário do Brasil',
-  hero_subheadline: 'Milhares de casas, apartamentos, terrenos e imóveis comerciais à venda e para alugar direto com imobiliárias e corretores credenciados.',
-  hero_search_placeholder: 'Digite cidade, bairro ou código do imóvel...',
+  hero_headline: 'Encontre o imóvel ideal para você.',
+  hero_subheadline: 'Só na UPPA você encontra as melhores opções.',
+  hero_search_placeholder: 'Busque uma localização...',
   hero_background_image: null,
+  hero_image_layout: 'side',
+  hero_image_fit: 'cover',
+  hero_background_color: '#FAF7F5',
   home_sections: [
     { id: 'hero', label: 'Busca Principal (Hero)', enabled: true, order: 1 },
     { id: 'featured_properties', label: 'Imóveis em Destaque', enabled: true, order: 2 },

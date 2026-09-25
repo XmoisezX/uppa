@@ -39,12 +39,24 @@ export default async function HomePage() {
     getSiteSettings(),
   ]);
 
+  const heroBg = siteSettings?.hero_background_color || '#FAF7F5';
+
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-slate-950">
+      {/* Define variável de cor que unifica o fundo do menu (header) até o final do filtro */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `:root { --hero-bg-color: ${heroBg}; }`,
+        }}
+      />
+
       {/* 1. HERO VISUAL & BUSCA PRINCIPAL (Comprar, Alugar, Lançamentos, Tipos e Cidades) */}
       <PropertySearchHero
         suggestedCities={activeCities}
         backgroundImage={siteSettings?.hero_background_image}
+        imageLayout={siteSettings?.hero_image_layout || 'side'}
+        imageFit={siteSettings?.hero_image_fit || 'cover'}
+        backgroundColor={heroBg}
         headline={siteSettings?.hero_headline}
         subheadline={siteSettings?.hero_subheadline}
       />
