@@ -4,20 +4,17 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
-  MapPin,
   Building,
   Building2,
   Home,
   ShieldCheck,
   LandPlot,
-  Sparkles,
   Crown,
   Store,
   Trees,
   ChevronDown,
   Check,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button";
 import { LocationAutocomplete } from "@/features/search/components/LocationAutocomplete";
 import type { ActiveCitySummary } from "../services";
@@ -155,8 +152,6 @@ export function PropertySearchHero({
     router.push(destination);
   };
 
-  const topCities = suggestedCities.slice(0, 5);
-
   return (
     <section
       className={`relative border-b border-slate-200/80 pt-10 pb-12 sm:pt-16 sm:pb-20 dark:border-slate-800 overflow-hidden ${
@@ -165,36 +160,23 @@ export function PropertySearchHero({
           : "bg-gradient-to-b from-slate-50 via-white to-white dark:from-slate-950 dark:via-slate-950 dark:to-slate-950"
       }`}
     >
-      {/* Imagem de Fundo (Atrás do Filtro) com Scrim Elegante */}
+      {/* Imagem de Fundo (Atrás do Filtro) Sem Blur */}
       {backgroundImage && (
         <div className="absolute inset-0 z-0">
           <img
             src={backgroundImage}
             alt="Portal Imobiliário UPPA"
-            className="w-full h-full object-cover object-center scale-102 transform animate-in fade-in duration-700"
+            className="w-full h-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-slate-950/70 to-slate-950/90 backdrop-blur-[0.5px]" />
         </div>
       )}
 
       <div className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
-        {/* Badge do Portal Nacional */}
-        <div
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold mb-4 border transition-colors ${
-            backgroundImage
-              ? "bg-white/10 text-white border-white/20 backdrop-blur-md"
-              : "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/50"
-          }`}
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-          <span>O Portal Imobiliário Nacional da sua Próxima Conquista</span>
-        </div>
-
         {/* Headline Protagonista */}
         <h1
           className={`text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl ${
             backgroundImage
-              ? "text-white drop-shadow-md"
+              ? "text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)]"
               : "text-slate-950 dark:text-white"
           }`}
         >
@@ -203,7 +185,7 @@ export function PropertySearchHero({
         <p
           className={`mt-3 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed ${
             backgroundImage
-              ? "text-slate-200 drop-shadow-sm"
+              ? "text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)] font-medium"
               : "text-slate-600 dark:text-slate-400"
           }`}
         >
@@ -377,46 +359,6 @@ export function PropertySearchHero({
                 />
               </div>
             </form>
-
-            {/* Chips Rápidos de Cidades Reais */}
-            {topCities.length > 0 && (
-              <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2 px-1 text-xs">
-                <span className="font-semibold text-slate-400 dark:text-slate-500 text-[11px] uppercase tracking-wider mr-1">
-                  Cidades ativas:
-                </span>
-                {topCities.map((city) => {
-                  const isSelected =
-                    selectedCitySlug === city.slug ||
-                    selectedCityName.toLowerCase() === city.name.toLowerCase();
-                  return (
-                    <button
-                      key={city.id}
-                      type="button"
-                      onClick={() => {
-                        if (isSelected) {
-                          setSelectedCitySlug("");
-                          setSelectedCityName("");
-                        } else {
-                          setSelectedCitySlug(city.slug);
-                          setSelectedCityName(city.name);
-                        }
-                      }}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
-                        isSelected
-                          ? "bg-slate-900 text-white border-slate-900 shadow-xs dark:bg-white dark:text-slate-900 dark:border-white"
-                          : "bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-950 border-slate-200/80 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <MapPin className="h-3 w-3 text-rose-500" />
-                      <span>{city.name}</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
-                        ({city.stateCode})
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
         </div>
       </div>
