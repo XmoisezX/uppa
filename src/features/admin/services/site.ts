@@ -10,6 +10,8 @@ export const DEFAULT_SITE_SETTINGS: SiteSettingsData = {
   hero_image_fit: 'cover',
   hero_background_color: '#FAF7F5',
   hero_variant: 'bubbles',
+  site_favicon: null,
+  site_logo: null,
   home_sections: [
     { id: 'hero', label: 'Busca Principal (Hero)', enabled: true, order: 1 },
     { id: 'featured_properties', label: 'Imóveis em Destaque', enabled: true, order: 2 },
@@ -84,6 +86,8 @@ export async function getSiteSettings(): Promise<SiteSettingsData> {
       const settingsMap: Record<string, any> = {};
       data.forEach((row: any) => {
         if (row.key === 'home_hero' && row.value && typeof row.value === 'object') {
+          Object.assign(settingsMap, row.value);
+        } else if (row.key === 'site_branding' && row.value && typeof row.value === 'object') {
           Object.assign(settingsMap, row.value);
         } else {
           settingsMap[row.key] = row.value;

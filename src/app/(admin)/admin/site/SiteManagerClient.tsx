@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Upload,
   Image as ImageIcon,
+  Sparkles,
 } from 'lucide-react';
 import {
   saveSiteSettingAction,
@@ -31,7 +32,7 @@ interface Props {
 }
 
 export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
-  const [activeTab, setActiveTab] = useState<'home' | 'sections' | 'faqs' | 'footer'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'branding' | 'sections' | 'faqs' | 'footer'>('home');
   const [settings, setSettings] = useState<SiteSettingsData>(initialSettings);
   const [faqs, setFaqs] = useState<SiteFAQ[]>(initialFaqs);
   const [isPending, startTransition] = useTransition();
@@ -92,6 +93,50 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
       hero_background_image: null,
     }));
     showNotice('Imagem de fundo removida. Clique em "Salvar Alterações da Home" para confirmar.');
+  };
+
+  const handleFaviconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/') && !file.name.endsWith('.ico')) {
+      showNotice('Por favor selecione um arquivo de imagem ou ícone válido (.ico, .png, .svg, .webp).', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setSettings((prev) => ({
+        ...prev,
+        site_favicon: dataUrl,
+      }));
+      showNotice('Favicon carregado! Lembre-se de clicar em "Salvar Favicon" para aplicar em todo o portal.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveFavicon = () => {
+    setSettings((prev) => ({
+      ...prev,
+      site_favicon: null,
+    }));
+    showNotice('Favicon removido (retornando ao ícone padrão). Clique em salvar para confirmar.');
+  };
+
+  const handleSaveBranding = () => {
+    startTransition(async () => {
+      const res = await saveSiteSettingAction('site_branding', {
+        site_favicon: settings.site_favicon,
+        site_logo: settings.site_logo,
+      });
+
+      if (res.success) {
+        showNotice('Favicon e Identidade Visual salvos com sucesso!');
+      } else {
+        showNotice(res.error || 'Erro ao salvar.', 'error');
+      }
+    });
   };
 
   const handleSaveHomeTexts = () => {
@@ -201,6 +246,18 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
         >
           <LayoutTemplate className="w-4 h-4" />
           Textos & Hero da Home
+        </button>
+
+        <button
+          onClick={() => setActiveTab('branding')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 ${
+            activeTab === 'branding'
+              ? 'border-indigo-600 text-indigo-700 bg-indigo-50/60 font-bold'
+              : 'border-transparent text-slate-400 hover:text-slate-700'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          Favicon do Portal
         </button>
 
         <button
@@ -531,6 +588,123 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
             <Save className="w-4 h-4" />
             {isPending ? 'Salvando...' : 'Salvar Alterações da Home'}
           </button>
+        </div>
+      )}
+
+      {/* Tab: Identidade Visual & Favicon */}
+      {activeTab === 'branding' && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-xs max-w-4xl">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Favicon do Portal Imobiliário
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                O favicon é o ícone oficial exibido na aba do navegador, na barra de favoritos e em atalhos móveis para todos os usuários.
+              </p>
+            </div>
+
+            <button
+              onClick={handleSaveBranding}
+              disabled={isPending}
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-2 disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {isPending ? 'Salvando...' : 'Salvar Favicon'}
+            </button>
+          </div>
+
+          {/* SIMULAÇÃO EM TEMPO REAL DE ABA DO NAVEGADOR (CHROME / EDGE) */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-700 block">
+              Pré-visualização da Aba no Navegador:
+            </label>
+            <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 border border-slate-200 dark:border-slate-700 max-w-md">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white dark:bg-slate-900 rounded-t-lg border-t border-x border-slate-200 dark:border-slate-700 text-xs font-medium shadow-xs">
+                  {settings.site_favicon ? (
+                    <img
+                      src={settings.site_favicon}
+                      alt="Favicon"
+                      className="w-4 h-4 object-contain rounded-xs"
+                    />
+                  ) : (
+                    <img
+                      src="/favicon.ico"
+                      alt="Favicon Padrão"
+                      className="w-4 h-4 object-contain rounded-xs"
+                    />
+                  )}
+                  <span className="truncate max-w-[200px] font-semibold text-slate-800 dark:text-slate-100 text-[11px]">
+                    UPPA | Portal Imobiliário Nacional
+                  </span>
+                  <span className="text-slate-400 text-[11px] ml-1">×</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ÁREA DE UPLOAD E CONTROLES */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start pt-2">
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-2">
+                  Fazer Upload do Arquivo
+                </label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-xs">
+                    <Upload className="w-4 h-4" />
+                    <span>Selecionar Ícone...</span>
+                    <input
+                      type="file"
+                      accept=".ico,.png,.svg,.webp,image/*"
+                      onChange={handleFaviconUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  {settings.site_favicon && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveFavicon}
+                      className="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Remover personalizado
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-2.5 leading-relaxed">
+                  Formatos aceitos: <strong>.ICO, .PNG, .SVG, .WEBP</strong>.<br />
+                  Tamanho recomendado: <strong>32x32px</strong>, <strong>64x64px</strong> ou <strong>128x128px</strong> quadrado com fundo transparente.
+                </p>
+              </div>
+            </div>
+
+            {/* Ícone ampliado para conferência de nitidez */}
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-center">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+                Resolução Ampliada do Ícone
+              </span>
+              <div className="w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center p-2 mb-2.5">
+                {settings.site_favicon ? (
+                  <img
+                    src={settings.site_favicon}
+                    alt="Favicon Preview"
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <img
+                    src="/favicon.ico"
+                    alt="Favicon Padrão"
+                    className="w-full h-full object-contain"
+                  />
+                )}
+              </div>
+              <span className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                {settings.site_favicon ? 'Favicon personalizado carregado' : 'Usando favicon.ico padrão da UPPA'}
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
