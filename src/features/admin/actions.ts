@@ -1,12 +1,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getCurrentAdminUser, checkPermission } from './services/auth';
 import { logAdminAction } from './services/audit';
 import { createBanner, updateBanner, deleteBanner } from './services/banners';
 import { createArticle, updateArticle, deleteArticle } from './services/articles';
 import { togglePropertyFeatured, updatePropertyStatus } from './services/properties';
-import { updateUserRole, toggleUserStatus } from './services/users';
+import { updateUserRole, toggleUserStatus, updateAdminUserProfile } from './services/users';
 import { updateRolePermissions } from './services/roles';
 import { toggleAgencyVerification, updateAgencyStatus } from './services/agencies';
 import { toggleFeedStatus, triggerAdminFeedSync } from './services/feeds';
@@ -489,5 +490,86 @@ export async function deleteFAQAction(faqId: string) {
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Erro ao excluir FAQ.' };
+  }
+}
+
+// ==========================================
+// ADMIN PROFILE & SECURITY
+// ==========================================
+export async function updateAdminProfileAction(data: { name: string; phone?: string | null }) {
+  const admin = await getCurrentAdminUser();
+  if (!admin) {
+    return { success: false, error: 'Acesso negado: você precisa estar autenticado.' };
+  }
+
+  if (!data.name || data.name.trim().length === 0) {
+    return { success: false, error: 'O nome é obrigatório.' };
+  }
+
+  try {
+    await updateAdminUserProfile(admin.id, {
+      name: data.name.trim(),
+      phone: data.phone?.trim() || null,
+    });
+
+    try {
+      const adminDb = createAdminClient();
+      await adminDb.auth.admin.updateUserById(admin.id, {
+        user_metadata: { full_name: data.name.trim() },
+      });
+    } catch {
+      // Ignora restrição se auth admin não estiver configurado
+    }
+
+    await logAdminAction({
+      userId: admin.id,
+      userEmail: admin.email,
+      userName: data.name.trim(),
+      action: 'UPDATE_PROFILE',
+      module: 'users',
+      recordId: admin.id,
+      recordTitle: `Perfil de ${data.name.trim()}`,
+      changes: data,
+    });
+
+    revalidatePath('/admin/perfil');
+    revalidatePath('/admin', 'layout');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Erro ao atualizar perfil.' };
+  }
+}
+
+export async function updateAdminPasswordAction(newPassword: string) {
+  const admin = await getCurrentAdminUser();
+  if (!admin) {
+    return { success: false, error: 'Acesso negado: você precisa estar autenticado.' };
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    return { success: false, error: 'A nova senha deve possuir pelo menos 6 caracteres.' };
+  }
+
+  try {
+    const adminDb = createAdminClient();
+    const { error } = await adminDb.auth.admin.updateUserById(admin.id, {
+      password: newPassword,
+    });
+
+    if (error) throw error;
+
+    await logAdminAction({
+      userId: admin.id,
+      userEmail: admin.email,
+      userName: admin.name,
+      action: 'CHANGE_PASSWORD',
+      module: 'users',
+      recordId: admin.id,
+      recordTitle: `Alteração de senha de ${admin.email}`,
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Erro ao atualizar senha.' };
   }
 }

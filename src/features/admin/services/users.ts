@@ -133,3 +133,20 @@ export async function toggleUserStatus(userId: string, currentStatus: string): P
 
   return !error;
 }
+
+export async function updateAdminUserProfile(
+  userId: string,
+  data: { name: string; phone?: string | null }
+): Promise<boolean> {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('admin_users')
+    .update({
+      name: data.name,
+      phone: data.phone || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+
+  return !error;
+}

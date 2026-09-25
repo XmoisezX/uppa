@@ -15,6 +15,8 @@ import {
   MoveUp,
   MoveDown,
   AlertCircle,
+  Upload,
+  Image as ImageIcon,
 } from 'lucide-react';
 import {
   saveSiteSettingAction,
@@ -43,16 +45,66 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
     setTimeout(() => setFeedback(null), 4000);
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showNotice('Por favor selecione um arquivo de imagem válido (JPG, PNG, WEBP).', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const maxW = 1920;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxW) {
+          height = Math.round((height * maxW) / width);
+          width = maxW;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/webp', 0.82);
+          setSettings((prev) => ({
+            ...prev,
+            hero_background_image: compressedDataUrl,
+          }));
+          showNotice('Imagem carregada! Lembre-se de clicar em "Salvar Alterações da Home" para aplicar.');
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setSettings((prev) => ({
+      ...prev,
+      hero_background_image: null,
+    }));
+    showNotice('Imagem de fundo removida. Clique em "Salvar Alterações da Home" para confirmar.');
+  };
+
   const handleSaveHomeTexts = () => {
     startTransition(async () => {
       const res = await saveSiteSettingAction('home_hero', {
         hero_headline: settings.hero_headline,
         hero_subheadline: settings.hero_subheadline,
         hero_search_placeholder: settings.hero_search_placeholder,
+        hero_background_image: settings.hero_background_image,
       });
 
       if (res.success) {
-        showNotice('Textos da Home salvos com sucesso!');
+        showNotice('Textos e fundo da Home salvos com sucesso!');
       } else {
         showNotice(res.error || 'Erro ao salvar.', 'error');
       }
@@ -226,10 +278,79 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
             />
           </div>
 
+          <div className="space-y-3 pt-3 border-t border-slate-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                  Imagem de Fundo do Portal (Hero)
+                </label>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Faça o upload de uma foto para o fundo do portal (atrás dos filtros de busca). O arquivo é otimizado e gravado diretamente no banco de dados.
+                </p>
+              </div>
+              {settings.hero_background_image && (
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Remover Imagem
+                </button>
+              )}
+            </div>
+
+            {settings.hero_background_image ? (
+              <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 group shadow-sm">
+                <img
+                  src={settings.hero_background_image}
+                  alt="Pré-visualização do Fundo"
+                  className="w-full h-56 object-cover object-center opacity-85 group-hover:scale-102 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/40 to-transparent flex flex-col justify-end p-4">
+                  <div className="flex items-center justify-between text-white text-xs">
+                    <span className="font-semibold flex items-center gap-1.5">
+                      <ImageIcon className="w-4 h-4 text-emerald-400" />
+                      Imagem Ativa no Portal
+                    </span>
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-bold cursor-pointer transition-colors">
+                      <Upload className="w-3.5 h-3.5" />
+                      Substituir Imagem
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl p-8 bg-slate-50/70 hover:bg-blue-50/30 transition-all cursor-pointer group text-center">
+                <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Upload className="w-6 h-6" />
+                </div>
+                <span className="text-sm font-bold text-slate-800">
+                  Clique ou arraste uma foto para o fundo do portal
+                </span>
+                <span className="text-xs text-slate-500 mt-1 max-w-sm">
+                  Formatos aceitos: JPG, PNG ou WEBP em alta resolução (1920x1080).
+                </span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+              </label>
+            )}
+          </div>
+
           <button
             onClick={handleSaveHomeTexts}
             disabled={isPending}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors disabled:opacity-50 cursor-pointer"
           >
             <Save className="w-4 h-4" />
             {isPending ? 'Salvando...' : 'Salvar Alterações da Home'}

@@ -5,6 +5,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettingsData = {
   hero_headline: 'Encontre o imóvel ideal no maior portal imobiliário do Brasil',
   hero_subheadline: 'Milhares de casas, apartamentos, terrenos e imóveis comerciais à venda e para alugar direto com imobiliárias e corretores credenciados.',
   hero_search_placeholder: 'Digite cidade, bairro ou código do imóvel...',
+  hero_background_image: null,
   home_sections: [
     { id: 'hero', label: 'Busca Principal (Hero)', enabled: true, order: 1 },
     { id: 'featured_properties', label: 'Imóveis em Destaque', enabled: true, order: 2 },
@@ -78,7 +79,11 @@ export async function getSiteSettings(): Promise<SiteSettingsData> {
     if (!error && data && data.length > 0) {
       const settingsMap: Record<string, any> = {};
       data.forEach((row: any) => {
-        settingsMap[row.key] = row.value;
+        if (row.key === 'home_hero' && row.value && typeof row.value === 'object') {
+          Object.assign(settingsMap, row.value);
+        } else {
+          settingsMap[row.key] = row.value;
+        }
       });
 
       return {

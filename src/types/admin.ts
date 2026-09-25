@@ -90,6 +90,7 @@ export interface SiteSettingsData {
   hero_headline?: string;
   hero_subheadline?: string;
   hero_search_placeholder?: string;
+  hero_background_image?: string | null;
   home_sections?: {
     id: string;
     label: string;

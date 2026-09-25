@@ -80,10 +80,16 @@ const PROPERTY_TYPE_OPTIONS = [
 
 interface PropertySearchHeroProps {
   suggestedCities?: ActiveCitySummary[];
+  backgroundImage?: string | null;
+  headline?: string;
+  subheadline?: string;
 }
 
 export function PropertySearchHero({
   suggestedCities = [],
+  backgroundImage,
+  headline,
+  subheadline,
 }: PropertySearchHeroProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"comprar" | "alugar" | "lancamentos">("comprar");
@@ -151,32 +157,77 @@ export function PropertySearchHero({
   const topCities = suggestedCities.slice(0, 5);
 
   return (
-    <section className="relative bg-gradient-to-b from-slate-50 via-white to-white border-b border-slate-200/80 pt-10 pb-12 sm:pt-16 sm:pb-20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-950 dark:border-slate-800">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
+    <section
+      className={`relative border-b border-slate-200/80 pt-10 pb-12 sm:pt-16 sm:pb-20 dark:border-slate-800 overflow-hidden ${
+        backgroundImage
+          ? "bg-slate-950"
+          : "bg-gradient-to-b from-slate-50 via-white to-white dark:from-slate-950 dark:via-slate-950 dark:to-slate-950"
+      }`}
+    >
+      {/* Imagem de Fundo (Atrás do Filtro) com Scrim Elegante */}
+      {backgroundImage && (
+        <div className="absolute inset-0 z-0">
+          <img
+            src={backgroundImage}
+            alt="Portal Imobiliário UPPA"
+            className="w-full h-full object-cover object-center scale-102 transform animate-in fade-in duration-700"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-slate-950/70 to-slate-950/90 backdrop-blur-[0.5px]" />
+        </div>
+      )}
+
+      <div className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
         {/* Badge do Portal Nacional */}
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 mb-4 border border-indigo-100 dark:border-indigo-900/50">
+        <div
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold mb-4 border transition-colors ${
+            backgroundImage
+              ? "bg-white/10 text-white border-white/20 backdrop-blur-md"
+              : "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/50"
+          }`}
+        >
           <Sparkles className="h-3.5 w-3.5" />
           <span>O Portal Imobiliário Nacional da sua Próxima Conquista</span>
         </div>
 
         {/* Headline Protagonista */}
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl lg:text-5xl dark:text-white">
-          Encontre o imóvel ideal para comprar ou alugar
+        <h1
+          className={`text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl ${
+            backgroundImage
+              ? "text-white drop-shadow-md"
+              : "text-slate-950 dark:text-white"
+          }`}
+        >
+          {headline || "Encontre o imóvel ideal para comprar ou alugar"}
         </h1>
-        <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          Milhares de casas, apartamentos, terrenos e salas comerciais com informações 100% transparentes e contato direto com imobiliárias parceiras.
+        <p
+          className={`mt-3 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed ${
+            backgroundImage
+              ? "text-slate-200 drop-shadow-sm"
+              : "text-slate-600 dark:text-slate-400"
+          }`}
+        >
+          {subheadline ||
+            "Milhares de casas, apartamentos, terrenos e salas comerciais com informações 100% transparentes e contato direto com imobiliárias parceiras."}
         </p>
 
         {/* Card de Busca Principal */}
         <div className="mt-8 mx-auto max-w-4xl text-left">
           {/* Abas de Operação (Estilo Pills da Página de Compra) */}
-          <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 mb-2">
+          <div
+            className={`inline-flex rounded-xl p-1 border mb-2 ${
+              backgroundImage
+                ? "bg-slate-900/80 backdrop-blur-md border-white/20"
+                : "bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
+            }`}
+          >
             <button
               type="button"
               onClick={() => setActiveTab("comprar")}
               className={`rounded-lg px-5 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 activeTab === "comprar"
                   ? "bg-white text-slate-950 shadow-xs dark:bg-slate-900 dark:text-white"
+                  : backgroundImage
+                  ? "text-slate-300 hover:text-white"
                   : "text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
               }`}
             >
@@ -188,6 +239,8 @@ export function PropertySearchHero({
               className={`rounded-lg px-5 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 activeTab === "alugar"
                   ? "bg-white text-slate-950 shadow-xs dark:bg-slate-900 dark:text-white"
+                  : backgroundImage
+                  ? "text-slate-300 hover:text-white"
                   : "text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
               }`}
             >
@@ -199,6 +252,8 @@ export function PropertySearchHero({
               className={`rounded-lg px-5 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 activeTab === "lancamentos"
                   ? "bg-white text-slate-950 shadow-xs dark:bg-slate-900 dark:text-white"
+                  : backgroundImage
+                  ? "text-slate-300 hover:text-white"
                   : "text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
               }`}
             >

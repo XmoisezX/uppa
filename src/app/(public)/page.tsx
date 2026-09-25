@@ -4,6 +4,7 @@ import {
   getActiveCitiesWithCounts,
   getRecentActiveProperties,
 } from "@/features/home/services";
+import { getSiteSettings } from "@/features/admin/services/site";
 import { BannerSlot } from "@/features/banners/components/BannerSlot";
 import {
   PropertySearchHero,
@@ -32,15 +33,21 @@ export const revalidate = 60;
 
 export default async function HomePage() {
   // Carrega dados 100% reais do banco de dados em paralelo
-  const [activeCities, recentProperties] = await Promise.all([
+  const [activeCities, recentProperties, siteSettings] = await Promise.all([
     getActiveCitiesWithCounts(),
     getRecentActiveProperties(6),
+    getSiteSettings(),
   ]);
 
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-slate-950">
       {/* 1. HERO VISUAL & BUSCA PRINCIPAL (Comprar, Alugar, Lançamentos, Tipos e Cidades) */}
-      <PropertySearchHero suggestedCities={activeCities} />
+      <PropertySearchHero
+        suggestedCities={activeCities}
+        backgroundImage={siteSettings?.hero_background_image}
+        headline={siteSettings?.hero_headline}
+        subheadline={siteSettings?.hero_subheadline}
+      />
 
       {/* 2. BANNER PUBLICITÁRIO — HOME HERO (colapsa se não houver banner ativo) */}
       <BannerSlot position="home_hero" />
