@@ -43,10 +43,10 @@ export function FloatingPropertyPreview({
 
   return (
     <div
-      className={`absolute z-50 w-64 p-3 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-800 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.20)] dark:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.60)] pointer-events-none transition-all duration-200 transform ${
+      className={`absolute z-[9999] w-72 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] ring-1 ring-black/5 dark:ring-white/10 pointer-events-none transition-all duration-200 transform ${
         align === "left"
-          ? "left-full ml-3.5 top-1/2 -translate-y-1/2"
-          : "right-full mr-3.5 top-1/2 -translate-y-1/2"
+          ? "left-full ml-3 top-1/2 -translate-y-1/2"
+          : "right-full mr-3 top-1/2 -translate-y-1/2"
       }`}
     >
       <div className="flex items-center gap-3">

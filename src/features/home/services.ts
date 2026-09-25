@@ -260,13 +260,14 @@ export interface HeroBubbleProperty {
 }
 
 /**
- * Retorna uma seleção exclusiva de imóveis de ALTO PADRÃO de CIDADES DISTINTAS
- * com fotos reais para os balões flutuantes do Hero.
+ * Retorna uma seleção exclusiva de CASAS, SOBRADOS E APARTAMENTOS de ALTO PADRÃO
+ * de CIDADES DISTINTAS com fotos reais para os balões flutuantes do Hero.
  */
 async function fetchHeroBubbleProperties(limit = 10): Promise<HeroBubbleProperty[]> {
   try {
     const supabase = createPublicServerClient();
 
+    // Apenas casas, sobrados e apartamentos (excluindo terrenos, comerciais, rurais, etc.)
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -282,20 +283,46 @@ async function fetchHeroBubbleProperties(limit = 10): Promise<HeroBubbleProperty
         media:property_media (id, url, is_cover, position)
       `)
       .eq("status", "active")
+      .in("property_type", ["house", "condo_house", "townhouse", "apartment"])
       .order("price", { ascending: false, nullsFirst: false })
-      .limit(200);
+      .limit(300);
 
     if (error || !data) return [];
 
-    // Filtra imóveis com mídia válida, preço > 0 e título válido
-    const valid = (data as any[]).filter(
-      (p) =>
-        Array.isArray(p.media) &&
-        p.media.length > 0 &&
-        Boolean(p.media[0]?.url) &&
-        !p.title?.toLowerCase().includes("não está mais disponível") &&
-        ((p.price || 0) > 0 || (p.rent_price || 0) > 0)
-    );
+    const ALLOWED_TYPES = new Set(["house", "condo_house", "townhouse", "apartment"]);
+
+    // Filtra imóveis com mídia válida, preço > 0 e título que seja estritamente residencial
+    const valid = (data as any[]).filter((p) => {
+      if (!Array.isArray(p.media) || p.media.length === 0 || !p.media[0]?.url) return false;
+      if (!ALLOWED_TYPES.has(p.property_type)) return false;
+      if ((p.price || 0) <= 0 && (p.rent_price || 0) <= 0) return false;
+
+      const normTitle = (p.title || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+
+      // Exclusões explícitas para garantir apenas casas, sobrados e apartamentos
+      if (
+        normTitle.includes("nao esta mais disponivel") ||
+        normTitle.includes("indisponivel") ||
+        normTitle.includes("terreno") ||
+        normTitle.includes("lote") ||
+        normTitle.includes("comercial") ||
+        normTitle.includes("sala ") ||
+        normTitle.includes("pavilhao") ||
+        normTitle.includes("galpao") ||
+        normTitle.includes("rural") ||
+        normTitle.includes("chacara") ||
+        normTitle.includes("sitio") ||
+        normTitle.includes("fazenda") ||
+        normTitle.includes("area para condominio")
+      ) {
+        return false;
+      }
+
+      return true;
+    });
 
     // Agrupa por cidade distinta
     const cityGroups = new Map<string, any[]>();
@@ -372,7 +399,7 @@ async function fetchHeroBubbleProperties(limit = 10): Promise<HeroBubbleProperty
 
 export const getHeroBubbleProperties = unstable_cache(
   fetchHeroBubbleProperties,
-  ["hero-bubble-properties-high-end-distinct-cities"],
+  ["hero-bubble-properties-casas-sobrados-apartamentos-v3"],
   { revalidate: 120, tags: ["properties"] }
 );
 

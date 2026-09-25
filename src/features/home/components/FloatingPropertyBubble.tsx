@@ -50,14 +50,19 @@ export function FloatingPropertyBubble({
     ? "hidden lg:block"
     : "block";
 
+  const baseZIndex = depth === "front" ? 30 : depth === "mid" ? 20 : 10;
+
   return (
     <div
-      style={positionStyle}
-      className={`absolute pointer-events-auto select-none ${responsiveVisibility} ${className}`}
+      style={{
+        ...positionStyle,
+        zIndex: isHovered ? 9999 : baseZIndex,
+      }}
+      className={`absolute pointer-events-auto select-none ${isHovered ? "z-[9999]" : ""} ${responsiveVisibility} ${className}`}
     >
       {/* Wrapper de Animação com Pausa no Hover */}
       <div
-        className={`bubble-float-wrapper animate-bubble-${animationPattern} group relative`}
+        className={`bubble-float-wrapper animate-bubble-${animationPattern} group relative ${isHovered ? "z-[9999]" : ""}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -96,7 +101,7 @@ export function FloatingPropertyBubble({
 
         {/* Card de Informações e Preview Flutuante no Hover */}
         <div
-          className={`transition-all duration-200 ${
+          className={`transition-all duration-200 relative z-[9999] ${
             isHovered
               ? "opacity-100 visible translate-y-0 scale-100"
               : "opacity-0 invisible pointer-events-none translate-y-2 scale-95"
