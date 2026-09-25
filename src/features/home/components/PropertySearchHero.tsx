@@ -9,6 +9,7 @@ import {
   Home,
   ShieldCheck,
   LandPlot,
+  Sparkles,
   Crown,
   Store,
   Trees,
