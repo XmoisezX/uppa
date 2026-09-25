@@ -10,6 +10,7 @@ import {
   Building2,
   Briefcase,
   Users,
+  User,
   ShieldCheck,
   Inbox,
   RefreshCw,
