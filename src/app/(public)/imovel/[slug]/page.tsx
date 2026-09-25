@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
 
   if (!property || property.status !== "active") {
     return {
-      title: "Imóvel não encontrado | UPPA",
+      title: "Imóvel não encontrado",
       description: "O imóvel solicitado não está ativo ou não foi encontrado.",
     };
   }

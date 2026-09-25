@@ -71,7 +71,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
 
   if (!article) {
     return {
-      title: "Guia não encontrado | UPPA",
+      title: "Guia não encontrado",
       description: "O artigo solicitado não foi localizado.",
     };
   }
