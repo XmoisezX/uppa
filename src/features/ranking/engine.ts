@@ -478,13 +478,15 @@ export function calculateEngagementScore(
   engagement?: PropertyEngagementData | null,
   maxWeight = 5
 ): number {
-  if (!engagement || engagement.totalLeads <= 0) {
+  if (!engagement) return 0;
+  const total = engagement.totalLeads ?? engagement.leadsCount ?? 0;
+  if (total <= 0) {
     return 0; // Sem engajamento
   }
 
-  const formLeads = engagement.formLeads || 0;
-  const whatsappClicks = engagement.whatsappClicks || 0;
-  const other = engagement.otherEvents || 0;
+  const formLeads = engagement.formLeads ?? engagement.formSubmissions ?? 0;
+  const whatsappClicks = engagement.whatsappClicks ?? 0;
+  const other = engagement.otherEvents ?? 0;
 
   // Ponderação por intenção do comprador: formulário (3x) > WhatsApp (2x) > outros (1x)
   const weightedActions = formLeads * 3.0 + whatsappClicks * 2.0 + other * 1.0;

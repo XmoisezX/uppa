@@ -177,7 +177,14 @@ async function runTests() {
   assert(priceScoreFake <= 5 && priceScoreFake >= 0, `Preço outlier anormal permanece limitado a [0, 5] (obtido: ${priceScoreFake})`);
 
   // Engajamento normalizado por tempo
-  const engagementData = { leadsCount: 6, whatsappClicks: 3, formSubmissions: 2, daysActive: 30 };
+  const engagementData = {
+    propertyId: 'test-1',
+    totalLeads: 6,
+    whatsappClicks: 3,
+    formLeads: 2,
+    otherEvents: 1,
+    publishedAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
+  };
   const engScore = calculateEngagementScore(engagementData, 5);
   assert(engScore >= 3 && engScore <= 5, `Engajamento ativo normalizado pontua adequadamente (obtido: ${engScore}/5)`);
 
@@ -191,7 +198,14 @@ async function runTests() {
   const maxRanking = calculatePropertyRanking(perfectProp, {
     rankingConfig: DEFAULT_RANKING_CONFIG,
     cohortStats,
-    engagementData: { leadsCount: 15, whatsappClicks: 8, formSubmissions: 5, daysActive: 20 },
+    engagementData: {
+      propertyId: 'test-2',
+      totalLeads: 15,
+      whatsappClicks: 8,
+      formLeads: 5,
+      otherEvents: 2,
+      publishedAt: new Date(Date.now() - 20 * 24 * 3600 * 1000).toISOString(),
+    },
     isFeatured: true,
     isAgencyVerified: true,
   });

@@ -82,13 +82,13 @@ export interface CohortPriceStats {
 }
 
 export interface PropertyEngagementData {
-  propertyId?: string;
-  totalLeads?: number;
+  propertyId: string;
+  totalLeads: number;
+  whatsappClicks: number;
+  formLeads: number;
+  otherEvents: number;
+  publishedAt: string | null;
   leadsCount?: number;
-  whatsappClicks?: number;
-  formLeads?: number;
   formSubmissions?: number;
-  otherEvents?: number;
   daysActive?: number;
-  publishedAt?: string | null;
 }
