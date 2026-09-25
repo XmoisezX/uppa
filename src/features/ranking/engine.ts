@@ -670,61 +670,150 @@ export function calculatePropertyRanking(
  * 5. Imobiliária verificada DESC
  * 6. Recência DESC
  * 7. Engajamento DESC
- * 8. updated_at mais recente DESC
- * 9. ID do anúncio ASC (critério final determinístico)
+ * 8. Desempate com Distribuição Justa de Imobiliárias (Interleaving / Round-Robin para evitar monopólio por lote de feed)
+ * 9. updated_at mais recente DESC dentro de cada imobiliária
+ * 10. ID do anúncio ASC (critério final determinístico)
  */
-export function sortPropertiesByRanking<T extends { id: string; updatedAt?: string; [key: string]: any }>(
+export function sortPropertiesByRanking<
+  T extends {
+    id: string;
+    updatedAt?: string;
+    agency?: { id?: string } | null;
+    agencyId?: string;
+    [key: string]: any;
+  }
+>(
   itemsWithRanking: Array<{
     item: T;
     ranking: PropertyRankingResult;
   }>
 ): T[] {
-  return itemsWithRanking
-    .sort((a, b) => {
-      // 1. Score total
-      if (b.ranking.score !== a.ranking.score) {
-        return b.ranking.score - a.ranking.score;
-      }
+  // 1. Ordenação primária pelos 7 critérios de ranking
+  const primarySorted = [...itemsWithRanking].sort((a, b) => {
+    // 1. Score total
+    if (b.ranking.score !== a.ranking.score) {
+      return b.ranking.score - a.ranking.score;
+    }
 
-      // 2. Relevância
-      if (b.ranking.breakdown.relevance !== a.ranking.breakdown.relevance) {
-        return b.ranking.breakdown.relevance - a.ranking.breakdown.relevance;
-      }
+    // 2. Relevância
+    if (b.ranking.breakdown.relevance !== a.ranking.breakdown.relevance) {
+      return b.ranking.breakdown.relevance - a.ranking.breakdown.relevance;
+    }
 
-      // 3. Qualidade
-      if (b.ranking.breakdown.quality !== a.ranking.breakdown.quality) {
-        return b.ranking.breakdown.quality - a.ranking.breakdown.quality;
-      }
+    // 3. Qualidade
+    if (b.ranking.breakdown.quality !== a.ranking.breakdown.quality) {
+      return b.ranking.breakdown.quality - a.ranking.breakdown.quality;
+    }
 
-      // 4. Destaque
-      if (b.ranking.breakdown.featured !== a.ranking.breakdown.featured) {
-        return b.ranking.breakdown.featured - a.ranking.breakdown.featured;
-      }
+    // 4. Destaque
+    if (b.ranking.breakdown.featured !== a.ranking.breakdown.featured) {
+      return b.ranking.breakdown.featured - a.ranking.breakdown.featured;
+    }
 
-      // 5. Imobiliária Verificada
-      if (b.ranking.breakdown.verified_brokerage !== a.ranking.breakdown.verified_brokerage) {
-        return b.ranking.breakdown.verified_brokerage - a.ranking.breakdown.verified_brokerage;
-      }
+    // 5. Imobiliária Verificada
+    if (b.ranking.breakdown.verified_brokerage !== a.ranking.breakdown.verified_brokerage) {
+      return b.ranking.breakdown.verified_brokerage - a.ranking.breakdown.verified_brokerage;
+    }
 
-      // 6. Recência
-      if (b.ranking.breakdown.freshness !== a.ranking.breakdown.freshness) {
-        return b.ranking.breakdown.freshness - a.ranking.breakdown.freshness;
-      }
+    // 6. Recência
+    if (b.ranking.breakdown.freshness !== a.ranking.breakdown.freshness) {
+      return b.ranking.breakdown.freshness - a.ranking.breakdown.freshness;
+    }
 
-      // 7. Engajamento
-      if (b.ranking.breakdown.engagement !== a.ranking.breakdown.engagement) {
-        return b.ranking.breakdown.engagement - a.ranking.breakdown.engagement;
-      }
+    // 7. Engajamento
+    if (b.ranking.breakdown.engagement !== a.ranking.breakdown.engagement) {
+      return b.ranking.breakdown.engagement - a.ranking.breakdown.engagement;
+    }
 
-      // 8. updated_at mais recente
-      const dateA = a.item.updatedAt ? new Date(a.item.updatedAt).getTime() : 0;
-      const dateB = b.item.updatedAt ? new Date(b.item.updatedAt).getTime() : 0;
-      if (dateB !== dateA) {
-        return dateB - dateA;
-      }
+    return 0;
+  });
 
-      // 9. ID determinístico (sem randomização)
-      return a.item.id.localeCompare(b.item.id);
-    })
-    .map((wrapper) => wrapper.item);
+  // 2. Agrupamento em lotes de empate estrito nos 7 critérios
+  const buckets: Array<Array<(typeof itemsWithRanking)[0]>> = [];
+  let currentBucket: Array<(typeof itemsWithRanking)[0]> = [];
+
+  const areCriteriaTied = (
+    a: (typeof itemsWithRanking)[0],
+    b: (typeof itemsWithRanking)[0]
+  ) => {
+    return (
+      a.ranking.score === b.ranking.score &&
+      a.ranking.breakdown.relevance === b.ranking.breakdown.relevance &&
+      a.ranking.breakdown.quality === b.ranking.breakdown.quality &&
+      a.ranking.breakdown.featured === b.ranking.breakdown.featured &&
+      a.ranking.breakdown.verified_brokerage === b.ranking.breakdown.verified_brokerage &&
+      a.ranking.breakdown.freshness === b.ranking.breakdown.freshness &&
+      a.ranking.breakdown.engagement === b.ranking.breakdown.engagement
+    );
+  };
+
+  for (const entry of primarySorted) {
+    if (currentBucket.length === 0) {
+      currentBucket.push(entry);
+    } else if (areCriteriaTied(currentBucket[0], entry)) {
+      currentBucket.push(entry);
+    } else {
+      buckets.push(currentBucket);
+      currentBucket = [entry];
+    }
+  }
+  if (currentBucket.length > 0) {
+    buckets.push(currentBucket);
+  }
+
+  // 3. Em cada lote empatado, distribui de forma justa e alternada entre as imobiliárias (evita monopólio)
+  const finalItems: T[] = [];
+
+  for (const bucket of buckets) {
+    if (bucket.length === 1) {
+      finalItems.push(bucket[0].item);
+      continue;
+    }
+
+    // Agrupa imóveis empatados pela imobiliária
+    const agencyGroups = new Map<string, Array<(typeof itemsWithRanking)[0]>>();
+    for (const entry of bucket) {
+      const agId =
+        entry.item.agency?.id ||
+        (entry.item as any).agency_id ||
+        (entry.item as any).agencyId ||
+        "independent";
+      if (!agencyGroups.has(agId)) {
+        agencyGroups.set(agId, []);
+      }
+      agencyGroups.get(agId)!.push(entry);
+    }
+
+    // Dentro de cada imobiliária, ordena por updated_at DESC e ID ASC
+    for (const [_, list] of agencyGroups.entries()) {
+      list.sort((a, b) => {
+        const dateA = a.item.updatedAt ? new Date(a.item.updatedAt).getTime() : 0;
+        const dateB = b.item.updatedAt ? new Date(b.item.updatedAt).getTime() : 0;
+        if (dateB !== dateA) return dateB - dateA;
+        return a.item.id.localeCompare(b.item.id);
+      });
+    }
+
+    // Ordem determinística de imobiliárias
+    const sortedAgencyIds = Array.from(agencyGroups.keys()).sort();
+
+    // Round-robin alternado entre as imobiliárias
+    let hasMore = true;
+    let round = 0;
+    while (hasMore) {
+      hasMore = false;
+      for (const agId of sortedAgencyIds) {
+        const list = agencyGroups.get(agId)!;
+        if (round < list.length) {
+          finalItems.push(list[round].item);
+          if (round + 1 < list.length) {
+            hasMore = true;
+          }
+        }
+      }
+      round++;
+    }
+  }
+
+  return finalItems;
 }

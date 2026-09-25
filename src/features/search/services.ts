@@ -314,8 +314,12 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
     // FLUXO OBRIGATÓRIO DE RANKING (0 a 100 pontos):
     // Busca do Usuário -> Aplicação dos Filtros -> Identificação dos Elegíveis ->
     // Cálculo do Score -> Ordenação por Score -> Paginação -> Resultados
-    const candidateLimit = Math.max(offset + limit, 150);
-    query = query.order("published_at", { ascending: false, nullsFirst: false });
+    // Pool de candidatos ordenado por ranking_score DESC (coluna indexada do banco)
+    // e depois por published_at DESC, com limite expandido para garantir diversidade de imobiliárias
+    const candidateLimit = Math.max(offset + limit + 350, 600);
+    query = query
+      .order("ranking_score", { ascending: false, nullsFirst: false })
+      .order("published_at", { ascending: false, nullsFirst: false });
 
     const { data, count, error } = await query.range(0, candidateLimit - 1);
     if (error || !data) {
