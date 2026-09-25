@@ -171,6 +171,9 @@ export function SearchLayoutView({ result }: SearchLayoutViewProps) {
               onHoverProperty={setHoveredPropertyId}
               isMapMode={isMapMode}
               onToggleMapMode={() => setIsMapMode(true)}
+              cityName={cityName}
+              stateCode={stateCode}
+              neighborhoodName={neighborhoodName}
             />
           </div>
         </div>
@@ -196,6 +199,9 @@ export function SearchLayoutView({ result }: SearchLayoutViewProps) {
               onHoverProperty={setHoveredPropertyId}
               isMapMode={isMapMode}
               onToggleMapMode={() => setIsMapMode(false)}
+              cityName={cityName}
+              stateCode={stateCode}
+              neighborhoodName={neighborhoodName}
             />
           </div>
 

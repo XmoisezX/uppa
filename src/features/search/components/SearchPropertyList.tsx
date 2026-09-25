@@ -8,7 +8,75 @@ import { SearchPropertyCard } from "./SearchPropertyCard";
 import { SearchPropertyCardSkeleton } from "./SearchPropertyCardSkeleton";
 import { SearchEmptyState } from "./SearchEmptyState";
 import { SearchFilterChips } from "./SearchFilterChips";
-import type { SearchResult, SearchPropertyItem } from "../types";
+import type { SearchResult, SearchPropertyItem, SearchFilters } from "../types";
+
+const PROPERTY_TYPE_PLURALS: Record<string, string> = {
+  apartment: "Apartamentos",
+  house: "Casas",
+  townhouse: "Sobrados",
+  condo_house: "Casas em Condomínio",
+  penthouse: "Coberturas",
+  studio: "Studios",
+  loft: "Lofts",
+  kitnet: "Kitnets",
+  land: "Terrenos",
+  commercial: "Imóveis Comerciais",
+  office: "Salas Comerciais",
+  warehouse: "Galpões",
+  farm: "Chácaras e Sítios",
+  rural: "Imóveis Rurais",
+};
+
+export function buildSearchSummaryTitle(
+  filters: SearchFilters,
+  total: number,
+  cityName?: string,
+  stateCode?: string,
+  neighborhoodName?: string,
+  firstProperty?: SearchPropertyItem
+): string {
+  const formattedCount = total.toLocaleString("pt-BR");
+  const isRent = filters.transactionType === "rent";
+  const transactionText = isRent ? "para alugar" : "à venda";
+
+  // Formatar tipos de imóveis
+  let typeLabel = "Imóveis";
+  const rawTypes = Array.isArray(filters.propertyType)
+    ? filters.propertyType
+    : filters.propertyType
+    ? [filters.propertyType]
+    : [];
+
+  const mappedTypes = rawTypes
+    .map((t) => PROPERTY_TYPE_PLURALS[t] || t)
+    .filter(Boolean);
+
+  if (mappedTypes.length === 1) {
+    typeLabel = mappedTypes[0];
+  } else if (mappedTypes.length === 2) {
+    typeLabel = `${mappedTypes[0]} e ${mappedTypes[1]}`;
+  } else if (mappedTypes.length > 2) {
+    const last = mappedTypes[mappedTypes.length - 1];
+    const initial = mappedTypes.slice(0, -1).join(", ");
+    typeLabel = `${initial} e ${last}`;
+  }
+
+  // Resolver localização
+  const city = cityName || (filters.city ? filters.city : firstProperty?.city?.name);
+  const uf = stateCode || (filters.state ? filters.state : firstProperty?.state?.code);
+  const neighborhood = neighborhoodName || filters.neighborhood || firstProperty?.neighborhood?.name;
+
+  let locationText = "";
+  if (neighborhood && city) {
+    locationText = ` em ${neighborhood}, ${city}${uf ? ` - ${uf.toUpperCase()}` : ""}`;
+  } else if (city) {
+    locationText = ` em ${city}${uf ? ` - ${uf.toUpperCase()}` : ""}`;
+  } else if (uf) {
+    locationText = ` em ${uf.toUpperCase()}`;
+  }
+
+  return `${formattedCount} ${typeLabel} ${transactionText}${locationText}`;
+}
 
 interface SearchPropertyListProps {
   result: SearchResult;
@@ -17,6 +85,9 @@ interface SearchPropertyListProps {
   isLoading?: boolean;
   isMapMode?: boolean;
   onToggleMapMode?: () => void;
+  cityName?: string;
+  stateCode?: string;
+  neighborhoodName?: string;
 }
 
 export function SearchPropertyList({
@@ -26,6 +97,9 @@ export function SearchPropertyList({
   isLoading,
   isMapMode,
   onToggleMapMode,
+  cityName,
+  stateCode,
+  neighborhoodName,
 }: SearchPropertyListProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -101,7 +175,7 @@ export function SearchPropertyList({
         }
       },
       {
-        rootMargin: "350px", // Pré-carrega suavemente antes de chegar ao fim
+        rootMargin: "800px", // Pré-carrega de forma instantânea antes de o usuário chegar ao fim
       }
     );
 
@@ -121,14 +195,15 @@ export function SearchPropertyList({
       {/* BARRA SUPERIOR: CHIPS + CONTROLE DE ORDENAÇÃO E MAPA */}
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-          <div className="text-xs text-slate-500">
-            Mostrando{" "}
-            <strong className="text-slate-900 dark:text-white font-semibold">
-              {propertiesList.length}
-            </strong>{" "}
-            de{" "}
-            <strong className="text-slate-900 dark:text-white font-semibold">{total}</strong>{" "}
-            imóveis
+          <div className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+            {buildSearchSummaryTitle(
+              filters,
+              total,
+              cityName,
+              stateCode,
+              neighborhoodName,
+              propertiesList[0]
+            )}
           </div>
 
           <div className="flex items-center gap-2">

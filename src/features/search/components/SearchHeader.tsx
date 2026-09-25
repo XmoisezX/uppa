@@ -58,8 +58,22 @@ export function SearchHeader({
   // Constrói o título dinâmico com contagem real (Seção 7)
   const buildDynamicTitle = () => {
     const transactionText = isRent ? "para alugar" : "à venda";
-    const typeKey = typeof filters.propertyType === "string" ? filters.propertyType : undefined;
-    const typePlural = typeKey ? PROPERTY_TYPE_NAMES[typeKey] || "Imóveis" : "Imóveis";
+    const rawTypes = Array.isArray(filters.propertyType)
+      ? filters.propertyType
+      : filters.propertyType
+      ? [filters.propertyType]
+      : [];
+
+    let typePlural = "Imóveis";
+    const mappedTypes = rawTypes.map((t) => PROPERTY_TYPE_NAMES[t] || t).filter(Boolean);
+    if (mappedTypes.length === 1) {
+      typePlural = mappedTypes[0];
+    } else if (mappedTypes.length === 2) {
+      typePlural = `${mappedTypes[0]} e ${mappedTypes[1]}`;
+    } else if (mappedTypes.length > 2) {
+      const last = mappedTypes[mappedTypes.length - 1];
+      typePlural = `${mappedTypes.slice(0, -1).join(", ")} e ${last}`;
+    }
 
     const parts: string[] = [];
 
@@ -188,7 +202,7 @@ export function SearchHeader({
             {buildDynamicTitle()}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            <strong className="text-slate-800 dark:text-slate-200 font-semibold">{total}</strong>{" "}
+            <strong className="text-slate-800 dark:text-slate-200 font-semibold">{total.toLocaleString("pt-BR")}</strong>{" "}
             {total === 1 ? "imóvel encontrado" : "imóveis encontrados"}
           </p>
         </div>

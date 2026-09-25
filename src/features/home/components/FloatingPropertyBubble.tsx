@@ -41,6 +41,7 @@ export function FloatingPropertyBubble({
   tabletHidden = false,
 }: FloatingPropertyBubbleProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [imgSrc, setImgSrc] = useState(property.imageUrl || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80");
 
   const responsiveVisibility = mobileHidden
     ? tabletHidden
@@ -80,9 +81,14 @@ export function FloatingPropertyBubble({
           >
             {/* Foto Real do Imóvel */}
             <img
-              src={property.imageUrl}
+              src={imgSrc}
               alt={property.title}
               loading="lazy"
+              onError={() => {
+                if (imgSrc !== "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80") {
+                  setImgSrc("https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80");
+                }
+              }}
               className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-115"
             />
 

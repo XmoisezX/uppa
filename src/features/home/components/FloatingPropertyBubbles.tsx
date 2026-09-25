@@ -2,7 +2,7 @@
 
 import React from "react";
 import { FloatingPropertyBubble, type FloatingPropertyBubbleProps } from "./FloatingPropertyBubble";
-import { type HeroBubbleProperty, FALLBACK_HERO_BUBBLES } from "../services";
+import { type HeroBubbleProperty, FALLBACK_HERO_BUBBLES } from "../types";
 
 interface FloatingPropertyBubblesProps {
   properties: HeroBubbleProperty[];
@@ -126,7 +126,8 @@ export function FloatingPropertyBubbles({
   properties = [],
   className = "",
 }: FloatingPropertyBubblesProps) {
-  if (!properties || properties.length === 0) {
+  const displayProperties = properties && properties.length > 0 ? properties : FALLBACK_HERO_BUBBLES;
+  if (!displayProperties || displayProperties.length === 0) {
     return null;
   }
 
@@ -134,7 +135,7 @@ export function FloatingPropertyBubbles({
     <div
       className={`absolute inset-0 pointer-events-none overflow-visible z-0 ${className}`}
     >
-      {properties.slice(0, BUBBLE_CONFIGS.length).map((property, idx) => {
+      {displayProperties.slice(0, BUBBLE_CONFIGS.length).map((property, idx) => {
         const config = BUBBLE_CONFIGS[idx];
         return (
           <FloatingPropertyBubble
