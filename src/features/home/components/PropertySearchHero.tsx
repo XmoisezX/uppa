@@ -169,13 +169,9 @@ export function PropertySearchHero({
     ? "Só na UPPA você encontra as melhores opções."
     : subheadline;
 
-  const displayHeadline = headline?.includes("Milhares de casas")
-    ? "Encontre o imóvel ideal para comprar ou alugar"
-    : (headline || "Encontre o imóvel ideal para comprar ou alugar");
-
-  const displaySubheadline = cleanSubheadline === undefined || cleanSubheadline === null
-    ? "Só na UPPA você encontra as melhores opções."
-    : cleanSubheadline;
+  const displayHeadline = headline?.includes("Milhares de casas") || headline?.includes("Encontre o imóvel ideal") || !headline
+    ? "Encontre o melhor imóvel para você no portal Uppa"
+    : headline;
 
   const effectiveBgColor = backgroundColor || 'var(--hero-bg-color, #FAF7F5)';
 
@@ -374,21 +370,9 @@ export function PropertySearchHero({
           {/* Coluna da Esquerda: Card Flutuante de Busca exatamente no mesmo lugar do modo clássico */}
           <div className="w-full max-w-[480px] shrink-0 mx-auto lg:mx-0">
             <div className="rounded-3xl bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.20),0_12px_28px_-8px_rgba(0,0,0,0.10)] ring-1 ring-black/[0.04] dark:ring-white/[0.08] transition-all">
-              {heroVariant === 'classic' ? (
-                <h1 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white leading-tight mb-5 tracking-tight">
-                  {displayHeadline}{" "}
-                  {displaySubheadline && (
-                    <span className="font-normal text-slate-600 dark:text-slate-300">
-                      {displaySubheadline}
-                    </span>
-                  )}
-                </h1>
-              ) : (
-                /* No modo balões, o título visual foi retirado a pedido do usuário */
-                <h1 className="sr-only">
-                  {displayHeadline}
-                </h1>
-              )}
+              <h1 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white leading-tight mb-5 tracking-tight">
+                {displayHeadline}
+              </h1>
 
               {renderSearchFilterForm()}
             </div>

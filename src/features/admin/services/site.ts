@@ -2,8 +2,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import type { SiteFAQ, SiteSettingsData } from '@/types/admin';
 
 export const DEFAULT_SITE_SETTINGS: SiteSettingsData = {
-  hero_headline: 'Encontre o imóvel ideal para você.',
-  hero_subheadline: 'Só na UPPA você encontra as melhores opções.',
+  hero_headline: 'Encontre o melhor imóvel para você no portal Uppa',
+  hero_subheadline: '',
   hero_search_placeholder: 'Busque uma localização...',
   hero_background_image: null,
   hero_image_layout: 'side',
