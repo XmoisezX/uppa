@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { FloatingPropertyPreview } from "./FloatingPropertyPreview";
-import type { HeroBubbleProperty } from "../services";
+import type { HeroBubbleProperty } from "../types";
 
 export interface FloatingPropertyBubbleProps {
   property: HeroBubbleProperty;

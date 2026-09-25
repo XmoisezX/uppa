@@ -2,7 +2,7 @@
 
 import React from "react";
 import { MapPin, ArrowRight, Home, Building2, Crown, Sparkles, Building } from "lucide-react";
-import type { HeroBubbleProperty } from "../services";
+import type { HeroBubbleProperty } from "../types";
 
 interface FloatingPropertyPreviewProps {
   property: HeroBubbleProperty;
