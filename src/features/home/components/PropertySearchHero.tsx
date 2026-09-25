@@ -18,6 +18,7 @@ import {
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button";
 import { LocationAutocomplete } from "@/features/search/components/LocationAutocomplete";
 import type { ActiveCitySummary } from "../services";
 
@@ -367,16 +368,13 @@ export function PropertySearchHero({
                 />
               </div>
 
-              {/* Botão de Busca */}
+              {/* Botão de Busca Interativo */}
               <div className="sm:col-span-3 sm:self-end">
-                <Button
+                <InteractiveHoverButton
                   type="submit"
-                  size="lg"
-                  className="w-full min-h-[46px] rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
-                >
-                  <Search className="h-4 w-4 mr-2 stroke-[2.5]" />
-                  Buscar Imóveis
-                </Button>
+                  text="Buscar Imóveis"
+                  className="w-full h-[46px] min-h-[46px] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-bold text-sm shadow-sm hover:border-indigo-600 dark:hover:border-indigo-500 transition-all cursor-pointer flex items-center justify-center"
+                />
               </div>
             </form>
 
