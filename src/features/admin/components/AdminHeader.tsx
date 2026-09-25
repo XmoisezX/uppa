@@ -31,6 +31,7 @@ export function AdminHeader({ adminUser, onMobileOpen }: HeaderProps) {
     if (path.startsWith('/admin/seo')) return 'SEO & Meta';
     if (path.startsWith('/admin/configuracoes')) return 'Configurações';
     if (path.startsWith('/admin/auditoria')) return 'Auditoria';
+    if (path.startsWith('/admin/perfil')) return 'Meu Perfil';
     return 'Admin';
   };
 
@@ -111,18 +112,24 @@ export function AdminHeader({ adminUser, onMobileOpen }: HeaderProps) {
 
         {/* User Avatar & Logout */}
         <div className="flex items-center gap-2">
-          <div className="text-right hidden sm:block">
-            <div className="text-xs font-semibold text-slate-900 leading-tight">
-              {adminUser.name || 'Admin'}
+          <Link
+            href="/admin/perfil"
+            className="flex items-center gap-2.5 p-1 rounded-xl hover:bg-slate-100 transition-colors group cursor-pointer"
+            title="Meu Perfil"
+          >
+            <div className="text-right hidden sm:block">
+              <div className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors leading-tight">
+                {adminUser.name || 'Admin'}
+              </div>
+              <div className="text-[10px] text-slate-400 truncate max-w-[140px]">
+                {adminUser.role?.name || 'Administrador'}
+              </div>
             </div>
-            <div className="text-[10px] text-slate-400 truncate max-w-[140px]">
-              {adminUser.role?.name || 'Administrador'}
-            </div>
-          </div>
 
-          <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold text-xs shrink-0">
-            {adminUser.name ? adminUser.name.charAt(0).toUpperCase() : 'A'}
-          </div>
+            <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold text-xs shrink-0 group-hover:scale-105 transition-transform">
+              {adminUser.name ? adminUser.name.charAt(0).toUpperCase() : 'A'}
+            </div>
+          </Link>
 
           <button
             onClick={handleSignOut}

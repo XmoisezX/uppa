@@ -49,6 +49,7 @@ const NAV_CONTENT = [
 ];
 
 const NAV_SYSTEM = [
+  { label: 'Meu Perfil', href: '/admin/perfil', icon: User, permission: 'dashboard.view' },
   { label: 'Usuários', href: '/admin/usuarios', icon: Users, permission: 'users.manage' },
   { label: 'Cargos & Permissões', href: '/admin/cargos', icon: ShieldCheck, permission: 'roles.manage' },
   { label: 'Auditoria', href: '/admin/auditoria', icon: History, permission: 'audit.view' },
@@ -161,22 +162,29 @@ export function AdminSidebar({ adminUser, mobileOpen, onMobileClose }: SidebarPr
 
       {/* User Mini Card at Bottom */}
       <div className="border-t border-slate-100 p-3 space-y-2">
-        <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-          <div className="w-9 h-9 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold text-sm shrink-0">
-            {adminUser.name ? adminUser.name.charAt(0).toUpperCase() : 'A'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-slate-900 truncate">
-              {adminUser.name || adminUser.email}
-            </p>
-            <div className="flex items-center gap-1 mt-0.5">
-              <Shield className={`w-3 h-3 ${isSuperAdmin ? 'text-amber-500' : 'text-slate-400'}`} />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {adminUser.role?.name || 'Administrador'}
-              </span>
+        <Link
+          href="/admin/perfil"
+          onClick={onMobileClose}
+          className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-100 transition-colors group cursor-pointer block"
+          title="Ver e editar meu perfil"
+        >
+          <div className="flex items-center gap-3 w-full">
+            <div className="w-9 h-9 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:scale-105 transition-transform">
+              {adminUser.name ? adminUser.name.charAt(0).toUpperCase() : 'A'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                {adminUser.name || adminUser.email}
+              </p>
+              <div className="flex items-center gap-1 mt-0.5">
+                <Shield className={`w-3 h-3 ${isSuperAdmin ? 'text-amber-500' : 'text-slate-400'}`} />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {adminUser.role?.name || 'Administrador'}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        </Link>
 
         <Link
           href="/"

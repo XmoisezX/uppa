@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
 import { createAgency, updateAgency } from "./services";
 import { createAgencySchema } from "@/lib/validations/agency";
 
@@ -77,5 +78,83 @@ export async function updateAgencyAction(
     return { success: true };
   } catch (err: any) {
     return { error: err?.message || "Erro ao atualizar dados da imobiliária." };
+  }
+}
+
+/**
+ * Server action para atualizar o perfil do corretor / membro da imobiliária
+ */
+export async function updateAgencyUserProfileAction(data: {
+  fullName: string;
+  phone?: string;
+  creci?: string;
+  bio?: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { error: "Usuário não autenticado." };
+    }
+
+    if (!data.fullName || data.fullName.trim().length === 0) {
+      return { error: "O nome completo é obrigatório." };
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: {
+        full_name: data.fullName.trim(),
+        phone: data.phone?.trim() || null,
+        creci: data.creci?.trim() || null,
+        bio: data.bio?.trim() || null,
+      },
+    });
+
+    if (updateError) {
+      return { error: updateError.message };
+    }
+
+    revalidatePath("/painel/perfil");
+    revalidatePath("/painel", "layout");
+    return { success: true };
+  } catch (err: any) {
+    return { error: err?.message || "Erro ao atualizar dados do perfil." };
+  }
+}
+
+/**
+ * Server action para alteração de senha do corretor / imobiliária
+ */
+export async function updateAgencyUserPasswordAction(newPassword: string) {
+  try {
+    if (!newPassword || newPassword.length < 6) {
+      return { error: "A nova senha deve ter no mínimo 6 caracteres." };
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { error: "Usuário não autenticado." };
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) {
+      return { error: updateError.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { error: err?.message || "Erro ao atualizar senha." };
   }
 }
