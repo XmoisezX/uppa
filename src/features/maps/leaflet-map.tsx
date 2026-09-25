@@ -452,6 +452,8 @@ export function LeafletMap({
 
             <Link
               href={`/imovel/${activeProperty.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="h-16 w-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 block"
             >
               {activeProperty.media?.[0]?.url ? (
@@ -468,7 +470,12 @@ export function LeafletMap({
             </Link>
 
             <div className="min-w-0 flex-1 pr-4">
-              <Link href={`/imovel/${activeProperty.slug}`} className="block group">
+              <Link
+                href={`/imovel/${activeProperty.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block group"
+              >
                 <span className="text-xs font-black text-slate-900 dark:text-white block truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
                   {formatPricePin(
                     activeProperty.price,

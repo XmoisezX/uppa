@@ -109,14 +109,14 @@ export function SearchPropertyCard({
       );
       window.open(`https://wa.me/55${cleanPhone}?text=${msg}`, "_blank");
     } else {
-      window.location.href = `/imovel/${property.slug}#contato`;
+      window.open(`/imovel/${property.slug}#contato`, "_blank");
     }
   };
 
   const handleContactClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    window.location.href = `/imovel/${property.slug}#contato`;
+    window.open(`/imovel/${property.slug}#contato`, "_blank");
   };
 
   return (
@@ -134,6 +134,8 @@ export function SearchPropertyCard({
         {currentPhoto && !imageError ? (
           <Link
             href={isLastPhoto ? `/imovel/${property.slug}#fotos` : `/imovel/${property.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
             tabIndex={-1}
             prefetch={false}
             className="block h-full w-full relative"
@@ -212,6 +214,8 @@ export function SearchPropertyCard({
           <div className="flex items-start justify-between gap-3">
             <Link
               href={"/imovel/" + property.slug}
+              target="_blank"
+              rel="noopener noreferrer"
               className="block group/title flex-1 min-w-0"
             >
               <h3 className="text-sm sm:text-base font-normal text-slate-700 dark:text-slate-300 group-hover/title:text-indigo-600 dark:group-hover/title:text-indigo-400 line-clamp-2 leading-snug transition-colors">

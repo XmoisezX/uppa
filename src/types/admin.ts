@@ -94,6 +94,7 @@ export interface SiteSettingsData {
   hero_image_layout?: 'side' | 'cover' | 'right';
   hero_image_fit?: 'cover' | 'contain';
   hero_background_color?: string;
+  hero_variant?: 'bubbles' | 'classic';
   home_sections?: {
     id: string;
     label: string;

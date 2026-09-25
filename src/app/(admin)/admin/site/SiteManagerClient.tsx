@@ -104,6 +104,7 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
         hero_image_layout: settings.hero_image_layout || 'side',
         hero_image_fit: settings.hero_image_fit || 'cover',
         hero_background_color: settings.hero_background_color || '#FAF7F5',
+        hero_variant: settings.hero_variant || 'bubbles',
       });
 
       if (res.success) {
@@ -242,6 +243,85 @@ export function SiteManagerClient({ initialSettings, initialFaqs }: Props) {
       {/* Tab 1: Textos da Home */}
       {activeTab === 'home' && (
         <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5 max-w-3xl">
+          {/* Seletor de Modelo do Hero: Balões Imobiliários vs Clássico */}
+          <div className="space-y-3 pb-5 border-b border-slate-200">
+            <div>
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                Modelo Visual do Hero (Página Inicial)
+              </label>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Escolha qual versão visual do Hero será exibida para os visitantes na página inicial da UPPA.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Opção 1: Balões Imobiliários Flutuantes */}
+              <div
+                onClick={() => setSettings({ ...settings, hero_variant: 'bubbles' })}
+                className={`p-4 rounded-xl border-2 transition-all cursor-pointer select-none flex flex-col justify-between ${
+                  (settings.hero_variant || 'bubbles') === 'bubbles'
+                    ? 'border-indigo-600 bg-indigo-50/50 shadow-xs'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">
+                      <span>🎈 Balões Imobiliários</span>
+                      <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded font-semibold">Novo</span>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                      Conceito inspirado no logo UPPA. Bolhas flutuantes com fotos reais de imóveis de alto padrão de cidades distintas ao redor da busca centralizada.
+                    </p>
+                  </div>
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
+                      (settings.hero_variant || 'bubbles') === 'bubbles'
+                        ? 'border-indigo-600 bg-indigo-600 text-white'
+                        : 'border-slate-300'
+                    }`}
+                  >
+                    {(settings.hero_variant || 'bubbles') === 'bubbles' && (
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Opção 2: Hero Clássico */}
+              <div
+                onClick={() => setSettings({ ...settings, hero_variant: 'classic' })}
+                className={`p-4 rounded-xl border-2 transition-all cursor-pointer select-none flex flex-col justify-between ${
+                  settings.hero_variant === 'classic'
+                    ? 'border-indigo-600 bg-indigo-50/50 shadow-xs'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">
+                      <span>🖼️ Hero Clássico</span>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                      Layout tradicional com a caixa de busca alinhada à esquerda e imagem de fundo ou lateral personalizável à direita.
+                    </p>
+                  </div>
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
+                      settings.hero_variant === 'classic'
+                        ? 'border-indigo-600 bg-indigo-600 text-white'
+                        : 'border-slate-300'
+                    }`}
+                  >
+                    {settings.hero_variant === 'classic' && (
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               Título Principal da Home (Hero Headline)

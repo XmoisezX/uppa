@@ -73,7 +73,7 @@ export function PropertyCard({ property, className = "" }: PropertyCardProps) {
       );
       window.open(`https://wa.me/55${cleanPhone}?text=${msg}`, "_blank");
     } else {
-      window.location.href = `/imovel/${property.slug}#contato`;
+      window.open(`/imovel/${property.slug}#contato`, "_blank");
     }
   };
 
@@ -84,7 +84,13 @@ export function PropertyCard({ property, className = "" }: PropertyCardProps) {
       {/* 1. MÍDIA / FOTO COM ASPECTO ELEGANTE */}
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
         {coverImage && !imageError ? (
-          <Link href={`/imovel/${property.slug}`} tabIndex={-1} prefetch={false}>
+          <Link
+            href={`/imovel/${property.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            tabIndex={-1}
+            prefetch={false}
+          >
             <img
               src={coverImage}
               alt={property.title}
@@ -155,7 +161,11 @@ export function PropertyCard({ property, className = "" }: PropertyCardProps) {
           )}
 
           {/* Título do Imóvel */}
-          <Link href={`/imovel/${property.slug}`}>
+          <Link
+            href={`/imovel/${property.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 line-clamp-2 leading-snug transition-colors">
               {property.title}
             </h3>
@@ -225,6 +235,8 @@ export function PropertyCard({ property, className = "" }: PropertyCardProps) {
 
             <Link
               href={`/imovel/${property.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
               prefetch={false}
               className="h-8 px-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center transition-colors"
             >

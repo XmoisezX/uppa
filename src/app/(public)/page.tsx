@@ -67,7 +67,7 @@ export default async function HomePage({
         headline={siteSettings?.hero_headline}
         subheadline={siteSettings?.hero_subheadline}
         bubbleProperties={bubbleProperties}
-        initialVariant={initialVariant}
+        variant={(resolvedParams.hero as any) || siteSettings?.hero_variant || 'bubbles'}
       />
 
       {/* 2. BANNER PUBLICITÁRIO — HOME HERO (colapsa se não houver banner ativo) */}

@@ -63,8 +63,10 @@ export function FloatingPropertyBubble({
       >
         <Link
           href={`/imovel/${property.slug}`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="block relative cursor-pointer"
-          title={`${property.title} - Clique para ver o imóvel`}
+          title={`${property.title} - Abrir imóvel em nova aba`}
           aria-label={`Ver imóvel: ${property.title}`}
         >
           {/* Corpo do Balão Imobiliário (Formato Circular com Relevo e Brilho Especular) */}

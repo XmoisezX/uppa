@@ -260,8 +260,8 @@ export interface HeroBubbleProperty {
 }
 
 /**
- * Retorna uma seleção diversa de imóveis ativos com fotos reais para os balões flutuantes do Hero.
- * Prioriza diversidade de tipos (casa, apartamento, condomínio, etc.) e fotos reais.
+ * Retorna uma seleção exclusiva de imóveis de ALTO PADRÃO de CIDADES DISTINTAS
+ * com fotos reais para os balões flutuantes do Hero.
  */
 async function fetchHeroBubbleProperties(limit = 10): Promise<HeroBubbleProperty[]> {
   try {
@@ -277,46 +277,80 @@ async function fetchHeroBubbleProperties(limit = 10): Promise<HeroBubbleProperty
         transaction_type,
         price,
         rent_price,
-        city:cities!city_id (name),
+        city:cities!city_id (id, name, slug),
         neighborhood:neighborhoods!neighborhood_id (name),
         media:property_media (id, url, is_cover, position)
       `)
       .eq("status", "active")
-      .order("published_at", { ascending: false, nullsFirst: false })
-      .limit(60);
+      .order("price", { ascending: false, nullsFirst: false })
+      .limit(200);
 
     if (error || !data) return [];
 
+    // Filtra imóveis com mídia válida, preço > 0 e título válido
     const valid = (data as any[]).filter(
-      (p) => Array.isArray(p.media) && p.media.length > 0 && Boolean(p.media[0]?.url)
+      (p) =>
+        Array.isArray(p.media) &&
+        p.media.length > 0 &&
+        Boolean(p.media[0]?.url) &&
+        !p.title?.toLowerCase().includes("não está mais disponível") &&
+        ((p.price || 0) > 0 || (p.rent_price || 0) > 0)
     );
 
-    const byType = new Map<string, any[]>();
+    // Agrupa por cidade distinta
+    const cityGroups = new Map<string, any[]>();
     for (const item of valid) {
-      const type = item.property_type || "other";
-      if (!byType.has(type)) byType.set(type, []);
-      byType.get(type)!.push(item);
+      const cityName = item.city?.name || "Outra";
+      if (!cityGroups.has(cityName)) cityGroups.set(cityName, []);
+      cityGroups.get(cityName)!.push(item);
     }
+
+    // Ordena as propriedades de cada cidade por valor decrescente (alto padrão primeiro)
+    for (const [, list] of cityGroups.entries()) {
+      list.sort((a, b) => (b.price || b.rent_price || 0) - (a.price || a.rent_price || 0));
+    }
+
+    // Ordena as cidades pelo valor do seu imóvel topo de linha (alto padrão)
+    const sortedCities = Array.from(cityGroups.keys()).sort((a, b) => {
+      const topA = cityGroups.get(a)![0]?.price || cityGroups.get(a)![0]?.rent_price || 0;
+      const topB = cityGroups.get(b)![0]?.price || cityGroups.get(b)![0]?.rent_price || 0;
+      return topB - topA;
+    });
 
     const selected: any[] = [];
-    const types = Array.from(byType.keys());
-    let index = 0;
-    while (selected.length < limit && selected.length < valid.length) {
-      let addedInRound = false;
-      for (const t of types) {
-        const list = byType.get(t);
-        if (list && list[index]) {
-          selected.push(list[index]);
-          addedInRound = true;
-          if (selected.length >= limit) break;
-        }
+    const usedIds = new Set<string>();
+
+    // 1º Passo: Seleciona o imóvel de maior padrão de cada cidade distinta
+    for (const cityName of sortedCities) {
+      const top = cityGroups.get(cityName)?.[0];
+      if (top && !usedIds.has(top.id)) {
+        selected.push(top);
+        usedIds.add(top.id);
+        if (selected.length >= limit) break;
       }
-      if (!addedInRound) break;
-      index++;
     }
 
-    return selected.map((p) => {
-      const cover = p.media.find((m: any) => m.is_cover)?.url || p.media[0]?.url;
+    // 2º Passo: Se houver menos de 10 cidades, preenche com outros imóveis de alto padrão
+    if (selected.length < limit) {
+      const remaining = valid
+        .filter((p) => !usedIds.has(p.id))
+        .sort((a, b) => (b.price || b.rent_price || 0) - (a.price || a.rent_price || 0));
+
+      for (const p of remaining) {
+        selected.push(p);
+        usedIds.add(p.id);
+        if (selected.length >= limit) break;
+      }
+    }
+
+    return selected.slice(0, limit).map((p) => {
+      const sortedMedia = [...p.media].sort((a: any, b: any) => {
+        if (a.is_cover) return -1;
+        if (b.is_cover) return 1;
+        return (a.position || 0) - (b.position || 0);
+      });
+      const cover = sortedMedia[0]?.url || p.media[0]?.url;
+
       return {
         id: p.id,
         slug: p.slug,
@@ -331,14 +365,14 @@ async function fetchHeroBubbleProperties(limit = 10): Promise<HeroBubbleProperty
       };
     });
   } catch (err) {
-    console.error("Erro ao carregar imóveis para os balões do Hero:", err);
+    console.error("Erro ao carregar imóveis de alto padrão para os balões do Hero:", err);
     return [];
   }
 }
 
 export const getHeroBubbleProperties = unstable_cache(
   fetchHeroBubbleProperties,
-  ["hero-bubble-properties"],
+  ["hero-bubble-properties-high-end-distinct-cities"],
   { revalidate: 120, tags: ["properties"] }
 );
 

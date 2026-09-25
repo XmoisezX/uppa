@@ -87,7 +87,7 @@ interface PropertySearchHeroProps {
   headline?: string;
   subheadline?: string;
   bubbleProperties?: HeroBubbleProperty[];
-  initialVariant?: 'bubbles' | 'classic';
+  variant?: 'bubbles' | 'classic';
 }
 
 export function PropertySearchHero({
@@ -99,10 +99,10 @@ export function PropertySearchHero({
   headline,
   subheadline,
   bubbleProperties = [],
-  initialVariant = 'bubbles',
+  variant = 'bubbles',
 }: PropertySearchHeroProps) {
   const router = useRouter();
-  const [heroVariant, setHeroVariant] = useState<'bubbles' | 'classic'>(initialVariant);
+  const heroVariant = variant;
   const [activeTab, setActiveTab] = useState<"comprar" | "alugar" | "lancamentos">("comprar");
   const [propertyType, setPropertyType] = useState<string>("");
   const [isTypeOpen, setIsTypeOpen] = useState(false);
@@ -341,40 +341,6 @@ export function PropertySearchHero({
       className="relative w-full min-h-[580px] sm:min-h-[640px] lg:min-h-[690px] flex items-center justify-center overflow-hidden border-b border-black/[0.04] dark:border-slate-800 transition-colors"
       style={{ backgroundColor: effectiveBgColor }}
     >
-      {/* =====================================================================
-          CONTROLE DE ALTERNÂNCIA TEMPORÁRIO (Hero Balões vs Hero Clássico)
-          Permite ao usuário alternar a qualquer momento entre as duas versões
-          ===================================================================== */}
-      <div className="absolute top-3 right-4 z-40 hidden sm:flex items-center gap-1 p-1 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 text-[11px] font-bold shadow-sm">
-        <span className="px-2 py-0.5 text-slate-400 dark:text-slate-500 font-semibold text-[10px] select-none">
-          Hero:
-        </span>
-        <button
-          type="button"
-          onClick={() => setHeroVariant("bubbles")}
-          className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-            heroVariant === "bubbles"
-              ? "bg-indigo-600 text-white shadow-xs"
-              : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-          }`}
-          title="Ver o novo Hero com Balões Imobiliários Flutuantes"
-        >
-          Balões
-        </button>
-        <button
-          type="button"
-          onClick={() => setHeroVariant("classic")}
-          className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-            heroVariant === "classic"
-              ? "bg-indigo-600 text-white shadow-xs"
-              : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-          }`}
-          title="Ver o Hero Clássico anterior"
-        >
-          Clássico
-        </button>
-      </div>
-
       {/* =====================================================================
           VERSÃO 1: NOVO HERO COM BALÕES IMOBILIÁRIOS FLUTUANTES (UPPA)
           ===================================================================== */}

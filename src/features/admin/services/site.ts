@@ -9,6 +9,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettingsData = {
   hero_image_layout: 'side',
   hero_image_fit: 'cover',
   hero_background_color: '#FAF7F5',
+  hero_variant: 'bubbles',
   home_sections: [
     { id: 'hero', label: 'Busca Principal (Hero)', enabled: true, order: 1 },
     { id: 'featured_properties', label: 'Imóveis em Destaque', enabled: true, order: 2 },
