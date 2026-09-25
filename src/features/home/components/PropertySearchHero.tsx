@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Building,
@@ -341,114 +340,80 @@ export function PropertySearchHero({
       className="relative w-full min-h-[580px] sm:min-h-[640px] lg:min-h-[690px] flex items-center justify-center overflow-hidden border-b border-black/[0.04] dark:border-slate-800 transition-colors"
       style={{ backgroundColor: effectiveBgColor }}
     >
-      {/* =====================================================================
-          VERSÃO 1: NOVO HERO COM BALÕES IMOBILIÁRIOS FLUTUANTES (UPPA)
-          ===================================================================== */}
-      {heroVariant === "bubbles" ? (
-        <>
-          {/* Balões Imobiliários Flutuantes nas Laterais e Fundo */}
-          <FloatingPropertyBubbles properties={bubbleProperties} />
-
-          {/* Conteúdo Central Limpo e Focado */}
-          <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 flex flex-col items-center text-center">
-            {/* 1. LOGO DA MARCA UPPA */}
-            <div className="mb-3.5 sm:mb-4">
-              <Image
-                src="/logo-uppa.png"
-                alt="UPPA"
-                width={150}
-                height={48}
-                priority
-                className="h-10 sm:h-11 w-auto object-contain dark:brightness-0 dark:invert transition-transform duration-200 hover:scale-105 select-none"
-              />
-            </div>
-
-            {/* 2. TÍTULO CENTRAL */}
-            <h1 className="text-2xl sm:text-4xl lg:text-[40px] font-black text-slate-950 dark:text-white leading-[1.18] tracking-tight max-w-2xl mx-auto mb-2">
-              {displayHeadline}
-            </h1>
-
-            {/* 3. SUBTÍTULO */}
-            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-lg mx-auto mb-6 sm:mb-8 font-medium">
-              {displaySubheadline}
-            </p>
-
-            {/* 4. BUSCA ATUAL DA UPPA (Card Centralizado com Sombra Suave) */}
-            <div className="w-full max-w-[520px] text-left">
-              <div className="rounded-3xl bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,32,74,0.18),0_12px_28px_-8px_rgba(0,32,74,0.08)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] ring-1 ring-black/[0.04] dark:ring-white/[0.08] transition-all">
-                {renderSearchFilterForm()}
-              </div>
-            </div>
-          </div>
-        </>
-      ) : (
-        /* =====================================================================
-           VERSÃO 2: HERO CLÁSSICO (Layout com Imagem Lateral / Fundo)
-           ===================================================================== */
-        <>
-          {/* LAYOUT 'COVER': Imagem cobrindo todo o fundo */}
-          {imageLayout === 'cover' && backgroundImage && (
-            <div className="absolute inset-0 z-0">
-              <img
-                src={backgroundImage}
-                alt="Portal Imobiliário UPPA"
-                className={`w-full h-full ${imageFit === 'contain' ? 'object-contain' : 'object-cover'} object-center`}
-              />
-            </div>
-          )}
-
-          {/* LAYOUT 'RIGHT': Imagem ancorada à direita no fundo com transição suave */}
-          {imageLayout === 'right' && backgroundImage && (
-            <div className="absolute inset-y-0 right-0 w-full lg:w-3/5 z-0">
-              <img
-                src={backgroundImage}
-                alt="Portal Imobiliário UPPA"
-                className={`w-full h-full ${imageFit === 'contain' ? 'object-contain' : 'object-cover'} object-center lg:object-right`}
-              />
-              <div
-                className="absolute inset-0 pointer-events-none hidden lg:block"
-                style={{
-                  background: `linear-gradient(to right, ${effectiveBgColor} 0%, transparent 60%)`,
-                }}
-              />
-            </div>
-          )}
-
-          {/* CONTEÚDO PRINCIPAL (Card e Imagem ao Lado) */}
-          <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12">
-              {/* Card Flutuante com Sombra Suave e Profunda */}
-              <div className="w-full max-w-[480px] shrink-0 mx-auto lg:mx-0">
-                <div className="rounded-3xl bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.20),0_12px_28px_-8px_rgba(0,0,0,0.10)] ring-1 ring-black/[0.04] dark:ring-white/[0.08] transition-all">
-                  <h1 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white leading-tight mb-5 tracking-tight">
-                    {displayHeadline}{" "}
-                    {displaySubheadline && (
-                      <span className="font-normal text-slate-600 dark:text-slate-300">
-                        {displaySubheadline}
-                      </span>
-                    )}
-                  </h1>
-
-                  {renderSearchFilterForm()}
-                </div>
-              </div>
-
-              {/* Coluna da Direita: Imagem ao Lado do Filtro */}
-              {imageLayout === 'side' && backgroundImage && (
-                <div className="w-full lg:flex-1 hidden lg:flex items-center justify-center">
-                  <div className="relative w-full max-w-[560px] h-[480px] flex items-center justify-center">
-                    <img
-                      src={backgroundImage}
-                      alt="Portal Imobiliário UPPA"
-                      className={`max-w-full max-h-full ${imageFit === 'cover' ? 'w-full h-full object-cover' : 'object-contain'} object-center select-none`}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </>
+      {/* LAYOUT 'COVER' (Modo Clássico): Imagem cobrindo todo o fundo */}
+      {heroVariant === 'classic' && imageLayout === 'cover' && backgroundImage && (
+        <div className="absolute inset-0 z-0">
+          <img
+            src={backgroundImage}
+            alt="Portal Imobiliário UPPA"
+            className={`w-full h-full ${imageFit === 'contain' ? 'object-contain' : 'object-cover'} object-center`}
+          />
+        </div>
       )}
+
+      {/* LAYOUT 'RIGHT' (Modo Clássico): Imagem ancorada à direita no fundo com transição suave */}
+      {heroVariant === 'classic' && imageLayout === 'right' && backgroundImage && (
+        <div className="absolute inset-y-0 right-0 w-full lg:w-3/5 z-0">
+          <img
+            src={backgroundImage}
+            alt="Portal Imobiliário UPPA"
+            className={`w-full h-full ${imageFit === 'contain' ? 'object-contain' : 'object-cover'} object-center lg:object-right`}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none hidden lg:block"
+            style={{
+              background: `linear-gradient(to right, ${effectiveBgColor} 0%, transparent 60%)`,
+            }}
+          />
+        </div>
+      )}
+
+      {/* CONTEÚDO PRINCIPAL (Card e Balões/Imagem ao Lado) */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12">
+          {/* Coluna da Esquerda: Card Flutuante de Busca exatamente no mesmo lugar do modo clássico */}
+          <div className="w-full max-w-[480px] shrink-0 mx-auto lg:mx-0">
+            <div className="rounded-3xl bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.20),0_12px_28px_-8px_rgba(0,0,0,0.10)] ring-1 ring-black/[0.04] dark:ring-white/[0.08] transition-all">
+              {heroVariant === 'classic' ? (
+                <h1 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white leading-tight mb-5 tracking-tight">
+                  {displayHeadline}{" "}
+                  {displaySubheadline && (
+                    <span className="font-normal text-slate-600 dark:text-slate-300">
+                      {displaySubheadline}
+                    </span>
+                  )}
+                </h1>
+              ) : (
+                /* No modo balões, o título visual foi retirado a pedido do usuário */
+                <h1 className="sr-only">
+                  {displayHeadline}
+                </h1>
+              )}
+
+              {renderSearchFilterForm()}
+            </div>
+          </div>
+
+          {/* Coluna da Direita: Balões Flutuantes (heroVariant === 'bubbles') OU Imagem (heroVariant === 'classic') */}
+          {heroVariant === 'bubbles' ? (
+            <div className="w-full lg:flex-1 relative min-h-[460px] sm:min-h-[500px] lg:min-h-[560px] flex items-center justify-center">
+              <FloatingPropertyBubbles properties={bubbleProperties} />
+            </div>
+          ) : (
+            imageLayout === 'side' && backgroundImage && (
+              <div className="w-full lg:flex-1 hidden lg:flex items-center justify-center">
+                <div className="relative w-full max-w-[560px] h-[480px] flex items-center justify-center">
+                  <img
+                    src={backgroundImage}
+                    alt="Portal Imobiliário UPPA"
+                    className={`max-w-full max-h-full ${imageFit === 'cover' ? 'w-full h-full object-cover' : 'object-contain'} object-center select-none`}
+                  />
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      </div>
     </section>
   );
 }

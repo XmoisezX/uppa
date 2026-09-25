@@ -20,97 +20,104 @@ interface BubbleLayoutConfig {
 }
 
 const BUBBLE_CONFIGS: BubbleLayoutConfig[] = [
-  // Flanco Esquerdo (5 Balões)
+  // 1. Destaque topo-centro (lg, front)
   {
     size: "lg",
     depth: "front",
     animationPattern: 1,
-    positionStyle: { left: "2%", top: "8%" },
+    positionStyle: { left: "16%", top: "4%" },
     alignPreview: "left",
     mobileHidden: false,
     tabletHidden: false,
   },
+  // 2. Topo-direita (md, mid)
   {
     size: "md",
     depth: "mid",
     animationPattern: 2,
-    positionStyle: { left: "13%", top: "25%" },
-    alignPreview: "left",
+    positionStyle: { left: "56%", top: "5%" },
+    alignPreview: "right",
     mobileHidden: true,
     tabletHidden: false,
   },
+  // 3. Lateral direita alta (lg, front)
+  {
+    size: "lg",
+    depth: "front",
+    animationPattern: 3,
+    positionStyle: { left: "70%", top: "25%" },
+    alignPreview: "right",
+    mobileHidden: false,
+    tabletHidden: false,
+  },
+  // 4. Centro-alto (sm, back)
   {
     size: "sm",
     depth: "back",
-    animationPattern: 3,
-    positionStyle: { left: "3%", top: "45%" },
+    animationPattern: 4,
+    positionStyle: { left: "40%", top: "26%" },
     alignPreview: "left",
     mobileHidden: true,
     tabletHidden: true,
   },
+  // 5. Lateral esquerda média (lg, front)
   {
     size: "lg",
     depth: "front",
-    animationPattern: 4,
-    positionStyle: { left: "12%", top: "64%" },
-    alignPreview: "left",
-    mobileHidden: true,
-    tabletHidden: false,
-  },
-  {
-    size: "md",
-    depth: "mid",
     animationPattern: 1,
-    positionStyle: { left: "2%", top: "80%" },
+    positionStyle: { left: "5%", top: "34%" },
+    alignPreview: "left",
+    mobileHidden: true,
+    tabletHidden: false,
+  },
+  // 6. Centro-médio (md, mid)
+  {
+    size: "md",
+    depth: "mid",
+    animationPattern: 2,
+    positionStyle: { left: "34%", top: "48%" },
     alignPreview: "left",
     mobileHidden: false,
     tabletHidden: false,
   },
-
-  // Flanco Direito (5 Balões)
+  // 7. Centro-direita média (lg, front)
   {
     size: "lg",
     depth: "front",
-    animationPattern: 2,
-    positionStyle: { right: "2%", top: "10%" },
-    alignPreview: "right",
-    mobileHidden: false,
-    tabletHidden: false,
-  },
-  {
-    size: "md",
-    depth: "mid",
     animationPattern: 3,
-    positionStyle: { right: "13%", top: "26%" },
+    positionStyle: { left: "66%", top: "52%" },
     alignPreview: "right",
     mobileHidden: true,
     tabletHidden: false,
   },
-  {
-    size: "lg",
-    depth: "front",
-    animationPattern: 4,
-    positionStyle: { right: "3%", top: "46%" },
-    alignPreview: "right",
-    mobileHidden: true,
-    tabletHidden: true,
-  },
+  // 8. Lateral esquerda baixa (sm, back)
   {
     size: "sm",
     depth: "back",
-    animationPattern: 1,
-    positionStyle: { right: "12%", top: "65%" },
-    alignPreview: "right",
+    animationPattern: 4,
+    positionStyle: { left: "8%", top: "72%" },
+    alignPreview: "left",
     mobileHidden: true,
+    tabletHidden: true,
+  },
+  // 9. Centro-baixo (md, mid)
+  {
+    size: "md",
+    depth: "mid",
+    animationPattern: 1,
+    positionStyle: { left: "40%", top: "74%" },
+    alignPreview: "left",
+    mobileHidden: false,
     tabletHidden: false,
   },
+  // 10. Inferior direito (md, mid)
   {
     size: "md",
     depth: "mid",
     animationPattern: 2,
-    positionStyle: { right: "2%", top: "80%" },
+    positionStyle: { left: "74%", top: "72%" },
     alignPreview: "right",
-    mobileHidden: false,
+    mobileHidden: true,
     tabletHidden: false,
   },
 ];
@@ -125,8 +132,7 @@ export function FloatingPropertyBubbles({
 
   return (
     <div
-      className={`absolute inset-0 pointer-events-none overflow-hidden z-0 ${className}`}
-      aria-hidden="true"
+      className={`absolute inset-0 pointer-events-none overflow-visible z-0 ${className}`}
     >
       {properties.slice(0, BUBBLE_CONFIGS.length).map((property, idx) => {
         const config = BUBBLE_CONFIGS[idx];
