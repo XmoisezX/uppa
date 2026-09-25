@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   UserCheck,
 } from "lucide-react";
+import { VerifiedAgencyBadge, VerifiedIcon } from "@/components/ui/verified-badge";
 import { createAgencyAction, updateAgencyAction } from "./actions";
 import type { UserAgencyMembership } from "@/types/agency";
 
@@ -55,14 +56,16 @@ export function AgencySettingsView({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="default" className="bg-indigo-600 capitalize">
                 {role === "owner" ? "Proprietário (Owner)" : role}
               </Badge>
-              {agency.verifiedAt && (
-                <Badge variant="success" className="gap-1">
-                  <ShieldCheck className="h-3 w-3" /> Verificado
-                </Badge>
+              {agency.verifiedAt ? (
+                <VerifiedAgencyBadge agencyName={agency.name} />
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-xs font-medium dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
+                  Não Verificada
+                </span>
               )}
             </div>
           </CardHeader>
@@ -103,6 +106,42 @@ export function AgencySettingsView({
               </Button>
             </CardFooter>
           )}
+        </Card>
+
+        {/* CARD: STATUS DE VERIFICAÇÃO */}
+        <Card className="border-slate-200/80 shadow-sm dark:border-slate-800">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <VerifiedIcon className="w-5 h-5 text-[#1D9BF0]" />
+              <CardTitle className="text-base font-bold">Selo de Imobiliária Verificada</CardTitle>
+            </div>
+            <CardDescription className="text-xs">
+              O selo azul oficial transmite credibilidade, autenticidade e segurança aos clientes e compradores.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {agency.verifiedAt ? (
+              <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/70 dark:border-blue-900/40 dark:bg-blue-950/20 text-blue-950 dark:text-blue-200 flex items-start gap-3">
+                <VerifiedIcon className="w-5 h-5 text-[#1D9BF0] shrink-0 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <p className="font-bold">Sua imobiliária é Verificada!</p>
+                  <p className="text-slate-600 dark:text-slate-300">
+                    O selo azul oficial de verificação está ativo e é exibido automaticamente ao lado do nome da <strong>{agency.name}</strong> em todos os seus imóveis no portal.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 text-slate-700 dark:text-slate-300 flex items-start gap-3">
+                <ShieldCheck className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <p className="font-bold text-slate-900 dark:text-white">Verificação em Análise Cadastral</p>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    Nesta fase inicial, a verificação de imobiliárias é <strong>gratuita</strong> após validação do CRECI e dados cadastrais pela equipe administrativa. Futuramente este selo fará parte dos planos parceiros.
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
         </Card>
       </div>
     );

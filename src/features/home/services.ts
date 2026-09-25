@@ -155,7 +155,21 @@ async function fetchRecentActiveProperties(
       return [];
     }
 
-    return (data as any[]).map((row) => {
+    let featuredIds: string[] = [];
+    try {
+      const { data: featRow } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "featured_property_ids")
+        .maybeSingle();
+      if (featRow?.value && Array.isArray(featRow.value)) {
+        featuredIds = featRow.value;
+      }
+    } catch {
+      // ignore
+    }
+
+    const items = (data as any[]).map((row) => {
       const rawMedia = (row.media as any[]) || [];
       const sortedMedia = rawMedia
         .map((m) => ({
@@ -172,6 +186,7 @@ async function fetchRecentActiveProperties(
 
       return {
         id: row.id,
+        featured: featuredIds.includes(row.id),
         slug: row.slug,
         externalId: row.external_id,
         title: row.title,
@@ -211,6 +226,13 @@ async function fetchRecentActiveProperties(
           : null,
         media: sortedMedia,
       };
+    });
+
+    // Ordenar: imóveis com destaque primeiro, mantendo ordem cronológica secundária
+    return items.sort((a, b) => {
+      if (a.featured && !b.featured) return -1;
+      if (!a.featured && b.featured) return 1;
+      return 0;
     });
   } catch (err) {
     console.error("Erro ao carregar imóveis recentes:", err);

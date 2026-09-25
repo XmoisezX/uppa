@@ -289,91 +289,114 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
     };
   }
 
-  // Formata o resultado aplicando privacidade estrita de endereço
-  const properties: SearchPropertyItem[] = data.map((row: any) => {
-    const rawMedia = (row.media as any[]) || [];
-    const sortedMedia = rawMedia
-      .map((m) => ({
-        id: m.id,
-        url: m.url,
-        isCover: Boolean(m.is_cover),
-        position: m.position || 0,
-      }))
-      .sort((a, b) => {
-        if (a.isCover) return -1;
-        if (b.isCover) return 1;
-        return a.position - b.position;
-      });
-
-    // Privacidade de Endereço (Seção 44 do MASTER_PLAN):
-    // Se address_visible for false, oculta número/logradouro e aplica coordenadas aproximadas
-    let lat = row.latitude;
-    let lng = row.longitude;
-    let street = row.street;
-    let number = row.number;
-
-    if (!row.address_visible && lat && lng) {
-      const approx = getApproximateCoordinates(row.id, lat, lng);
-      lat = approx.latitude;
-      lng = approx.longitude;
-      street = null;
-      number = null;
+    let featuredIds: string[] = [];
+    try {
+      const { data: featRow } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "featured_property_ids")
+        .maybeSingle();
+      if (featRow?.value && Array.isArray(featRow.value)) {
+        featuredIds = featRow.value;
+      }
+    } catch {
+      // ignore
     }
 
+    // Formata o resultado aplicando privacidade estrita de endereço
+    const properties: SearchPropertyItem[] = data.map((row: any) => {
+      const rawMedia = (row.media as any[]) || [];
+      const sortedMedia = rawMedia
+        .map((m) => ({
+          id: m.id,
+          url: m.url,
+          isCover: Boolean(m.is_cover),
+          position: m.position || 0,
+        }))
+        .sort((a, b) => {
+          if (a.isCover) return -1;
+          if (b.isCover) return 1;
+          return a.position - b.position;
+        });
+
+      // Privacidade de Endereço (Seção 44 do MASTER_PLAN):
+      // Se address_visible for false, oculta número/logradouro e aplica coordenadas aproximadas
+      let lat = row.latitude;
+      let lng = row.longitude;
+      let street = row.street;
+      let number = row.number;
+
+      if (!row.address_visible && lat && lng) {
+        const approx = getApproximateCoordinates(row.id, lat, lng);
+        lat = approx.latitude;
+        lng = approx.longitude;
+        street = null;
+        number = null;
+      }
+
+      return {
+        id: row.id,
+        featured: featuredIds.includes(row.id),
+        slug: row.slug,
+        externalId: row.external_id,
+        title: row.title,
+        transactionType: row.transaction_type,
+        propertyType: row.property_type,
+        price: row.price,
+        rentPrice: row.rent_price,
+        condominiumFee: row.condominium_fee,
+        usableArea: row.usable_area,
+        totalArea: row.total_area,
+        bedrooms: row.bedrooms || 0,
+        suites: row.suites || 0,
+        bathrooms: row.bathrooms || 0,
+        parkingSpaces: row.parking_spaces || 0,
+        financiable: Boolean(row.financiable),
+        furnished: Boolean(row.furnished),
+        acceptsExchange: Boolean(row.accepts_exchange),
+        addressVisible: Boolean(row.address_visible),
+        street,
+        number,
+        latitude: lat,
+        longitude: lng,
+        publishedAt: row.published_at,
+        city: row.city,
+        neighborhood: row.neighborhood,
+        state: row.state,
+        agency: row.agency
+          ? {
+              id: row.agency.id,
+              name: row.agency.name,
+              slug: row.agency.slug,
+              logoUrl: row.agency.logo_url,
+              creci: row.agency.creci,
+              verifiedAt: row.agency.verified_at,
+              phone: row.agency.phone,
+            }
+          : null,
+        media: sortedMedia,
+      };
+    });
+
+    if (!filters.orderBy || filters.orderBy === "recent") {
+      properties.sort((a, b) => {
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
+        return 0;
+      });
+    }
+
+    const total = count || 0;
+    const totalPages = Math.ceil(total / limit);
+
     return {
-      id: row.id,
-      slug: row.slug,
-      externalId: row.external_id,
-      title: row.title,
-      transactionType: row.transaction_type,
-      propertyType: row.property_type,
-      price: row.price,
-      rentPrice: row.rent_price,
-      condominiumFee: row.condominium_fee,
-      usableArea: row.usable_area,
-      totalArea: row.total_area,
-      bedrooms: row.bedrooms || 0,
-      suites: row.suites || 0,
-      bathrooms: row.bathrooms || 0,
-      parkingSpaces: row.parking_spaces || 0,
-      financiable: Boolean(row.financiable),
-      furnished: Boolean(row.furnished),
-      acceptsExchange: Boolean(row.accepts_exchange),
-      addressVisible: Boolean(row.address_visible),
-      street,
-      number,
-      latitude: lat,
-      longitude: lng,
-      publishedAt: row.published_at,
-      city: row.city,
-      neighborhood: row.neighborhood,
-      state: row.state,
-      agency: row.agency
-        ? {
-            id: row.agency.id,
-            name: row.agency.name,
-            slug: row.agency.slug,
-            logoUrl: row.agency.logo_url,
-            creci: row.agency.creci,
-            verifiedAt: row.agency.verified_at,
-            phone: row.agency.phone,
-          }
-        : null,
-      media: sortedMedia,
+      properties,
+      total,
+      page,
+      totalPages,
+      limit,
+      filters,
     };
-  });
-
-  const total = count || 0;
-  const totalPages = Math.ceil(total / limit);
-
-  return {
-    properties,
-    total,
-    page,
-    totalPages,
-    limit,
-    filters,
-  };
 }
 
 /**

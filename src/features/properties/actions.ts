@@ -17,6 +17,7 @@ import {
   deleteProperty,
   deletePropertiesBatch,
 } from "./services";
+import { togglePropertyFeatured } from "@/features/admin/services/properties";
 import type { CreatePropertyInput } from "@/lib/validations/property";
 import type { MediaType } from "@/types/property";
 
@@ -301,3 +302,39 @@ export async function deletePropertiesBatchAction(propertyIds: string[]) {
     };
   }
 }
+
+/**
+ * Alterna status de destaque de um imóvel pela imobiliária dona.
+ * Gratuito na fase inicial (sem cobrança no momento), preparado para futura monetização.
+ */
+export async function toggleAgencyPropertyFeaturedAction(
+  propertyId: string,
+  currentFeatured: boolean
+) {
+  try {
+    await assertPropertyOwnership(propertyId);
+    const ok = await togglePropertyFeatured(propertyId, currentFeatured);
+    if (!ok) {
+      return { success: false, error: "Não foi possível alterar o destaque do imóvel." };
+    }
+
+    revalidatePath("/painel/imoveis");
+    revalidatePath("/");
+    revalidatePath("/comprar");
+    revalidatePath("/alugar");
+
+    return {
+      success: true,
+      featured: !currentFeatured,
+      message: !currentFeatured
+        ? "Imóvel colocado em destaque com sucesso! (Gratuito no período de lançamento)"
+        : "Imóvel removido dos destaques.",
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error?.message || "Falha ao alterar o destaque.",
+    };
+  }
+}
+

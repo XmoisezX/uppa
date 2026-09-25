@@ -57,8 +57,23 @@ export const getPropertyBySlug = cache(
 
   if (error || !data) return null;
 
+  let isFeatured = false;
+  try {
+    const { data: featRow } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "featured_property_ids")
+      .maybeSingle();
+    if (featRow?.value && Array.isArray(featRow.value)) {
+      isFeatured = featRow.value.includes(data.id);
+    }
+  } catch {
+    // ignore
+  }
+
   return {
     id: data.id,
+    featured: isFeatured,
     agencyId: data.agency_id,
     brokerId: data.broker_id,
     externalId: data.external_id,
@@ -504,6 +519,20 @@ export async function getAgencyProperties(
     return { properties: [], total: 0 };
   }
 
+  let featuredIds: string[] = [];
+  try {
+    const { data: featRow } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "featured_property_ids")
+      .maybeSingle();
+    if (featRow?.value && Array.isArray(featRow.value)) {
+      featuredIds = featRow.value;
+    }
+  } catch {
+    // ignore
+  }
+
   const properties: PropertyWithDetails[] = data.map((item) => {
     const mediaList = ((item.media as any[]) || []).map((m) => ({
       id: m.id,
@@ -521,6 +550,7 @@ export async function getAgencyProperties(
 
     return {
       id: item.id,
+      featured: featuredIds.includes(item.id),
       agencyId: item.agency_id,
       brokerId: item.broker_id,
       externalId: item.external_id,

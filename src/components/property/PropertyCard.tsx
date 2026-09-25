@@ -12,6 +12,7 @@ import {
   Camera,
   MessageCircle,
 } from "lucide-react";
+import { VerifiedAgencyBadge, FeaturedPropertyBadge } from "@/components/ui/verified-badge";
 import type { SearchPropertyItem } from "@/features/search/types";
 
 interface PropertyCardProps {
@@ -100,8 +101,9 @@ export function PropertyCard({ property, className = "" }: PropertyCardProps) {
           </div>
         )}
 
-        {/* Badge de Finalidade */}
-        <div className="absolute top-3 left-3 z-10">
+        {/* Badge de Finalidade e Destaque */}
+        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 flex-wrap">
+          {property.featured && <FeaturedPropertyBadge />}
           <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-950/85 text-white font-bold text-[10px] uppercase tracking-wider backdrop-blur-xs">
             {isRent ? "Locação" : isSaleOrRent ? "Venda/Loc." : "Venda"}
           </span>
@@ -133,15 +135,12 @@ export function PropertyCard({ property, className = "" }: PropertyCardProps) {
       {/* 2. CONTEÚDO DO CARD */}
       <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
         <div>
-          {/* Logo ou Nome da Imobiliária */}
+          {/* Logo ou Nome da Imobiliária (Com Selo Oficial Azul de Verificação) */}
           {property.agency?.name && (
-            <div className="flex items-center gap-1.5 mb-2">
-              {property.agency.verifiedAt && (
-                <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 dark:text-indigo-400 px-1.5 py-0.5 rounded">
-                  Verificado
-                </span>
-              )}
-              {property.agency.logoUrl ? (
+            <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+              {property.agency.verifiedAt ? (
+                <VerifiedAgencyBadge agencyName={property.agency.name} />
+              ) : property.agency.logoUrl ? (
                 <img
                   src={property.agency.logoUrl}
                   alt={property.agency.name}

@@ -57,6 +57,7 @@ export interface Property {
   transactionType: TransactionType;
   propertyType: PropertyType;
   status: PropertyStatus;
+  featured?: boolean;
   price?: number | null;
   rentPrice?: number | null;
   condominiumFee?: number | null;

@@ -14,6 +14,7 @@ import {
   Check,
   AlertCircle,
 } from 'lucide-react';
+import { VerifiedIcon } from '@/components/ui/verified-badge';
 import {
   toggleAgencyVerificationAction,
   updateAgencyStatusAction,
@@ -142,8 +143,8 @@ export function AgenciesClient({ initialAgencies }: Props) {
                           <div className="font-bold text-slate-900 flex items-center gap-1.5">
                             <span>{agency.name}</span>
                             {agency.verified && (
-                              <span title="Verificada">
-                                <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
+                              <span title="Imobiliária Verificada">
+                                <VerifiedIcon className="w-4 h-4" />
                               </span>
                             )}
                           </div>
@@ -189,14 +190,14 @@ export function AgenciesClient({ initialAgencies }: Props) {
                       <button
                         onClick={() => handleToggleVerification(agency)}
                         disabled={isPending}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors cursor-pointer ${
                           agency.verified
-                            ? 'bg-blue-500/10 border border-blue-500/30 text-slate-500 hover:bg-blue-500/20'
-                            : 'bg-slate-100 text-slate-500 hover:text-slate-600'
+                            ? 'bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:border-blue-900 dark:text-blue-300'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
                         }`}
                       >
-                        {agency.verified ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                        {agency.verified ? 'Verificado' : 'Não Verificado'}
+                        {agency.verified ? <VerifiedIcon className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                        {agency.verified ? 'Verificada' : 'Não Verificada'}
                       </button>
                     </td>
 

@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Plus,
 } from "lucide-react";
+import { VerifiedAgencyBadge, FeaturedPropertyBadge } from "@/components/ui/verified-badge";
 import type { SearchPropertyItem } from "../types";
 
 interface SearchPropertyCardProps {
@@ -167,8 +168,9 @@ export function SearchPropertyCard({
           </div>
         )}
 
-        {/* Badge de Finalidade (Venda / Locação) */}
-        <div className="absolute top-3 left-3 z-10">
+        {/* Badge de Finalidade e Destaque */}
+        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 flex-wrap">
+          {property.featured && <FeaturedPropertyBadge />}
           <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-950/85 text-white font-bold text-[10px] uppercase tracking-wide backdrop-blur-xs">
             {isRent ? "Locação" : isSaleOrRent ? "Venda/Loc." : "Venda"}
           </span>
@@ -277,14 +279,10 @@ export function SearchPropertyCard({
 
           {/* IMOBILIÁRIA / SELO VERIFICADO */}
           {property.agency?.name && (
-            <div className="flex items-center gap-1.5 mt-2">
-              {property.agency.verifiedAt && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400 px-2 py-0.5 rounded-full">
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-                  {property.agency.name}
-                </span>
-              )}
-              {!property.agency.verifiedAt && (
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+              {property.agency.verifiedAt ? (
+                <VerifiedAgencyBadge agencyName={property.agency.name} />
+              ) : (
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">
                   {property.agency.name}
                 </span>

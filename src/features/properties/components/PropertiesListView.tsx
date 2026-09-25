@@ -22,15 +22,18 @@ import {
   X,
   CheckSquare,
   Square,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { FeaturedPropertyBadge } from "@/components/ui/verified-badge";
 import type { PropertyWithDetails, PropertyStatus } from "@/types/property";
 import {
   createDraftPropertyAction,
   deletePropertyAction,
   deletePropertiesBatchAction,
+  toggleAgencyPropertyFeaturedAction,
 } from "@/features/properties/actions";
 
 interface PropertiesListViewProps {
@@ -65,6 +68,29 @@ export function PropertiesListView({
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  const [togglingFeaturedId, setTogglingFeaturedId] = useState<string | null>(null);
+
+  const handleToggleFeatured = async (propertyId: string, currentFeatured: boolean) => {
+    setTogglingFeaturedId(propertyId);
+    setActionFeedback(null);
+    try {
+      const res = await toggleAgencyPropertyFeaturedAction(propertyId, currentFeatured);
+      if (res.success) {
+        setProperties((prev) =>
+          prev.map((p) =>
+            p.id === propertyId ? { ...p, featured: res.featured } : p
+          )
+        );
+        setActionFeedback(res.message || "Destaque atualizado com sucesso.");
+      } else {
+        setActionFeedback(res.error || "Erro ao alterar destaque.");
+      }
+    } catch (err: any) {
+      setActionFeedback(err?.message || "Erro inesperado ao alterar destaque.");
+    } finally {
+      setTogglingFeaturedId(null);
+    }
+  };
 
   const handleCreateProperty = async () => {
     setIsCreating(true);
@@ -238,6 +264,26 @@ export function PropertiesListView({
           </button>
         </div>
       )}
+
+      {/* BANNER INFORMATIVO: NOVIDADE DESTAQUES E VERIFICAÇÃO */}
+      <div className="p-4 rounded-xl border border-amber-200/90 bg-gradient-to-r from-amber-50/90 via-amber-50/50 to-amber-100/40 dark:border-amber-900/40 dark:bg-amber-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 sm:mt-0">
+            <Star className="h-5 w-5 fill-amber-500 text-amber-500" />
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+              <span>Sistema de Destaques de Imóveis</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-amber-500 text-white">
+                Fase Promocional Gratuita
+              </span>
+            </h4>
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+              Marque seus melhores imóveis como <strong>Destaque</strong> gratuitamente neste momento. Eles ganham selo dourado exclusivo e têm prioridade máxima na página inicial e nas buscas dos compradores.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* FILTROS E BUSCA */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -439,7 +485,8 @@ export function PropertiesListView({
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      {prop.featured && <FeaturedPropertyBadge />}
                       <Badge
                         variant="outline"
                         className={
@@ -522,6 +569,37 @@ export function PropertiesListView({
                         <ExternalLink className="h-3.5 w-3.5" />
                       </Link>
                     )}
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleFeatured(prop.id, !!prop.featured)}
+                      disabled={togglingFeaturedId === prop.id}
+                      className={
+                        prop.featured
+                          ? "text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-300 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300 cursor-pointer h-8 gap-1.5 shadow-2xs"
+                          : "text-xs font-semibold text-slate-600 hover:text-amber-600 hover:bg-amber-50/50 hover:border-amber-300 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer h-8 gap-1.5"
+                      }
+                      title={
+                        prop.featured
+                          ? "Imóvel destacado no portal. Clique para remover o destaque."
+                          : "Destacar este imóvel no portal (Gratuito no momento)"
+                      }
+                    >
+                      {togglingFeaturedId === prop.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-600" />
+                      ) : (
+                        <Star
+                          className={`h-3.5 w-3.5 ${
+                            prop.featured
+                              ? "fill-amber-500 text-amber-500"
+                              : "text-slate-400 group-hover:text-amber-500"
+                          }`}
+                        />
+                      )}
+                      <span>{prop.featured ? "Em Destaque" : "Destacar"}</span>
+                    </Button>
 
                     <Link href={`/painel/imoveis/${prop.id}/editar`}>
                       <Button

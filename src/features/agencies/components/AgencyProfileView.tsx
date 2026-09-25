@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   ExternalLink,
 } from "lucide-react";
+import { VerifiedIcon } from "@/components/ui/verified-badge";
 import {
   updateAgencyUserProfileAction,
   updateAgencyUserPasswordAction,
@@ -215,9 +216,14 @@ export function AgencyProfileView({ user, membership }: AgencyProfileViewProps) 
                 </span>
                 {membership?.agency ? (
                   <div className="mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700">
-                    <span className="font-bold text-slate-900 dark:text-white block text-sm">
-                      {membership.agency.name}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-slate-900 dark:text-white block text-sm">
+                        {membership.agency.name}
+                      </span>
+                      {membership.agency.verifiedAt && (
+                        <VerifiedIcon className="w-4 h-4 text-[#1D9BF0] shrink-0" />
+                      )}
+                    </div>
                     <span className="text-slate-500 dark:text-slate-400 text-[11px] block mt-0.5">
                       CRECI Jurídico: {membership.agency.creci}
                     </span>

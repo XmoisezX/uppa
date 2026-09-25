@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { ChevronRight, MapPin, Calendar, Building2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { VerifiedIcon, FeaturedPropertyBadge } from "@/components/ui/verified-badge";
 import type { PropertyWithDetails } from "@/types/property";
 
 interface PropertyHeaderProps {
@@ -100,6 +101,8 @@ export function PropertyHeader({ property }: PropertyHeaderProps) {
 
       {/* BADGES & METADADOS */}
       <div className="flex flex-wrap items-center gap-2">
+        {property.featured && <FeaturedPropertyBadge />}
+
         <Badge className="bg-indigo-600 text-white font-bold text-xs uppercase tracking-wide">
           {transactionLabel}
         </Badge>
@@ -144,9 +147,10 @@ export function PropertyHeader({ property }: PropertyHeaderProps) {
           <span>Anunciado por:</span>
           <Link
             href={`/imobiliaria/${property.agency.slug}`}
-            className="font-bold text-slate-800 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors underline-offset-2 hover:underline"
+            className="inline-flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors underline-offset-2 hover:underline"
           >
-            {property.agency.name}
+            <span>{property.agency.name}</span>
+            {property.agency.verifiedAt && <VerifiedIcon className="w-3.5 h-3.5 shrink-0" />}
           </Link>
           {property.agency.creci && (
             <span className="font-mono text-slate-400 text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">

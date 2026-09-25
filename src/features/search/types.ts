@@ -53,6 +53,7 @@ export interface SearchPropertyItem {
   latitude?: number | null;
   longitude?: number | null;
   publishedAt?: string | null;
+  featured?: boolean;
   city?: {
     id: string;
     name: string;

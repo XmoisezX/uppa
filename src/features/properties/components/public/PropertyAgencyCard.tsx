@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { VerifiedIcon } from "@/components/ui/verified-badge";
 import type { Agency } from "@/types/agency";
 
 interface PropertyAgencyCardProps {
@@ -45,9 +46,9 @@ export function PropertyAgencyCard({ agency }: PropertyAgencyCardProps) {
           Imobiliária Anunciante
         </span>
         {agency.verifiedAt && (
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
-            <ShieldCheck className="h-3 w-3 mr-1 text-emerald-600" />
-            Imobiliária Credenciada
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-900/40 text-[10px] gap-1">
+            <VerifiedIcon className="w-3.5 h-3.5" />
+            Imobiliária Verificada
           </Badge>
         )}
       </div>
@@ -65,9 +66,12 @@ export function PropertyAgencyCard({ agency }: PropertyAgencyCardProps) {
 
         {/* Informações Institucionais */}
         <div className="min-w-0 flex-1">
-          <h3 className="text-base font-bold text-slate-900 dark:text-white truncate">
-            {agency.name}
-          </h3>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white truncate">
+              {agency.name}
+            </h3>
+            {agency.verifiedAt && <VerifiedIcon className="w-4 h-4 shrink-0" />}
+          </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-0.5">
             {agency.creci && (
