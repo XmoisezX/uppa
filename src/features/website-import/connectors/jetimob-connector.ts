@@ -462,12 +462,10 @@ export class JetimobConnector implements WebsiteConnector {
       }
     }
 
-    const filteredImageUrls = filterListingImages(deduplicatedUrls, reference.url);
-    const images: NormalizedMedia[] = filteredImageUrls.map((url: string, idx: number) => ({
-      type: "image",
-      url,
-      isCover: idx === 0,
-    }));
+    const images: NormalizedMedia[] = filterListingImages(
+      deduplicatedUrls,
+      reference.url
+    );
 
     // 13. Descrição
     const description =
