@@ -688,91 +688,37 @@ export function sortPropertiesByRanking<
     ranking: PropertyRankingResult;
   }>
 ): T[] {
-  // 1. Ordenação primária pelos 7 critérios de ranking
-  const primarySorted = [...itemsWithRanking].sort((a, b) => {
-    // 1. Score total
-    if (b.ranking.score !== a.ranking.score) {
-      return b.ranking.score - a.ranking.score;
-    }
+  if (itemsWithRanking.length <= 1) {
+    return itemsWithRanking.map((e) => e.item);
+  }
 
-    // 2. Relevância
-    if (b.ranking.breakdown.relevance !== a.ranking.breakdown.relevance) {
-      return b.ranking.breakdown.relevance - a.ranking.breakdown.relevance;
-    }
+  // 1. Identifica a pontuação máxima do conjunto para definir a coorte de alto padrão/qualificados
+  const maxScore = itemsWithRanking.reduce(
+    (max, e) => Math.max(max, e.ranking.score || 0),
+    0
+  );
+  // Coorte de topo: anúncios com score dentro de uma tolerância de 12 pontos do topo (mínimo 50)
+  const topTierThreshold = Math.max(maxScore - 12, 50);
 
-    // 3. Qualidade
-    if (b.ranking.breakdown.quality !== a.ranking.breakdown.quality) {
-      return b.ranking.breakdown.quality - a.ranking.breakdown.quality;
-    }
+  const cohort1: typeof itemsWithRanking = [];
+  const cohort2: typeof itemsWithRanking = [];
 
-    // 4. Destaque
-    if (b.ranking.breakdown.featured !== a.ranking.breakdown.featured) {
-      return b.ranking.breakdown.featured - a.ranking.breakdown.featured;
-    }
-
-    // 5. Imobiliária Verificada
-    if (b.ranking.breakdown.verified_brokerage !== a.ranking.breakdown.verified_brokerage) {
-      return b.ranking.breakdown.verified_brokerage - a.ranking.breakdown.verified_brokerage;
-    }
-
-    // 6. Recência
-    if (b.ranking.breakdown.freshness !== a.ranking.breakdown.freshness) {
-      return b.ranking.breakdown.freshness - a.ranking.breakdown.freshness;
-    }
-
-    // 7. Engajamento
-    if (b.ranking.breakdown.engagement !== a.ranking.breakdown.engagement) {
-      return b.ranking.breakdown.engagement - a.ranking.breakdown.engagement;
-    }
-
-    return 0;
-  });
-
-  // 2. Agrupamento em lotes de empate estrito nos 7 critérios
-  const buckets: Array<Array<(typeof itemsWithRanking)[0]>> = [];
-  let currentBucket: Array<(typeof itemsWithRanking)[0]> = [];
-
-  const areCriteriaTied = (
-    a: (typeof itemsWithRanking)[0],
-    b: (typeof itemsWithRanking)[0]
-  ) => {
-    return (
-      a.ranking.score === b.ranking.score &&
-      a.ranking.breakdown.relevance === b.ranking.breakdown.relevance &&
-      a.ranking.breakdown.quality === b.ranking.breakdown.quality &&
-      a.ranking.breakdown.featured === b.ranking.breakdown.featured &&
-      a.ranking.breakdown.verified_brokerage === b.ranking.breakdown.verified_brokerage &&
-      a.ranking.breakdown.freshness === b.ranking.breakdown.freshness &&
-      a.ranking.breakdown.engagement === b.ranking.breakdown.engagement
-    );
-  };
-
-  for (const entry of primarySorted) {
-    if (currentBucket.length === 0) {
-      currentBucket.push(entry);
-    } else if (areCriteriaTied(currentBucket[0], entry)) {
-      currentBucket.push(entry);
+  for (const entry of itemsWithRanking) {
+    if ((entry.ranking.score || 0) >= topTierThreshold) {
+      cohort1.push(entry);
     } else {
-      buckets.push(currentBucket);
-      currentBucket = [entry];
+      cohort2.push(entry);
     }
   }
-  if (currentBucket.length > 0) {
-    buckets.push(currentBucket);
-  }
 
-  // 3. Em cada lote empatado, distribui de forma justa e alternada entre as imobiliárias (evita monopólio)
-  const finalItems: T[] = [];
+  // Função para intercalar de forma justa os anúncios de uma coorte entre as imobiliárias
+  const interleaveCohort = (cohort: typeof itemsWithRanking): T[] => {
+    if (cohort.length === 0) return [];
+    if (cohort.length === 1) return [cohort[0].item];
 
-  for (const bucket of buckets) {
-    if (bucket.length === 1) {
-      finalItems.push(bucket[0].item);
-      continue;
-    }
-
-    // Agrupa imóveis empatados pela imobiliária
+    // Agrupa imóveis pela imobiliária
     const agencyGroups = new Map<string, Array<(typeof itemsWithRanking)[0]>>();
-    for (const entry of bucket) {
+    for (const entry of cohort) {
       const agId =
         entry.item.agency?.id ||
         (entry.item as any).agency_id ||
@@ -784,12 +730,42 @@ export function sortPropertiesByRanking<
       agencyGroups.get(agId)!.push(entry);
     }
 
-    // Dentro de cada imobiliária, ordena por updated_at DESC e ID ASC
+    // Dentro de cada imobiliária, ordena por score DESC e critérios determinísticos de qualidade
     for (const [_, list] of agencyGroups.entries()) {
       list.sort((a, b) => {
+        // 1. Score total
+        if (b.ranking.score !== a.ranking.score) {
+          return b.ranking.score - a.ranking.score;
+        }
+        // 2. Relevância
+        if (b.ranking.breakdown.relevance !== a.ranking.breakdown.relevance) {
+          return b.ranking.breakdown.relevance - a.ranking.breakdown.relevance;
+        }
+        // 3. Qualidade
+        if (b.ranking.breakdown.quality !== a.ranking.breakdown.quality) {
+          return b.ranking.breakdown.quality - a.ranking.breakdown.quality;
+        }
+        // 4. Destaque
+        if (b.ranking.breakdown.featured !== a.ranking.breakdown.featured) {
+          return b.ranking.breakdown.featured - a.ranking.breakdown.featured;
+        }
+        // 5. Imobiliária Verificada
+        if (b.ranking.breakdown.verified_brokerage !== a.ranking.breakdown.verified_brokerage) {
+          return b.ranking.breakdown.verified_brokerage - a.ranking.breakdown.verified_brokerage;
+        }
+        // 6. Recência
+        if (b.ranking.breakdown.freshness !== a.ranking.breakdown.freshness) {
+          return b.ranking.breakdown.freshness - a.ranking.breakdown.freshness;
+        }
+        // 7. Engajamento
+        if (b.ranking.breakdown.engagement !== a.ranking.breakdown.engagement) {
+          return b.ranking.breakdown.engagement - a.ranking.breakdown.engagement;
+        }
+        // 8. updated_at mais recente
         const dateA = a.item.updatedAt ? new Date(a.item.updatedAt).getTime() : 0;
         const dateB = b.item.updatedAt ? new Date(b.item.updatedAt).getTime() : 0;
         if (dateB !== dateA) return dateB - dateA;
+        // 9. ID determinístico
         return a.item.id.localeCompare(b.item.id);
       });
     }
@@ -797,23 +773,41 @@ export function sortPropertiesByRanking<
     // Ordem determinística de imobiliárias
     const sortedAgencyIds = Array.from(agencyGroups.keys()).sort();
 
-    // Round-robin alternado entre as imobiliárias
-    let hasMore = true;
+    // Round-robin alternado entre as imobiliárias (distribuição justa e anti-monopólio)
+    const result: T[] = [];
     let round = 0;
+    let hasMore = true;
+
     while (hasMore) {
       hasMore = false;
+      const roundPicks: Array<(typeof itemsWithRanking)[0]> = [];
+
       for (const agId of sortedAgencyIds) {
         const list = agencyGroups.get(agId)!;
         if (round < list.length) {
-          finalItems.push(list[round].item);
+          roundPicks.push(list[round]);
           if (round + 1 < list.length) {
             hasMore = true;
           }
         }
       }
+
+      // Dentro de cada rodada, prioriza anúncios com pontuação mais alta
+      roundPicks.sort((a, b) => {
+        if (b.ranking.score !== a.ranking.score) {
+          return b.ranking.score - a.ranking.score;
+        }
+        return a.item.id.localeCompare(b.item.id);
+      });
+
+      for (const entry of roundPicks) {
+        result.push(entry.item);
+      }
       round++;
     }
-  }
 
-  return finalItems;
+    return result;
+  };
+
+  return [...interleaveCohort(cohort1), ...interleaveCohort(cohort2)];
 }
