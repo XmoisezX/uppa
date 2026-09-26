@@ -194,9 +194,11 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
   }
 
   // 5. FILTRO: BAIRRO (neighborhood)
+  let resolvedNeighborhoodId: string | null = null;
   if (filters.neighborhood) {
     const cleanNeigh = filters.neighborhood.trim();
     if (isUuid(cleanNeigh)) {
+      resolvedNeighborhoodId = cleanNeigh;
       query = query.eq("neighborhood_id", cleanNeigh);
     } else {
       const slugNeigh = cleanNeigh.toLowerCase();
@@ -209,6 +211,7 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
       }
       const { data: neighRow } = await nQuery.limit(1).maybeSingle();
       if (neighRow?.id) {
+        resolvedNeighborhoodId = neighRow.id;
         query = query.eq("neighborhood_id", neighRow.id);
       }
     }
@@ -313,34 +316,115 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
   } else {
     // FLUXO OBRIGATÓRIO DE RANKING (0 a 100 pontos):
     // Busca do Usuário -> Aplicação dos Filtros -> Identificação dos Elegíveis ->
-    // Cálculo do Score -> Ordenação por Score -> Paginação -> Resultados
-    // Ordenado por ranking_score DESC (coluna indexada do banco idx_properties_ranking_score)
-    // e depois por published_at DESC
+    // Cálculo do Score -> Ordenação por Score com Distribuição Justa -> Paginação -> Resultados
+    // Ordenado por ranking_score DESC e updated_at DESC (sem agrupar por lote de published_at)
     query = query
       .order("ranking_score", { ascending: false, nullsFirst: false })
-      .order("published_at", { ascending: false, nullsFirst: false });
+      .order("updated_at", { ascending: false, nullsFirst: false });
 
-    if (offset > 0) {
-      // Para páginas subsequentes (rolagem infinita):
-      // Consulta diretamente a fatia requisitada usando o índice de ranking do banco,
-      // tornando o carregamento instantâneo (30-50ms) idêntico ao Chaves na Mão.
-      const { data, count, error } = await query.range(offset, offset + limit - 1);
-      if (error || !data) {
-        if (error) console.error("[searchProperties] Erro na consulta do Supabase:", error);
-        return { properties: [], total: 0, page, totalPages: 0, limit, filters };
+    // Determina o tamanho da piscina de candidatos para ordenação e intercalação justa
+    const candidateLimit = Math.min(1000, Math.max(180, (offset + limit) * 4));
+    const { data, count, error } = await query.range(0, candidateLimit - 1);
+    if (error || !data) {
+      if (error) console.error("[searchProperties] Erro na consulta do Supabase:", error);
+      return { properties: [], total: 0, page, totalPages: 0, limit, filters };
+    }
+    rawData = [...data];
+    totalCount = count || 0;
+
+    // Se o total de imóveis elegíveis for maior que os candidatos iniciais,
+    // verifica se alguma imobiliária parceira ficou sub-representada (menos de 12 imóveis)
+    // devido a lotes massivos de outras imobiliárias com pontuações próximas.
+    if (totalCount > data.length) {
+      const agencyCounts = new Map<string, number>();
+      for (const r of rawData) {
+        const agId = r.agency?.id || "independent";
+        agencyCounts.set(agId, (agencyCounts.get(agId) || 0) + 1);
       }
-      rawData = data;
-      totalCount = count || 0;
-    } else {
-      // Página 1: pool inicial otimizado de até 60 candidatos para cálculo de diversidade justa
-      const candidateLimit = 60;
-      const { data, count, error } = await query.range(0, candidateLimit - 1);
-      if (error || !data) {
-        if (error) console.error("[searchProperties] Erro na consulta do Supabase:", error);
-        return { properties: [], total: 0, page, totalPages: 0, limit, filters };
+
+      // Busca imobiliárias parceiras
+      const { data: allAgencies } = await supabase.from("agencies").select("id, name");
+      const underrepresented = (allAgencies || []).filter(
+        (ag) => (agencyCounts.get(ag.id) || 0) < 12
+      );
+
+      if (underrepresented.length > 0) {
+        const existingIds = new Set(rawData.map((r: any) => r.id));
+        const topUpPromises = underrepresented.map(async (ag) => {
+          let agQuery = supabase
+            .from("properties")
+            .select(SEARCH_PROPERTIES_SELECT)
+            .eq("status", "active")
+            .eq("agency_id", ag.id);
+
+          if (filters.transactionType) {
+            if (filters.transactionType === "sale") {
+              agQuery = agQuery.in("transaction_type", ["sale", "sale_or_rent"]);
+            } else if (filters.transactionType === "rent") {
+              agQuery = agQuery.in("transaction_type", ["rent", "sale_or_rent"]);
+            } else {
+              agQuery = agQuery.eq("transaction_type", filters.transactionType);
+            }
+          }
+          if (filters.propertyType) {
+            if (Array.isArray(filters.propertyType) && filters.propertyType.length > 0) {
+              agQuery = agQuery.in("property_type", filters.propertyType);
+            } else if (typeof filters.propertyType === "string") {
+              agQuery = agQuery.eq("property_type", filters.propertyType);
+            }
+          }
+          if (filters.state) {
+            agQuery = agQuery.eq("state_id", filters.state);
+          }
+          if (resolvedCityId) {
+            agQuery = agQuery.eq("city_id", resolvedCityId);
+          }
+          if (resolvedNeighborhoodId) {
+            agQuery = agQuery.eq("neighborhood_id", resolvedNeighborhoodId);
+          }
+          if (filters.priceMin !== undefined && filters.priceMin > 0) {
+            agQuery = agQuery.gte(priceColumn, filters.priceMin);
+          }
+          if (filters.priceMax !== undefined && filters.priceMax > 0) {
+            agQuery = agQuery.lte(priceColumn, filters.priceMax);
+          }
+          if (filters.bedrooms !== undefined && filters.bedrooms > 0) {
+            agQuery = agQuery.gte("bedrooms", filters.bedrooms);
+          }
+          if (filters.bathrooms !== undefined && filters.bathrooms > 0) {
+            agQuery = agQuery.gte("bathrooms", filters.bathrooms);
+          }
+          if (filters.parkingSpaces !== undefined && filters.parkingSpaces > 0) {
+            agQuery = agQuery.gte("parking_spaces", filters.parkingSpaces);
+          }
+          if (filters.areaMin !== undefined && filters.areaMin > 0) {
+            agQuery = agQuery.gte("usable_area", filters.areaMin);
+          }
+          if (filters.areaMax !== undefined && filters.areaMax > 0) {
+            agQuery = agQuery.lte("usable_area", filters.areaMax);
+          }
+          if (filters.financiable === true) agQuery = agQuery.eq("financiable", true);
+          if (filters.furnished === true) agQuery = agQuery.eq("furnished", true);
+          if (filters.acceptsExchange === true) agQuery = agQuery.eq("accepts_exchange", true);
+
+          agQuery = agQuery
+            .order("ranking_score", { ascending: false, nullsFirst: false })
+            .limit(12);
+
+          const { data: topUpData } = await agQuery;
+          return topUpData || [];
+        });
+
+        const topUpResults = await Promise.all(topUpPromises);
+        for (const items of topUpResults) {
+          for (const item of items) {
+            if (!existingIds.has(item.id)) {
+              existingIds.add(item.id);
+              rawData.push(item);
+            }
+          }
+        }
       }
-      rawData = data;
-      totalCount = count || 0;
     }
   }
 
@@ -465,13 +549,14 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
 
   if (isCustomSort) {
     finalProperties = itemsWithRanking.map((w) => w.item);
-  } else if (offset > 0) {
-    // Páginas subsequentes da rolagem infinita já foram fatiadas e ordenadas pelo índice do banco
-    finalProperties = itemsWithRanking.map((w) => w.item);
   } else {
-    // Página 1: ordenação determinística com critérios de desempate e distribuição justa
+    // Ordenação determinística com critérios de desempate e distribuição justa (Round-Robin multi-imobiliária)
     const sorted = sortPropertiesByRanking(itemsWithRanking);
-    finalProperties = sorted.slice(offset, offset + limit);
+    if (offset < sorted.length) {
+      finalProperties = sorted.slice(offset, offset + limit);
+    } else {
+      finalProperties = itemsWithRanking.slice(0, limit).map((w) => w.item);
+    }
   }
 
   const totalPages = Math.ceil(totalCount / limit);
