@@ -8,12 +8,14 @@ import type { ConnectorContext } from "../types";
 import type { WebsiteConnector } from "./connector.interface";
 import { UniversalStructuredDataConnector } from "./universal-structured-data-connector";
 import { GenericWebsiteConnector } from "./generic-website-connector";
+import { JetimobConnector } from "./jetimob-connector";
 
 export class ConnectorRegistry {
   private connectors: Map<string, WebsiteConnector> = new Map();
 
   constructor() {
     // Registra os conectores padrão
+    this.register(new JetimobConnector());
     this.register(new UniversalStructuredDataConnector());
     this.register(new GenericWebsiteConnector());
   }

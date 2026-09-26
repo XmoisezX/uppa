@@ -351,7 +351,12 @@ export class GenericWebsiteConnector implements WebsiteConnector {
     }
 
     // 2. Busca valores monetários no formato brasileiro
-    const priceMatches = html.matchAll(/R\$\s*([\d.]+,\d{2}|\d+[\d.]*)/gi);
+    // Sanitiza o HTML para evitar capturar faixas de preço de agência no rodapé (ex: "priceRange": "R$ 0 - R$ 5.000.000")
+    const sanitizedHtml = html
+      .replace(/"priceRange"\s*:\s*"[^"]*"/gi, "")
+      .replace(/priceRange\s*:\s*'[^']*'/gi, "");
+
+    const priceMatches = sanitizedHtml.matchAll(/R\$\s*([\d.]+,\d{2}|\d+[\d.]*)/gi);
     for (const match of priceMatches) {
       const val = parseCurrencyBrl(match[1]);
       if (!val || val < 100) continue;

@@ -62,6 +62,7 @@ export class WebsiteSourceDetector {
     // Adiciona sitemaps comuns por convenção
     detectedSitemaps.add(`${origin}/sitemap.xml`);
     detectedSitemaps.add(`${origin}/sitemap_index.xml`);
+    detectedSitemaps.add(`${origin}/sitemap-imoveis.xml`);
 
     // Inspeciona os sitemaps encontrados para descobrir sub-sitemaps e URLs de imóveis (Fila recursiva)
     const sitemapQueue: string[] = Array.from(detectedSitemaps);
@@ -172,9 +173,17 @@ export class WebsiteSourceDetector {
     // =========================================================================
     // ETAPA 8: DETERMINAR O CONECTOR RECOMENDADO
     // =========================================================================
-    const recommendedConnector = hasJsonLd
-      ? "universal_structured_data"
-      : "generic_website";
+    let recommendedConnector: string = "generic_website";
+
+    if (
+      detectedCms === "Jetimob" ||
+      sampleHtml.toLowerCase().includes("jetimob") ||
+      sampleHtml.toLowerCase().includes("jetimgs.com")
+    ) {
+      recommendedConnector = "jetimob";
+    } else if (hasJsonLd) {
+      recommendedConnector = "universal_structured_data";
+    }
 
     return {
       domain,
@@ -223,6 +232,15 @@ export class WebsiteSourceDetector {
   private detectCmsFromHtml(html: string, url: string): string | null {
     const lower = html.toLowerCase();
 
+    if (
+      lower.includes("jetimob") ||
+      lower.includes("jetimgs.com") ||
+      lower.includes("s01.jetimgs.com") ||
+      lower.includes("s02.jetimgs.com") ||
+      url.includes("jetimob.com")
+    ) {
+      return "Jetimob";
+    }
     if (lower.includes("tecimob") || url.includes("tecimob.com.br")) {
       return "Tecimob";
     }

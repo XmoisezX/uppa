@@ -928,8 +928,14 @@ export function WebsiteImportModal({
                             <span>•</span>
                             <span>Cód: {p.externalId}</span>
                             <span>•</span>
-                            <span>
-                              {p.address?.city || "Cidade não especificada"}
+                            <span className="truncate max-w-[200px]" title={
+                              [p.address?.street, p.address?.neighborhood, p.address?.city, p.address?.state].filter(Boolean).join(", ")
+                            }>
+                              {p.address?.neighborhood
+                                ? `${p.address.neighborhood}, ${p.address.city || "Pelotas"}${p.address.state ? ` - ${p.address.state}` : ""}`
+                                : p.address?.city
+                                ? `${p.address.city}${p.address.state ? ` - ${p.address.state}` : ""}`
+                                : "Cidade não especificada"}
                             </span>
                           </div>
                         </div>

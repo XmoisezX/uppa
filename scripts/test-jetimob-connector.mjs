@@ -165,16 +165,40 @@ async function testJetimobExtraction(url) {
   }
 
   // Images
-  const images = [];
+  const rawImages = [];
   if (propEntity?.images) {
     const imgs = resolveRef(propEntity.images);
     if (Array.isArray(imgs)) {
       for (const imgRef of imgs) {
         const imgObj = resolveRef(imgRef);
-        if (imgObj?.src && !imgObj.src.includes("favicon") && !imgObj.src.includes("logo")) {
-          images.push(imgObj.src);
-        }
+        if (imgObj?.src) rawImages.push(imgObj.src);
       }
+    }
+  }
+
+  // Also extract all jetimgs from HTML & Flight
+  const allJetimgs = (html + fullFlight).match(/https:\/\/[^"'\s<>\\]+?jetimgs\.com\/[^"'\s<>\\]+/g) || [];
+  for (const imgUrl of allJetimgs) {
+    const cleanUrl = imgUrl.replace(/\\$/, "");
+    if (
+      !cleanUrl.includes("favicon") &&
+      !cleanUrl.includes("submarca") &&
+      !cleanUrl.includes("logo") &&
+      !cleanUrl.includes("icon") &&
+      !cleanUrl.includes("avatar")
+    ) {
+      rawImages.push(cleanUrl);
+    }
+  }
+
+  // Deduplicate by base image filename
+  const seenFilenames = new Set();
+  const images = [];
+  for (const img of rawImages) {
+    const filename = img.split("/").pop() || img;
+    if (!seenFilenames.has(filename)) {
+      seenFilenames.add(filename);
+      images.push(img);
     }
   }
 
@@ -237,13 +261,7 @@ async function inspectProperImages() {
         const imgRef = String(parsed.images).replace("$", "");
         const idx7f = fullFlight.indexOf("7f:");
         console.log("Index of '7f:':", idx7f);
-        if (idx7f !== -1) {
-          console.log("Around 7f:", fullFlight.substring(idx7f, idx7f + 200));
-        } else {
-          console.log("7f: not found verbatim. Looking for 7f around images...");
-          const match7f = fullFlight.match(/"?7f"?\s*:\s*([^,\n]+)/);
-          console.log("match7f:", match7f);
-        }
+        console.log("Before 7f:", JSON.stringify(fullFlight.substring(idx7f - 30, idx7f + 5)));
       }
     }
   }

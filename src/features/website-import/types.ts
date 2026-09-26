@@ -114,7 +114,7 @@ export interface DetectionResult {
   hasJsonLd: boolean;
   detectedCms?: string | null;
   publicApiEndpoints: string[];
-  recommendedConnector: "universal_structured_data" | "generic_website";
+  recommendedConnector: "universal_structured_data" | "generic_website" | "jetimob" | string;
   sampleListingUrls: string[];
   status: "detected" | "unsupported";
   message?: string;

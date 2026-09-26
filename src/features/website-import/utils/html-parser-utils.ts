@@ -470,6 +470,25 @@ export function extractAddressFromUrl(rawUrl: string): Partial<NormalizedAddress
     const parsed = new URL(rawUrl);
     const segments = parsed.pathname.split("/").filter(Boolean);
 
+    // 0. Formato Jetimob e CRMs modernos: ...-bairro-{bairro}-em-{cidade}/...
+    const jetimobPattern = /-bairro-([^-/]+(?:-[^-/]+)*)-em-([^-/]+(?:-[^-/]+)*)/i.exec(parsed.pathname);
+    if (jetimobPattern) {
+      const rawNeigh = jetimobPattern[1].replace(/[-_]+/g, " ");
+      const rawCity = jetimobPattern[2].replace(/[-_]+/g, " ");
+      const formatWord = (str: string) =>
+        str
+          .split(" ")
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(" ");
+
+      return {
+        country: "Brasil",
+        state: "RS",
+        city: formatWord(rawCity),
+        neighborhood: formatWord(rawNeigh),
+      };
+    }
+
     // 1. Formato em múltiplos segmentos por barras: ["imovel", tipo, transacao, cidade, uf, bairro, codigo]
     if (segments.length >= 6 && segments[0] === "imovel") {
       const stateCandidate = segments.find(
@@ -500,7 +519,12 @@ export function extractAddressFromUrl(rawUrl: string): Partial<NormalizedAddress
     }
 
     // 2. Formato com slug único hifenizado (ex: /imovel/casa-tres-vendas-pelotas-rs-3-quartos-215m2-4959)
-    const slug = segments[segments.length - 1] || "";
+    let slug = segments[segments.length - 1] || "";
+    if (/^\d+$/.test(slug) || slug.length <= 4) {
+      if (segments.length >= 2) {
+        slug = segments[segments.length - 2] || slug;
+      }
+    }
     const parts = slug.split("-");
 
     // Procura por UF válida entre os tokens (ex: rs, sc, sp)
