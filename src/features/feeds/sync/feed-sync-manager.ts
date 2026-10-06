@@ -19,6 +19,7 @@ import {
   type ImportResult,
   type ImportProgressData,
 } from "../importer/property-importer";
+import { FEED_SAFETY_CONFIG } from "../config";
 
 export interface FeedSyncOptions {
   customXmlPayload?: string;
@@ -58,9 +59,9 @@ export class FeedSyncManager {
     options?: FeedSyncOptions
   ): Promise<SyncExecutionReport> {
     const startTime = Date.now();
-    const maxRetries = options?.maxRetries ?? 3;
-    const timeoutMs = options?.timeoutMs ?? 60000;
-    const lockDuration = options?.lockDurationSeconds ?? 900; // 15 minutos
+    const maxRetries = options?.maxRetries ?? FEED_SAFETY_CONFIG.defaultMaxRetries;
+    const timeoutMs = options?.timeoutMs ?? FEED_SAFETY_CONFIG.defaultTimeoutMs;
+    const lockDuration = options?.lockDurationSeconds ?? FEED_SAFETY_CONFIG.defaultLockDurationSeconds;
 
     // =========================================================================
     // 1. LOCK ATÔMICO PARA IMPEDIR DUAS SINCRONIZAÇÕES SIMULTÂNEAS (Seção 89)
@@ -90,6 +91,7 @@ export class FeedSyncManager {
     }
 
     let feedRunId: string | undefined = undefined;
+    let currentFeedRecord: any = null;
 
     try {
       // 2. Busca dados do feed
@@ -102,6 +104,8 @@ export class FeedSyncManager {
       if (feedFetchError || !feed) {
         throw new Error("Feed não encontrado no banco de dados.");
       }
+
+      currentFeedRecord = feed;
 
       // 3. Inicia registro de execução (feed_runs)
       const { data: feedRun, error: runInsertError } = await this.supabase
@@ -181,23 +185,58 @@ export class FeedSyncManager {
         options?.onProgress
       );
 
-      // 7. Desativação segura em duas etapas de imóveis ausentes (Seção 29)
-      const deactivatedCount = await this.handleMissingProperties(
+      // 7. Avaliação de segurança contra queda anormal de estoque ou feed vazio (Etapas 3 e 4 do MASTER_PLAN)
+      const safetyCheck = await this.evaluateInventoryDropSafety(
+        feed.id,
         feed.agency_id,
-        properties.map((p) => p.externalId),
-        feedSource
+        feedSource,
+        properties.length
       );
+
+      let deactivatedCount = 0;
+      let finalRunStatus = importResult.status;
+      let safetyAlertMessage: string | null = null;
+
+      if (safetyCheck.isSuspicious) {
+        console.warn(`[FeedSyncManager] Trava de segurança acionada para o feed ${feed.id}: ${safetyCheck.reason}`);
+        safetyAlertMessage = safetyCheck.reason || "Alerta de segurança: desativação em massa prevenida.";
+
+        await this.supabase.from("feed_errors").insert({
+          feed_run_id: feedRunId,
+          error_type: properties.length === 0 ? "empty_feed_safety_lock" : "abnormal_drop_safety_lock",
+          message: safetyCheck.reason || "Trava de segurança de estoque acionada",
+          payload: {
+            itemsFound: properties.length,
+            baseline: safetyCheck.baseline,
+            minimumInventoryRatio: FEED_SAFETY_CONFIG.minimumInventoryRatio,
+            action: "mass_deactivation_prevented",
+          },
+        });
+
+        if (finalRunStatus === "completed") {
+          finalRunStatus = "completed_with_errors";
+        }
+      } else {
+        // Desativação segura em duas etapas de imóveis ausentes SOMENTE se o feed for confiável (Seção 29)
+        deactivatedCount = await this.handleMissingProperties(
+          feed.agency_id,
+          properties.map((p) => p.externalId),
+          feedSource
+        );
+      }
 
       // 8. Atualiza contadores e status final na execução (feed_runs)
       await this.supabase
         .from("feed_runs")
         .update({
           items_deactivated: deactivatedCount,
+          status: finalRunStatus,
+          error_message: safetyAlertMessage ?? (importResult.itemsFailed > 0 ? `${importResult.itemsFailed} imóveis com erro de importação` : null),
         })
         .eq("id", feedRunId);
 
       // 9. Atualiza agendamento da próxima execução e zera retry_count
-      const syncIntervalMinutes = feed.sync_interval_minutes || 360;
+      const syncIntervalMinutes = feed.sync_interval_minutes || FEED_SAFETY_CONFIG.defaultSyncIntervalMinutes;
       const nextSyncAt = new Date(
         Date.now() + syncIntervalMinutes * 60 * 1000
       ).toISOString();
@@ -208,15 +247,15 @@ export class FeedSyncManager {
           last_sync_at: new Date().toISOString(),
           next_sync_at: nextSyncAt,
           retry_count: 0,
-          status: importResult.status === "failed" ? "error" : "active",
+          status: finalRunStatus === "failed" ? "error" : "active",
         })
         .eq("id", feed.id);
 
       return {
-        success: importResult.status !== "failed",
+        success: finalRunStatus !== "failed",
         feedId,
         feedRunId,
-        status: importResult.status,
+        status: finalRunStatus,
         itemsFound: importResult.itemsFound,
         itemsCreated: importResult.itemsCreated,
         itemsUpdated: importResult.itemsUpdated,
@@ -246,11 +285,25 @@ export class FeedSyncManager {
         });
       }
 
-      // Incrementa retry_count no feed
+      // Retry com backoff exponencial respeitando max_retries (Etapa 13)
+      const feedObj = currentFeedRecord;
+      const currentRetries = (feedObj?.retry_count ?? 0) + 1;
+      const maxRetriesLimit = feedObj?.max_retries ?? FEED_SAFETY_CONFIG.defaultMaxRetries;
+      const isMaxRetriesReached = currentRetries >= maxRetriesLimit;
+
+      const backoffMinutes = Math.min(
+        120,
+        FEED_SAFETY_CONFIG.retryBackoffBaseMinutes * Math.pow(2, Math.max(0, currentRetries - 1))
+      );
+      const nextRetryAt = new Date(Date.now() + backoffMinutes * 60 * 1000).toISOString();
+
       await this.supabase
         .from("feeds")
         .update({
-          status: "error",
+          status: isMaxRetriesReached ? "error" : "active",
+          retry_count: currentRetries,
+          next_sync_at: isMaxRetriesReached ? null : nextRetryAt,
+          last_sync_at: new Date().toISOString(),
         })
         .eq("id", feedId);
 
@@ -405,5 +458,66 @@ export class FeedSyncManager {
     }
 
     return deactivatedCount;
+  }
+
+  /**
+   * Avalia métricas de integridade de estoque para evitar desativação massiva acidental
+   * (Etapas 3 e 4 do MASTER_PLAN)
+   */
+  private async evaluateInventoryDropSafety(
+    feedId: string,
+    agencyId: string,
+    source: "vrsync" | "chaves_na_mao",
+    currentFoundCount: number
+  ): Promise<{ isSuspicious: boolean; reason?: string; baseline: number }> {
+    try {
+      // 1. Quantidade de imóveis ativos no banco atualmente para esta imobiliária e fonte
+      const { count: activeDbCount } = await this.supabase
+        .from("properties")
+        .select("id", { count: "exact", head: true })
+        .eq("agency_id", agencyId)
+        .eq("source", source)
+        .eq("status", "active");
+
+      // 2. Histórico da última corrida bem-sucedida deste feed
+      const { data: previousRun } = await this.supabase
+        .from("feed_runs")
+        .select("items_found")
+        .eq("feed_id", feedId)
+        .in("status", ["completed", "completed_with_errors"])
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const baseline = Math.max(activeDbCount ?? 0, previousRun?.items_found ?? 0);
+
+      // Caso 1: Feed retornou 0 imóveis, mas havia estoque ativo anterior
+      if (currentFoundCount === 0 && baseline > 0) {
+        return {
+          isSuspicious: true,
+          reason: `Trava de segurança: feed retornou 0 imóveis, mas existem ${baseline} imóveis no estoque ativo. Desativação em massa bloqueada.`,
+          baseline,
+        };
+      }
+
+      // Caso 2: Queda anormal em relação ao histórico recente (quando estoque histórico >= limiar mínimo)
+      if (
+        baseline >= FEED_SAFETY_CONFIG.minHistoricalItemsThreshold &&
+        currentFoundCount / baseline < FEED_SAFETY_CONFIG.minimumInventoryRatio
+      ) {
+        const ratioPercent = Math.round((currentFoundCount / baseline) * 100);
+        const thresholdPercent = Math.round(FEED_SAFETY_CONFIG.minimumInventoryRatio * 100);
+        return {
+          isSuspicious: true,
+          reason: `Trava de segurança: queda anormal de estoque detectada (${currentFoundCount} encontrados vs histórico de ${baseline}, representando ${ratioPercent}% do total, abaixo da razão mínima de ${thresholdPercent}%). Desativação em massa bloqueada.`,
+          baseline,
+        };
+      }
+
+      return { isSuspicious: false, baseline };
+    } catch (err: any) {
+      console.warn("[FeedSyncManager] Falha ao avaliar métricas de segurança de estoque:", err?.message);
+      return { isSuspicious: false, baseline: 0 };
+    }
   }
 }

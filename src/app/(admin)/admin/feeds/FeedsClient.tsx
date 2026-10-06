@@ -119,18 +119,40 @@ export function FeedsClient({ initialFeeds }: Props) {
                         <span className="font-bold text-slate-900 text-sm">
                           {feed.agency_name || 'Imobiliária sem nome'}
                         </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-indigo-400 border border-slate-200/60 uppercase">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-indigo-500 border border-slate-200/60 uppercase">
                           {feed.type}
                         </span>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            feed.status === 'active'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                              : 'bg-slate-100 text-slate-400'
-                          }`}
-                        >
-                          {feed.status === 'active' ? 'Ativo' : 'Pausado'}
-                        </span>
+                        {/* Health Badge */}
+                        {feed.health_status === 'healthy' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Saudável
+                          </span>
+                        )}
+                        {feed.health_status === 'delayed' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/30 flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> Atrasado
+                          </span>
+                        )}
+                        {feed.health_status === 'running' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 border border-blue-500/30 flex items-center gap-1">
+                            <RefreshCw className="w-3 h-3 animate-spin" /> Executando
+                          </span>
+                        )}
+                        {feed.health_status === 'suspicious' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-600 border border-purple-500/30 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> Trava Ativada (Suspeito)
+                          </span>
+                        )}
+                        {feed.health_status === 'error' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-600 border border-red-500/30 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Erro
+                          </span>
+                        )}
+                        {feed.health_status === 'paused' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                            <Pause className="w-3 h-3" /> Pausado
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-slate-400 truncate max-w-md font-mono mt-0.5">
                         {feed.url}
@@ -142,7 +164,7 @@ export function FeedsClient({ initialFeeds }: Props) {
                     <button
                       onClick={() => handleToggleStatus(feed)}
                       disabled={isPending || isSyncing}
-                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-700 text-slate-600 text-xs font-semibold transition-colors inline-flex items-center gap-1.5"
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors inline-flex items-center gap-1.5"
                     >
                       {feed.status === 'active' ? (
                         <>
@@ -166,57 +188,80 @@ export function FeedsClient({ initialFeeds }: Props) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-200/80 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-200/80 text-xs">
                   <div>
                     <span className="text-[10px] text-slate-500 block uppercase font-bold">
-                      Imóveis Importados
+                      Estoque & Encontrados
                     </span>
-                    <span className="font-bold text-slate-700">
-                      {feed.properties_count} imóveis
+                    <span className="font-bold text-slate-800 block">
+                      {feed.properties_count} ativos
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Último lote: {feed.latest_run?.items_found ?? 0} lidos
                     </span>
                   </div>
 
                   <div>
                     <span className="text-[10px] text-slate-500 block uppercase font-bold">
-                      Última Sincronização
+                      Execução & Sucesso
                     </span>
-                    <span className="font-mono text-slate-600">
-                      {feed.last_sync_at
+                    <span className="font-mono text-slate-700 block text-[11px]">
+                      Tentativa: {feed.last_sync_at
                         ? new Date(feed.last_sync_at).toLocaleString('pt-BR', {
                             dateStyle: 'short',
                             timeStyle: 'short',
                           })
                         : 'Nunca'}
                     </span>
+                    <span className="font-mono text-emerald-600 block text-[11px]">
+                      Sucesso: {feed.last_successful_sync_at
+                        ? new Date(feed.last_successful_sync_at).toLocaleString('pt-BR', {
+                            dateStyle: 'short',
+                            timeStyle: 'short',
+                          })
+                        : 'Nenhum'}
+                    </span>
                   </div>
 
                   <div>
                     <span className="text-[10px] text-slate-500 block uppercase font-bold">
-                      Intervalo de Sinc.
+                      Agendamento
                     </span>
-                    <span className="text-slate-600">
-                      A cada {Math.round(feed.sync_interval_minutes / 60)} horas
+                    <span className="text-slate-700 block">
+                      Intervalo: {Math.round(feed.sync_interval_minutes / 60)}h
+                    </span>
+                    <span className="font-mono text-slate-500 block text-[11px]">
+                      Próximo: {feed.next_sync_at
+                        ? new Date(feed.next_sync_at).toLocaleString('pt-BR', {
+                            dateStyle: 'short',
+                            timeStyle: 'short',
+                          })
+                        : 'Pendente'}
                     </span>
                   </div>
 
                   <div>
                     <span className="text-[10px] text-slate-500 block uppercase font-bold">
-                      Status da Última Corrida
+                      Último Balanço
                     </span>
                     {feed.latest_run ? (
-                      <span
-                        className={`font-semibold ${
-                          feed.latest_run.status === 'completed'
-                            ? 'text-emerald-400'
-                            : 'text-red-400'
-                        }`}
-                      >
-                        {feed.latest_run.status === 'completed'
-                          ? `Sucesso (+${feed.latest_run.items_created} / ~${feed.latest_run.items_updated})`
-                          : `Falha: ${feed.latest_run.error_message || 'Erro'}`}
-                      </span>
+                      <div>
+                        <div className="font-mono text-[11px] flex flex-wrap gap-1.5 mt-0.5">
+                          <span className="text-emerald-600 font-semibold">+{feed.latest_run.items_created}</span>
+                          <span className="text-blue-600 font-semibold">~{feed.latest_run.items_updated}</span>
+                          <span className="text-amber-600 font-semibold">-{feed.latest_run.items_deactivated}</span>
+                          {feed.latest_run.items_failed > 0 && (
+                            <span className="text-red-500 font-semibold">!{feed.latest_run.items_failed}</span>
+                          )}
+                        </div>
+                        {feed.latest_run.error_message && (
+                          <span className="text-[10px] text-red-500 block truncate mt-1" title={feed.latest_run.error_message}>
+                            {feed.latest_run.error_message}
+                          </span>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-slate-500">Sem histórico</span>
+                      <span className="text-slate-400">Sem execuções</span>
                     )}
                   </div>
                 </div>

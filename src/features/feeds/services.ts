@@ -261,21 +261,27 @@ export async function executeManualFeedSync(
  * Executa a sincronização automática de todos os feeds elegíveis no momento (usado pelo Cron / Background Worker)
  * Utiliza createAdminClient() (service_role) pois processos em background não possuem sessão de usuário.
  */
-export async function syncEligibleFeeds(): Promise<SyncExecutionReport[]> {
+export async function syncEligibleFeeds(limit = 10): Promise<{
+  feedsEligible: number;
+  reports: SyncExecutionReport[];
+}> {
   const supabase = createAdminClient();
 
   const nowIso = new Date().toISOString();
 
   // Localiza feeds ativos cuja próxima sincronização já venceu ou nunca foram sincronizados
-  const { data: eligibleFeeds, error } = await supabase
+  const { data: eligibleFeeds, count: totalEligible, error } = await supabase
     .from("feeds")
-    .select("id, agency_id, url")
+    .select("id, agency_id, url", { count: "exact" })
     .eq("status", "active")
     .or(`next_sync_at.is.null,next_sync_at.lte.${nowIso}`)
-    .limit(10); // Lote de segurança de até 10 feeds por execução
+    .limit(limit); // Lote de segurança de até 10 feeds por execução
 
   if (error || !eligibleFeeds || eligibleFeeds.length === 0) {
-    return [];
+    return {
+      feedsEligible: totalEligible || 0,
+      reports: [],
+    };
   }
 
   const manager = new FeedSyncManager(supabase);
@@ -286,5 +292,8 @@ export async function syncEligibleFeeds(): Promise<SyncExecutionReport[]> {
     reports.push(report);
   }
 
-  return reports;
+  return {
+    feedsEligible: totalEligible || eligibleFeeds.length,
+    reports,
+  };
 }

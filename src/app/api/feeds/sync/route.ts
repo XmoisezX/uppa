@@ -1,19 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { syncEligibleFeeds } from "@/features/feeds/services";
 
 export const dynamic = "force-dynamic";
 
 /**
+ * Comparação em tempo constante (timing-safe) para evitar ataques de timing na autenticação do cron
+ */
+function isTokenValidTimingSafe(providedToken: string, expectedToken: string): boolean {
+  const bufA = Buffer.from(providedToken.trim(), "utf8");
+  const bufB = Buffer.from(expectedToken.trim(), "utf8");
+
+  if (bufA.length !== bufB.length) {
+    // Mantém tempo constante antes de rejeitar
+    crypto.timingSafeEqual(bufA, bufA);
+    return false;
+  }
+
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+/**
  * Endpoint para acionamento periódico de sincronização automática de feeds (Cron / Webhook)
  * Conforme Seções 16, 24, 25, 26, 28, 29 e 89 do MASTER_PLAN.
- * Invocado via HTTP POST pelo Supabase Cron (pg_net / pg_cron) ou agendadores externos.
  */
 export async function POST(request: NextRequest) {
   return handleSyncRequest(request);
 }
 
 /**
- * Mantido para retrocompatibilidade com agendadores legados e testes manuais
+ * Suportado para Vercel Cron (que envia GET por padrão) e agendadores externos
  */
 export async function GET(request: NextRequest) {
   return handleSyncRequest(request);
@@ -46,7 +62,11 @@ async function handleSyncRequest(request: NextRequest) {
   }
 
   const parts = authHeader.trim().split(" ");
-  if (parts.length !== 2 || parts[0].toLowerCase() !== "bearer" || parts[1] !== cronSecret.trim()) {
+  if (
+    parts.length !== 2 ||
+    parts[0].toLowerCase() !== "bearer" ||
+    !isTokenValidTimingSafe(parts[1], cronSecret)
+  ) {
     return NextResponse.json(
       { error: "Acesso não autorizado ao cron de feeds. Token inválido." },
       { status: 401 }
@@ -57,12 +77,30 @@ async function handleSyncRequest(request: NextRequest) {
 
   try {
     // syncEligibleFeeds utiliza internamente createAdminClient() (service_role) com FeedSyncManager
-    const reports = await syncEligibleFeeds();
+    const { feedsEligible, reports } = await syncEligibleFeeds();
+
+    const feedsProcessed = reports.length;
+    const feedsSucceeded = reports.filter(
+      (r) => r.status === "completed" || r.status === "completed_with_errors"
+    ).length;
+    const feedsFailed = reports.filter((r) => r.status === "failed").length;
+
+    const itemsCreated = reports.reduce((acc, r) => acc + (r.itemsCreated || 0), 0);
+    const itemsUpdated = reports.reduce((acc, r) => acc + (r.itemsUpdated || 0), 0);
+    const itemsDeactivated = reports.reduce((acc, r) => acc + (r.itemsDeactivated || 0), 0);
+    const itemsFailed = reports.reduce((acc, r) => acc + (r.itemsFailed || 0), 0);
 
     return NextResponse.json(
       {
         message: "Sincronização periódica de feeds executada com sucesso.",
-        feedsProcessed: reports.length,
+        feedsEligible,
+        feedsProcessed,
+        feedsSucceeded,
+        feedsFailed,
+        itemsCreated,
+        itemsUpdated,
+        itemsDeactivated,
+        itemsFailed,
         durationMs: Date.now() - startTime,
         reports,
       },
