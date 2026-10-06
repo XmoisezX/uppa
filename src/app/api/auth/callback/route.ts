@@ -15,11 +15,17 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       let destination = next;
-      if (
-        next === "/painel" &&
-        data.session?.user?.email?.trim().toLowerCase() === "moiseztorres100@gmail.com"
-      ) {
-        destination = "/admin";
+      if (next === "/painel" && data.session?.user?.id) {
+        const { data: adminRecord } = await supabase
+          .from("admin_users")
+          .select("id")
+          .eq("id", data.session.user.id)
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (adminRecord) {
+          destination = "/admin";
+        }
       }
       return NextResponse.redirect(`${origin}${destination}`);
     }

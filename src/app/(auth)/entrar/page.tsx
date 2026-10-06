@@ -44,13 +44,10 @@ function LoginForm() {
       }
 
       // Determina destino inteligente pós-login
-      const emailLower = (data?.user?.email || email).trim().toLowerCase();
       let destination = "/painel";
 
       if (redirectTo && !redirectTo.startsWith("/entrar") && !redirectTo.startsWith("/cadastrar")) {
         destination = redirectTo;
-      } else if (emailLower === "moiseztorres100@gmail.com") {
-        destination = "/admin";
       } else {
         // Checa se o usuário possui registro ativo em admin_users
         try {
@@ -65,7 +62,7 @@ function LoginForm() {
             destination = "/admin";
           }
         } catch {
-          // Mantém /painel caso a tabela ainda não exista
+          // Mantém /painel caso ocorra erro
         }
       }
 

@@ -42,7 +42,7 @@ export function UsersClient({ initialUsers, roles }: Props) {
   });
 
   const handleRoleChange = (user: AdminUser, newRoleId: string) => {
-    if (user.email.toLowerCase() === 'moiseztorres100@gmail.com') {
+    if (user.role?.slug === 'super_admin') {
       showNotice('O Super Admin principal não pode ter seu cargo alterado.', 'error');
       return;
     }
@@ -62,7 +62,7 @@ export function UsersClient({ initialUsers, roles }: Props) {
   };
 
   const handleToggleStatus = (user: AdminUser) => {
-    if (user.email.toLowerCase() === 'moiseztorres100@gmail.com') {
+    if (user.role?.slug === 'super_admin') {
       showNotice('O Super Admin principal não pode ser desativado.', 'error');
       return;
     }
@@ -139,7 +139,7 @@ export function UsersClient({ initialUsers, roles }: Props) {
               </thead>
               <tbody className="divide-y divide-slate-100/80">
                 {filtered.map((user) => {
-                  const isMainSuper = user.email.toLowerCase() === 'moiseztorres100@gmail.com';
+                  const isMainSuper = user.role?.slug === 'super_admin';
 
                   return (
                     <tr key={user.id} className="hover:bg-slate-100/30 transition-colors">

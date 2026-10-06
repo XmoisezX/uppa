@@ -1,27 +1,11 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { AdminUser } from '@/types/admin';
-import { SUPER_ADMIN_EMAIL } from './auth';
 import { DEFAULT_ROLES } from './roles';
 
 export async function getAllAdminUsers(): Promise<AdminUser[]> {
   const supabase = createAdminClient();
   const usersMap = new Map<string, AdminUser>();
-
-  // 1. Garante que moiseztorres100@gmail.com esteja sempre listado como SUPER ADMIN inicial
   const superAdminRole = DEFAULT_ROLES.find((r) => r.slug === 'super_admin') || DEFAULT_ROLES[0];
-  const defaultSuperUser: AdminUser = {
-    id: '4f5cbe7e-e1de-4f83-a841-b498ee568b86',
-    email: SUPER_ADMIN_EMAIL,
-    name: 'Moisez Torres',
-    phone: null,
-    role_id: superAdminRole.id,
-    role: superAdminRole,
-    status: 'active',
-    created_at: '2026-09-17T22:57:00Z',
-    updated_at: new Date().toISOString(),
-    last_sign_in_at: new Date().toISOString(),
-  };
-  usersMap.set(defaultSuperUser.email.toLowerCase(), defaultSuperUser);
 
   // 2. Consulta tabela admin_users
   try {

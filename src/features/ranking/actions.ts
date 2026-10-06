@@ -16,9 +16,7 @@ export async function updateRankingConfigAction(weights: RankingWeights) {
       return { success: false, error: "Acesso não autorizado. Faça login novamente." };
     }
 
-    const isSuper =
-      admin.email?.toLowerCase() === "moiseztorres100@gmail.com" ||
-      admin.role?.slug === "super_admin";
+    const isSuper = admin.role?.slug === "super_admin";
 
     if (!isSuper && !checkPermission(admin, "settings.manage")) {
       return {
@@ -32,7 +30,7 @@ export async function updateRankingConfigAction(weights: RankingWeights) {
       return { success: false, error: validation.error };
     }
 
-    const result = await updateRankingConfig(weights, admin.email || "moiseztorres100@gmail.com");
+    const result = await updateRankingConfig(weights, admin.email || "admin@uppa.com.br");
     if (!result.success) {
       return { success: false, error: result.error || "Falha ao salvar pesos do ranking." };
     }

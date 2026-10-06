@@ -13,6 +13,7 @@ export interface PropertyImporterContext {
   agencyId: string;
   feedId: string;
   feedRunId: string;
+  source?: "vrsync" | "chaves_na_mao" | "website" | "manual" | "api" | "csv" | "partner";
 }
 
 export interface ImportResult {
@@ -51,6 +52,10 @@ export class PropertyImporter {
   constructor(supabase: SupabaseClient<Database>, context: PropertyImporterContext) {
     this.supabase = supabase;
     this.context = context;
+  }
+
+  private get source(): "vrsync" | "chaves_na_mao" | "website" | "manual" | "api" | "csv" | "partner" {
+    return this.context.source || "vrsync";
   }
 
   /**
@@ -222,7 +227,7 @@ export class PropertyImporter {
       .from("properties")
       .select("id, price, rent_price, status, slug")
       .eq("agency_id", agencyId)
-      .eq("source", "vrsync")
+      .eq("source", this.source)
       .eq("external_id", prop.externalId)
       .maybeSingle();
 
@@ -303,7 +308,7 @@ export class PropertyImporter {
         .from("properties")
         .insert({
           agency_id: agencyId,
-          source: "vrsync",
+          source: this.source,
           external_id: prop.externalId,
           slug: baseSlug,
           title: prop.title,

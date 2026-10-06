@@ -25,7 +25,7 @@ export async function loginAction(
 
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
@@ -35,12 +35,22 @@ export async function loginAction(
   }
 
   revalidatePath("/", "layout");
-  const emailLower = email?.trim().toLowerCase() || "";
-  if (emailLower === "moiseztorres100@gmail.com") {
-    redirect("/admin");
-  } else {
-    redirect("/painel");
+
+  let destination = "/painel";
+  if (data?.user?.id) {
+    const { data: adminRecord } = await supabase
+      .from("admin_users")
+      .select("id")
+      .eq("id", data.user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (adminRecord) {
+      destination = "/admin";
+    }
   }
+
+  redirect(destination);
 }
 
 /**

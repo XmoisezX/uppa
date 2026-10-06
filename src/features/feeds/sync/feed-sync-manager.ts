@@ -164,10 +164,15 @@ export class FeedSyncManager {
       }
 
       // 6. Persistência idempotente (PropertyImporter - Seção 28)
+      const feedSource = (feedFormat === "chaves_na_mao" ? "chaves_na_mao" : "vrsync") as
+        | "vrsync"
+        | "chaves_na_mao";
+
       const importer = new PropertyImporter(this.supabase, {
         agencyId: feed.agency_id,
         feedId: feed.id,
         feedRunId,
+        source: feedSource,
       });
 
       const importResult = await importer.importProperties(
@@ -179,7 +184,8 @@ export class FeedSyncManager {
       // 7. Desativação segura em duas etapas de imóveis ausentes (Seção 29)
       const deactivatedCount = await this.handleMissingProperties(
         feed.agency_id,
-        properties.map((p) => p.externalId)
+        properties.map((p) => p.externalId),
+        feedSource
       );
 
       // 8. Atualiza contadores e status final na execução (feed_runs)
@@ -329,16 +335,17 @@ export class FeedSyncManager {
    */
   private async handleMissingProperties(
     agencyId: string,
-    presentExternalIds: string[]
+    presentExternalIds: string[],
+    source: "vrsync" | "chaves_na_mao" = "vrsync"
   ): Promise<number> {
     const presentSet = new Set(presentExternalIds);
 
-    // Consulta todos os imóveis da imobiliária originados do feed
+    // Consulta todos os imóveis da imobiliária originados do feed específico
     const { data: dbProperties, error } = await this.supabase
       .from("properties")
       .select("id, external_id, status, missing_from_feed_at")
       .eq("agency_id", agencyId)
-      .eq("source", "vrsync");
+      .eq("source", source);
 
     if (error || !dbProperties) {
       console.warn("[FeedSyncManager] Falha ao consultar imóveis para detecção de ausência:", error?.message);

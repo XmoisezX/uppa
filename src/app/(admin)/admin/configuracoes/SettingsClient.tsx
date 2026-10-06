@@ -98,7 +98,7 @@ export function SettingsClient({ initialSettings }: Props) {
             • A rota <strong>/admin</strong> é protegida duplamente por <code>proxy.ts</code>/<code>middleware.ts</code> e checagem de privilégio via <code>getCurrentAdminUser()</code> no layout do servidor.
           </p>
           <p>
-            • O Super Administrador raiz (<code>moiseztorres100@gmail.com</code>) possui privilégios totais e irreversíveis através de validação atômica no banco de dados e na aplicação.
+            • O Super Administrador possui privilégios totais gerenciados atomicamente via RBAC no banco de dados (<code>admin_roles.slug = 'super_admin'</code>).
           </p>
           <p>
             • Todas as operações de criação, edição ou exclusão de dados administrativos são registradas automaticamente na tabela <code>admin_audit_logs</code>.

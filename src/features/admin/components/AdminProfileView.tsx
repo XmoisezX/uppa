@@ -40,9 +40,7 @@ export function AdminProfileView({ adminUser }: AdminProfileViewProps) {
   const [profileNotice, setProfileNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [passwordNotice, setPasswordNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const isSuperAdmin =
-    adminUser.email?.toLowerCase() === 'moiseztorres100@gmail.com' ||
-    adminUser.role?.slug === 'super_admin';
+  const isSuperAdmin = adminUser.role?.slug === 'super_admin';
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(adminUser.id);

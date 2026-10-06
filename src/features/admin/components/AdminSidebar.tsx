@@ -64,9 +64,7 @@ export const ADMIN_NAV_ITEMS = [...NAV_MAIN, ...NAV_CONTENT, ...NAV_SYSTEM];
 export function AdminSidebar({ adminUser, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
 
-  const isSuperAdmin =
-    adminUser.email?.toLowerCase() === 'moiseztorres100@gmail.com' ||
-    adminUser.role?.slug === 'super_admin';
+  const isSuperAdmin = adminUser.role?.slug === 'super_admin';
 
   const hasAccess = (permission: string) => {
     if (isSuperAdmin) return true;

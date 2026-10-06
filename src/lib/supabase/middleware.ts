@@ -106,12 +106,15 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    const email = user.email?.toLowerCase() || "";
-    if (email === "moiseztorres100@gmail.com") {
-      url.pathname = "/admin";
-    } else {
-      url.pathname = "/painel";
-    }
+    // Redireciona para /admin se o usuário tiver perfil administrativo ativo, caso contrário /painel
+    const { data: adminRecord } = await supabase
+      .from("admin_users")
+      .select("id")
+      .eq("id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    url.pathname = adminRecord ? "/admin" : "/painel";
     url.search = "";
     return NextResponse.redirect(url);
   }

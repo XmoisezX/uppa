@@ -1,39 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import type { AdminUser, AdminRole } from '@/types/admin';
-
-export const SUPER_ADMIN_EMAIL = 'moiseztorres100@gmail.com';
-
-const ALL_PERMISSION_CODES = [
-  'dashboard.view',
-  'site.manage',
-  'banners.manage',
-  'articles.manage',
-  'properties.manage',
-  'users.manage',
-  'roles.manage',
-  'agencies.manage',
-  'feeds.manage',
-  'leads.manage',
-  'seo.manage',
-  'settings.manage',
-  'audit.view',
-];
-
-const DEFAULT_SUPER_ROLE: AdminRole = {
-  id: '00000000-0000-0000-0000-000000000001',
-  name: 'SUPER ADMIN',
-  slug: 'super_admin',
-  description: 'Acesso irrestrito a todos os módulos e configurações do portal',
-  is_system: true,
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-  permissions: ALL_PERMISSION_CODES,
-};
+import type { AdminUser } from '@/types/admin';
 
 /**
  * Retorna os dados do usuário administrativo atualmente autenticado.
- * Garante que moiseztorres100@gmail.com seja sempre reconhecido como SUPER ADMIN.
+ * A autorização depende estritamente do banco de dados (admin_users -> admin_roles).
  */
 export async function getCurrentAdminUser(): Promise<AdminUser | null> {
   try {
@@ -47,52 +18,6 @@ export async function getCurrentAdminUser(): Promise<AdminUser | null> {
       return null;
     }
 
-    const email = user.email?.toLowerCase() || '';
-
-    // SUPER ADMIN Garantido
-    if (email === SUPER_ADMIN_EMAIL) {
-      // Tenta sincronizar com admin_users via service role sem travar em caso de erro
-      try {
-        const adminDb = createAdminClient();
-        const { data: existingAdmin } = await adminDb
-          .from('admin_users')
-          .select('id, role_id, status, name, phone, created_at, updated_at')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (existingAdmin) {
-          return {
-            id: user.id,
-            email: user.email || SUPER_ADMIN_EMAIL,
-            name: existingAdmin.name || user.user_metadata?.full_name || 'Moisez Torres',
-            phone: existingAdmin.phone || user.phone || null,
-            role_id: existingAdmin.role_id,
-            role: DEFAULT_SUPER_ROLE,
-            status: existingAdmin.status as 'active' | 'suspended',
-            created_at: existingAdmin.created_at,
-            updated_at: existingAdmin.updated_at,
-            last_sign_in_at: user.last_sign_in_at || null,
-          };
-        }
-      } catch {
-        // Tabela ainda pendente de migração no Supabase
-      }
-
-      return {
-        id: user.id,
-        email: user.email || SUPER_ADMIN_EMAIL,
-        name: user.user_metadata?.full_name || 'Moisez Torres',
-        phone: user.phone || null,
-        role_id: DEFAULT_SUPER_ROLE.id,
-        role: DEFAULT_SUPER_ROLE,
-        status: 'active',
-        created_at: user.created_at,
-        updated_at: user.created_at,
-        last_sign_in_at: user.last_sign_in_at || null,
-      };
-    }
-
-    // Consulta para outros usuários
     try {
       const adminDb = createAdminClient();
       const { data: adminRecord, error: adminError } = await adminDb
@@ -160,7 +85,7 @@ export async function getCurrentAdminUser(): Promise<AdminUser | null> {
 }
 
 /**
- * Checa se o usuário atual possui uma determinada permissão.
+ * Checa se o usuário atual possui uma determinada permissão baseada no RBAC do banco.
  */
 export function checkPermission(
   adminUser: AdminUser | null,
@@ -168,11 +93,8 @@ export function checkPermission(
 ): boolean {
   if (!adminUser || adminUser.status !== 'active') return false;
 
-  // Super Admin ou email oficial possui todas as permissões
-  if (
-    adminUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ||
-    adminUser.role?.slug === 'super_admin'
-  ) {
+  // Role super_admin possui todas as permissões
+  if (adminUser.role?.slug === 'super_admin') {
     return true;
   }
 

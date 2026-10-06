@@ -51,7 +51,7 @@ export const getRankingConfig = cache(async (): Promise<RankingConfig> => {
  */
 export async function updateRankingConfig(
   weights: RankingWeights,
-  adminEmail = "moiseztorres100@gmail.com"
+  adminEmail = "admin@uppa.com.br"
 ): Promise<{ success: boolean; error?: string; config?: RankingConfig }> {
   const validation = validateRankingWeights(weights);
   if (!validation.valid) {

@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentAdminUser } from "@/features/admin/services/auth";
 import {
   Building2,
   ExternalLink,
@@ -44,8 +45,8 @@ export default async function DashboardLayout({
     redirect("/entrar?redirectTo=/painel");
   }
 
-  const isSuperAdmin =
-    user.email?.trim().toLowerCase() === "moiseztorres100@gmail.com";
+  const adminUser = await getCurrentAdminUser();
+  const isSuperAdmin = adminUser?.role?.slug === "super_admin";
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">

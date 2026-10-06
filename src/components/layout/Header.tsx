@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Menu,
@@ -28,7 +29,35 @@ export function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const { user, signOut } = useAuth();
-  const isSuperAdmin = user?.email?.toLowerCase() === "moiseztorres100@gmail.com";
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let isMounted = true;
+    const userId = user.id;
+    async function checkAdmin() {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from("admin_users")
+          .select("id")
+          .eq("id", userId)
+          .eq("status", "active")
+          .maybeSingle();
+        if (isMounted) {
+          setIsSuperAdmin(!!data);
+        }
+      } catch {
+        if (isMounted) {
+          setIsSuperAdmin(false);
+        }
+      }
+    }
+    checkAdmin();
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   // Fecha dropdown ao clicar fora
   useEffect(() => {

@@ -49,9 +49,7 @@ export function AdminHeader({ adminUser, onMobileOpen }: HeaderProps) {
     }
   };
 
-  const isSuperAdmin =
-    adminUser.email?.toLowerCase() === 'moiseztorres100@gmail.com' ||
-    adminUser.role?.slug === 'super_admin';
+  const isSuperAdmin = adminUser.role?.slug === 'super_admin';
 
   const now = new Date();
   const lastUpdated = now.toLocaleTimeString('pt-BR', {
