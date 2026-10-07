@@ -4,9 +4,10 @@ import { SEO_INDEXABILITY_CONFIG } from "@/features/seo/config";
 /**
  * Robots.txt nativo do Next.js (App Router)
  * 
- * Permite o rastreamento das páginas públicas essenciais (home, imóveis, territorial, guias)
- * Bloqueia áreas administrativas (/admin, /painel), APIs, autenticação e armadilhas
- * de rastreamento com parâmetros de filtros infinitos.
+ * Permite o rastreamento das páginas públicas essenciais (home, imóveis, territorial, guias, imobiliárias).
+ * Bloqueia áreas administrativas (/admin, /painel), APIs e autenticação real (/entrar, /cadastrar, /recuperar-senha).
+ * Permite o rastreamento de filtros com parâmetros de busca para que os motores de busca possam ler e respeitar
+ * as tags 'noindex, follow' e canonical, bloqueando estritamente armadilhas técnicas de viewport/mapa.
  */
 export default function robots(): MetadataRoute.Robots {
   const siteUrl = SEO_INDEXABILITY_CONFIG.SITE_URL;
@@ -21,6 +22,7 @@ export default function robots(): MetadataRoute.Robots {
           "/alugar",
           "/imovel/",
           "/imoveis/",
+          "/imobiliaria/",
           "/guias/",
           "/images/",
           "/_next/static/",
@@ -32,29 +34,17 @@ export default function robots(): MetadataRoute.Robots {
           "/painel/",
           "/api",
           "/api/",
-          "/login",
-          "/cadastro",
-          "/redefinir-senha",
+          "/entrar",
+          "/cadastrar",
+          "/recuperar-senha",
           "/auth",
           "/auth/",
-          "/*?*minPrice=*",
-          "/*?*maxPrice=*",
-          "/*?*priceMin=*",
-          "/*?*priceMax=*",
-          "/*?*bedrooms=*",
-          "/*?*bathrooms=*",
-          "/*?*parkingSpaces=*",
-          "/*?*areaMin=*",
-          "/*?*areaMax=*",
-          "/*?*financiable=*",
-          "/*?*furnished=*",
-          "/*?*acceptsExchange=*",
-          "/*?*orderBy=*",
-          "/*?*sort=*",
           "/*?*north=*",
+          "/*?*south=*",
+          "/*?*east=*",
+          "/*?*west=*",
           "/*?*zoom=*",
-          "/*?*q=*",
-          "/*?*page=*",
+          "/*?*bbox=*",
         ],
       },
     ],

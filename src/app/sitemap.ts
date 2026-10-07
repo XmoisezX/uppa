@@ -180,5 +180,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("[Sitemap] Erro ao carregar imóveis canônicos:", err);
   }
 
+  // 4. IMOBILIÁRIAS PÚBLICAS ELEGÍVEIS (SEÇÕES 24 E 26)
+  // Inclui apenas agências ativas com pelo menos 1 oferta comercial ativa
+  try {
+    const { data: activeAgencies } = await supabase
+      .from("agencies")
+      .select("id, slug, name, updated_at")
+      .eq("status", "active");
+
+    if (activeAgencies && activeAgencies.length > 0) {
+      // Obtém agências com ofertas ativas
+      const { data: activeOffers } = await supabase
+        .from("property_offers")
+        .select("agency_id")
+        .eq("status", "active");
+
+      const activeAgencyIds = new Set((activeOffers || []).map((o: any) => o.agency_id));
+
+      for (const ag of activeAgencies) {
+        if (!ag.slug || !activeAgencyIds.has(ag.id)) continue;
+
+        entries.push({
+          url: `${siteUrl}/imobiliaria/${ag.slug}`,
+          lastModified: ag.updated_at ? new Date(ag.updated_at) : new Date(),
+          changeFrequency: "daily",
+          priority: 0.8,
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[Sitemap] Erro ao carregar imobiliárias elegíveis:", err);
+  }
+
   return entries;
 }

@@ -51,16 +51,34 @@ interface PropertyOffersListProps {
   propertyId: string;
   propertyTitle: string;
   offers: PropertyOfferItem[];
+  highlightOfferId?: string;
+  highlightAgencySlug?: string;
 }
 
 export function PropertyOffersList({
   propertyId,
   propertyTitle,
   offers,
+  highlightOfferId,
+  highlightAgencySlug,
 }: PropertyOffersListProps) {
   const [expandedOfferId, setExpandedOfferId] = useState<string | null>(null);
 
   if (!offers || offers.length === 0) return null;
+
+  // Ordena para que a oferta de origem (por offerId ou agencySlug) apareça no topo destacada (Seção 17)
+  const sortedOffers = [...offers].sort((a, b) => {
+    const aMatches =
+      (highlightOfferId && a.id === highlightOfferId) ||
+      (highlightAgencySlug && a.agency?.slug === highlightAgencySlug);
+    const bMatches =
+      (highlightOfferId && b.id === highlightOfferId) ||
+      (highlightAgencySlug && b.agency?.slug === highlightAgencySlug);
+
+    if (aMatches && !bMatches) return -1;
+    if (!aMatches && bMatches) return 1;
+    return 0;
+  });
 
   const formatMoney = (val?: number | null) => {
     if (!val || val <= 0) return null;
@@ -124,8 +142,12 @@ export function PropertyOffersList({
       </div>
 
       <div className="space-y-3">
-        {offers.map((offer, idx) => {
+        {sortedOffers.map((offer, idx) => {
           const isExpanded = expandedOfferId === offer.id;
+          const isOriginMatch = Boolean(
+            (highlightOfferId && offer.id === highlightOfferId) ||
+            (highlightAgencySlug && offer.agency?.slug === highlightAgencySlug)
+          );
           const saleFormatted = formatMoney(offer.sale_price);
           const rentFormatted = formatMoney(offer.rent_price);
           const condFormatted = formatMoney(offer.condominium_fee);
@@ -135,8 +157,18 @@ export function PropertyOffersList({
           return (
             <div
               key={offer.id}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+              className={`bg-white dark:bg-slate-900 rounded-2xl border p-5 shadow-xs transition-all ${
+                isOriginMatch
+                  ? "border-indigo-500 ring-2 ring-indigo-500/20 shadow-md"
+                  : "border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+              }`}
             >
+              {isOriginMatch && (
+                <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-600 animate-pulse" />
+                  Oferta selecionada na navegação
+                </div>
+              )}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 {/* 1. Informações da Imobiliária */}
                 <div className="flex items-start sm:items-center gap-3 min-w-0">

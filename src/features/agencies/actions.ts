@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createAgency, updateAgency } from "./services";
+import { createAgency, updateAgency, submitAgencyClaim, submitAgencyProfileRequest, reviewAgencyClaim } from "./services";
 import { createAgencySchema } from "@/lib/validations/agency";
 
 export interface AgencyActionResult {
@@ -158,3 +158,121 @@ export async function updateAgencyUserPasswordAction(newPassword: string) {
     return { error: err?.message || "Erro ao atualizar senha." };
   }
 }
+
+/**
+ * Server action para envio de solicitação de reivindicação (Claim) de imobiliária
+ */
+export async function submitAgencyClaimAction(input: {
+  agencyId: string;
+  applicantName: string;
+  applicantRole: string;
+  phone: string;
+  professionalEmail: string;
+  documentNumber?: string;
+  message?: string;
+  agencySlug?: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return {
+        error: "AUTH_REQUIRED",
+        message: "É necessário entrar na sua conta para reivindicar este perfil.",
+      };
+    }
+
+    if (!input.applicantName?.trim() || !input.applicantRole?.trim() || !input.phone?.trim() || !input.professionalEmail?.trim()) {
+      return { error: "VALIDATION_ERROR", message: "Preencha todos os campos obrigatórios." };
+    }
+
+    const result = await submitAgencyClaim(
+      {
+        agencyId: input.agencyId,
+        applicantName: input.applicantName,
+        applicantRole: input.applicantRole,
+        phone: input.phone,
+        professionalEmail: input.professionalEmail,
+        documentNumber: input.documentNumber,
+        message: input.message,
+      },
+      user.id
+    );
+
+    if (input.agencySlug) {
+      revalidatePath(`/imobiliaria/${input.agencySlug}`);
+    }
+    revalidatePath("/admin/claims");
+
+    return result;
+  } catch (err: any) {
+    return { error: "SERVER_ERROR", message: err?.message || "Erro ao processar reivindicação." };
+  }
+}
+
+/**
+ * Server action para solicitação de correção ou remoção de perfil
+ */
+export async function submitAgencyProfileRequestAction(input: {
+  agencyId: string;
+  type: "correction" | "removal";
+  applicantName: string;
+  contactEmail: string;
+  phone?: string;
+  description: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!input.applicantName?.trim() || !input.contactEmail?.trim() || !input.description?.trim()) {
+      return { error: "VALIDATION_ERROR", message: "Preencha os campos obrigatórios." };
+    }
+
+    const result = await submitAgencyProfileRequest(input, user?.id || null);
+    return result;
+  } catch (err: any) {
+    return { error: "SERVER_ERROR", message: err?.message || "Erro ao registrar solicitação." };
+  }
+}
+
+/**
+ * Server action para aprovação/rejeição de claim pelo Administrador
+ */
+export async function reviewAgencyClaimAction(input: {
+  claimId: string;
+  decision: "approved" | "rejected";
+  adminNotes?: string;
+  agencySlug?: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { error: "Não autorizado." };
+    }
+
+    const result = await reviewAgencyClaim(input.claimId, input.decision, input.adminNotes);
+
+    revalidatePath("/admin/claims");
+    revalidatePath("/admin/agencias");
+    if (input.agencySlug) {
+      revalidatePath(`/imobiliaria/${input.agencySlug}`);
+    }
+
+    return result;
+  } catch (err: any) {
+    return { error: err?.message || "Erro ao revisar solicitação de claim." };
+  }
+}
+

@@ -31,6 +31,7 @@ import { AlertCircle } from "lucide-react";
 
 interface PropertyPageProps {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ agency?: string; offer?: string }>;
 }
 
 export const revalidate = 120;
@@ -125,8 +126,9 @@ async function SimilarPropertiesAsync({
 /**
  * PÁGINA PÚBLICA DO IMÓVEL (SERVER COMPONENT)
  */
-export default async function PropertyPage({ params }: PropertyPageProps) {
+export default async function PropertyPage({ params, searchParams }: PropertyPageProps) {
   const { slug } = await params;
+  const sParams = searchParams ? await searchParams : {};
   let property = await getPropertyBySlug(slug);
 
   // Se o imóvel não foi encontrado ou foi consolidado, faz redirecionamento 301 para o canônico
@@ -193,6 +195,8 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               propertyId={property.id}
               propertyTitle={property.title}
               offers={offers}
+              highlightOfferId={sParams.offer}
+              highlightAgencySlug={sParams.agency}
             />
 
             {/* Especificações Físicas (Áreas, Quartos, Vagas) */}
