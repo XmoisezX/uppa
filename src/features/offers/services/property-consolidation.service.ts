@@ -101,6 +101,17 @@ export class PropertyConsolidationService {
       console.warn(`[PropertyConsolidationService] Aviso ao marcar status merged:`, propMergeErr.message);
     }
 
+    // Garante que as ofertas comerciais reatribuídas permaneçam com status ativo (nunca merged)
+    if (offerIds.length > 0) {
+      await this.supabase
+        .from("property_offers")
+        .update({
+          status: "active",
+          updated_at: nowIso,
+        })
+        .in("id", offerIds);
+    }
+
     // 4. Registra redirecionamento de slug (Fase 5 - 301 sem 404)
     let slugRedirectCreated = false;
     if (duplicate.slug && canonical.slug && duplicate.slug !== canonical.slug) {

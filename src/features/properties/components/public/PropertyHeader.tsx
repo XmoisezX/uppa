@@ -80,7 +80,7 @@ export function PropertyHeader({ property }: PropertyHeaderProps) {
         {property.city && (
           <>
             <Link
-              href={`${property.transactionType === "rent" ? "/alugar" : "/comprar"}?state=${property.state?.code?.toLowerCase()}&city=${property.city.slug || property.city.name?.toLowerCase()}`}
+              href={`/imoveis/${property.city.slug ? `${property.city.slug}-${(property.state?.code || 'rs').toLowerCase()}` : property.city.name.toLowerCase()}`}
               className="hover:text-indigo-600 transition-colors whitespace-nowrap"
             >
               {property.city.name}
@@ -91,9 +91,12 @@ export function PropertyHeader({ property }: PropertyHeaderProps) {
         {property.neighborhood && (
           <>
             <ChevronRight className="h-3 w-3 shrink-0 text-slate-400" />
-            <span className="font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+            <Link
+              href={`/imoveis/${property.city?.slug ? `${property.city.slug}-${(property.state?.code || 'rs').toLowerCase()}` : 'imoveis'}/${property.neighborhood.slug || property.neighborhood.name.toLowerCase()}`}
+              className="font-semibold text-slate-800 dark:text-slate-200 hover:text-indigo-600 transition-colors whitespace-nowrap"
+            >
               {property.neighborhood.name}
-            </span>
+            </Link>
           </>
         )}
       </nav>

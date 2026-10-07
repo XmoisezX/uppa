@@ -1,12 +1,24 @@
 import React from "react";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { getPropertyBySlug, getSimilarProperties } from "@/features/properties/services";
+import { notFound, permanentRedirect } from "next/navigation";
+import {
+  getPropertyBySlug,
+  getPropertyRedirect,
+  getPropertyOffers,
+  getSimilarProperties,
+} from "@/features/properties/services";
+import {
+  buildPropertyMetaTitle,
+  buildPropertyMetaDescription,
+  buildPropertyStructuredData,
+  SEO_INDEXABILITY_CONFIG,
+} from "@/features/seo";
 import { BannerSlot } from "@/features/banners/components/BannerSlot";
 import {
   PropertyGallery,
   PropertyHeader,
   PropertyPricing,
+  PropertyOffersList,
   PropertySpecs,
   PropertyDescription,
   PropertyFeaturesList,
@@ -15,38 +27,48 @@ import {
   PropertyStickyCTA,
   SimilarProperties,
 } from "@/features/properties/components/public";
+import { AlertCircle } from "lucide-react";
 
 interface PropertyPageProps {
   params: Promise<{ slug: string }>;
 }
 
+export const revalidate = 120;
+
 /**
- * GERAÇÃO DE METADATA DINÂMICA E CANONICAL (Seções 45 e 85 do MASTER_PLAN)
+ * GERAÇÃO DE METADATA DINÂMICA E CANONICAL (Seções 4, 16, 17 e 20)
  */
 export async function generateMetadata({ params }: PropertyPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const property = await getPropertyBySlug(slug);
+  let property = await getPropertyBySlug(slug);
+
+  if (!property || property.status !== "active") {
+    const canonicalSlug = await getPropertyRedirect(slug);
+    if (canonicalSlug) {
+      property = await getPropertyBySlug(canonicalSlug);
+    }
+  }
 
   if (!property || property.status !== "active") {
     return {
-      title: "Imóvel não encontrado",
+      title: "Imóvel não encontrado | UPPA",
       description: "O imóvel solicitado não está ativo ou não foi encontrado.",
+      robots: { index: false, follow: false },
     };
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://uppa.com.br";
+  const siteUrl = SEO_INDEXABILITY_CONFIG.SITE_URL;
   const canonicalUrl = `${siteUrl}/imovel/${property.slug}`;
-  const coverImage = property.media?.find((m) => m.isCover)?.url || property.media?.[0]?.url;
+  const coverImage = property.media?.find((m) => m.isCover)?.url || property.media?.[0]?.url || `${siteUrl}/images/og-uppa.jpg`;
 
-  const city = property.city?.name || "";
-  const state = property.state?.code || "";
-  const priceVal = property.transactionType === "rent" ? property.rentPrice : property.price;
-  const priceFormatted = priceVal ? ` - R$ ${priceVal.toLocaleString("pt-BR")}` : "";
+  const offersCount = property.activeOffersCount ?? 1;
+  const lowestPrice = property.lowestSalePrice || property.lowestRentPrice || property.price || property.rentPrice;
 
-  const title = `${property.title}${priceFormatted} | UPPA`;
-  const description = property.description
-    ? property.description.slice(0, 160).trim() + "..."
-    : `${property.title} em ${city} - ${state}. Confira fotos, valores e comodidades na UPPA.`;
+  const title = buildPropertyMetaTitle(property);
+  const description = buildPropertyMetaDescription(property, offersCount, lowestPrice);
+
+  // Se o imóvel não tiver ofertas ativas no momento, mantemos noindex, follow
+  const hasActiveOffers = offersCount > 0;
 
   return {
     title,
@@ -54,6 +76,9 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
     alternates: {
       canonical: canonicalUrl,
     },
+    robots: hasActiveOffers
+      ? { index: true, follow: true }
+      : { index: false, follow: true },
     openGraph: {
       title,
       description,
@@ -61,18 +86,16 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
       siteName: "UPPA",
       locale: "pt_BR",
       type: "article",
-      images: coverImage ? [{ url: coverImage, alt: property.title }] : [],
+      images: [{ url: coverImage, alt: property.title }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: coverImage ? [coverImage] : [],
+      images: [coverImage],
     },
   };
 }
-
-export const revalidate = 120;
 
 async function SimilarPropertiesAsync({
   propertyId,
@@ -104,61 +127,51 @@ async function SimilarPropertiesAsync({
  */
 export default async function PropertyPage({ params }: PropertyPageProps) {
   const { slug } = await params;
-  const property = await getPropertyBySlug(slug);
+  let property = await getPropertyBySlug(slug);
 
-  // Regra do MASTER_PLAN: Somente properties status='active' podem aparecer publicamente
+  // Se o imóvel não foi encontrado ou foi consolidado, faz redirecionamento 301 para o canônico
   if (!property || property.status !== "active") {
+    const canonicalSlug = await getPropertyRedirect(slug);
+    if (canonicalSlug && canonicalSlug !== slug) {
+      permanentRedirect(`/imovel/${canonicalSlug}`);
+    }
     notFound();
   }
 
-  // Schema Estruturado JSON-LD (schema.org) para indexação rica no Google
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://uppa.com.br";
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "RealEstateListing",
-    name: property.title,
-    description: property.description || property.title,
-    url: `${siteUrl}/imovel/${property.slug}`,
-    image: property.media?.map((m) => m.url) || [],
-    offers: {
-      "@type": "Offer",
-      price: property.price || property.rentPrice || 0,
-      priceCurrency: "BRL",
-      businessFunction:
-        property.transactionType === "rent"
-          ? "http://purl.org/goodrelations/v1#LeaseOut"
-          : "http://purl.org/goodrelations/v1#Sell",
-    },
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: property.addressVisible ? property.street : undefined,
-      addressLocality: property.city?.name,
-      addressRegion: property.state?.code,
-      postalCode: property.addressVisible ? property.zipcode : undefined,
-      addressCountry: "BR",
-    },
-    geo: property.addressVisible && property.latitude && property.longitude ? {
-      "@type": "GeoCoordinates",
-      latitude: property.latitude,
-      longitude: property.longitude,
-    } : undefined,
-    seller: property.agency ? {
-      "@type": "RealEstateAgent",
-      name: property.agency.name,
-      url: `${siteUrl}/imobiliaria/${property.agency.slug}`,
-      telephone: property.agency.phone || property.agency.whatsapp,
-    } : undefined,
-  };
+  // Carrega todas as ofertas ativas deste imóvel físico
+  const offers = await getPropertyOffers(property.id);
+
+  // Schema Estruturado JSON-LD adaptado para Property x Offer (RealEstateListing + BreadcrumbList)
+  const siteUrl = SEO_INDEXABILITY_CONFIG.SITE_URL;
+  const jsonLd = buildPropertyStructuredData(property, offers, siteUrl);
+
+  const hasNoOffers = offers.length === 0 || property.activeOffersCount === 0;
 
   return (
     <main className="min-h-screen bg-slate-50/50 dark:bg-slate-950 pb-24 md:pb-16 pt-4">
-      {/* Dados estruturados JSON-LD */}
+      {/* Dados estruturados JSON-LD (schema.org) */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
+        {/* AVISO QUANDO O IMÓVEL NÃO POSSUI OFERTAS ATIVAS NO MOMENTO (SEÇÃO 17) */}
+        {hasNoOffers && (
+          <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                Este imóvel não possui ofertas comerciais disponíveis no momento.
+              </h3>
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                Os anúncios para este imóvel foram temporariamente pausados ou finalizados pelas imobiliárias anunciantes.
+                Você pode conferir as especificações físicas abaixo ou navegar pelas opções semelhantes disponíveis nesta região.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* 1. CABEÇALHO (BREADCRUMBS, TÍTULO, BADGES E LOCALIZAÇÃO) */}
         <PropertyHeader property={property} />
 
@@ -174,6 +187,13 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
           <div className="lg:col-span-8 space-y-8">
             {/* Preços e Encargos */}
             <PropertyPricing property={property} />
+
+            {/* Ofertas comerciais legítimas disponíveis por imobiliária anunciante */}
+            <PropertyOffersList
+              propertyId={property.id}
+              propertyTitle={property.title}
+              offers={offers}
+            />
 
             {/* Especificações Físicas (Áreas, Quartos, Vagas) */}
             <PropertySpecs property={property} />
@@ -196,7 +216,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
             <div className="h-px bg-slate-200 dark:bg-slate-800" />
 
             {/* Perfil da Imobiliária Anunciante */}
-            <PropertyAgencyCard agency={property.agency} />
+            {property.agency && <PropertyAgencyCard agency={property.agency} />}
 
             <div className="h-px bg-slate-200 dark:bg-slate-800" />
 
@@ -225,16 +245,20 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
           </div>
 
           {/* Coluna Direita: Sidebar Sticky com CTA de WhatsApp */}
-          <div className="hidden lg:block lg:col-span-4">
-            <PropertyStickyCTA property={property} />
-          </div>
+          {!hasNoOffers && (
+            <div className="hidden lg:block lg:col-span-4">
+              <PropertyStickyCTA property={property} />
+            </div>
+          )}
         </div>
       </div>
 
       {/* Barra Fixa Inferior Mobile */}
-      <div className="lg:hidden">
-        <PropertyStickyCTA property={property} />
-      </div>
+      {!hasNoOffers && (
+        <div className="lg:hidden">
+          <PropertyStickyCTA property={property} />
+        </div>
+      )}
     </main>
   );
 }

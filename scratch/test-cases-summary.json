@@ -1,0 +1,212 @@
+{
+  "testCases": {
+    "high": {
+      "a": {
+        "id": "3fb112bd-1f0f-4e5f-af65-e1e7a3515bde",
+        "agency_id": "6dcd90ea-3371-4d84-88db-9b189ae96224",
+        "external_id": "TE0744_UPIMOV",
+        "title": "Este imóvel não está mais disponível",
+        "slug": "este-imovel-nao-esta-mais-disponivel-te0744_upimov",
+        "property_type": "land",
+        "street": "Avenida Espírito Santo",
+        "number": "2357",
+        "complement": null,
+        "zipcode": "96090-260",
+        "city_id": "2e217755-ec6c-4f1c-acc4-ac078d65fe6a",
+        "latitude": -31.7393836,
+        "longitude": -52.2259449,
+        "usable_area": 271.76,
+        "total_area": null,
+        "bedrooms": 3,
+        "suites": 1,
+        "bathrooms": 2,
+        "parking_spaces": 4,
+        "created_at": "2026-09-24T04:17:24.282106+00:00",
+        "status": "active",
+        "normStreet": "espirito santo"
+      },
+      "b": {
+        "id": "59e2234c-db9b-436f-b44d-7e783ede4662",
+        "agency_id": "6dcd90ea-3371-4d84-88db-9b189ae96224",
+        "external_id": "TE0066_UPIMOV",
+        "title": "Este imóvel não está mais disponível",
+        "slug": "este-imovel-nao-esta-mais-disponivel-te0066_upimov",
+        "property_type": "land",
+        "street": "Avenida Espírito Santo",
+        "number": "2357",
+        "complement": null,
+        "zipcode": "96090-260",
+        "city_id": "2e217755-ec6c-4f1c-acc4-ac078d65fe6a",
+        "latitude": -31.7393836,
+        "longitude": -52.2259449,
+        "usable_area": 270,
+        "total_area": null,
+        "bedrooms": 3,
+        "suites": 1,
+        "bathrooms": 2,
+        "parking_spaces": 4,
+        "created_at": "2026-09-24T04:19:58.200058+00:00",
+        "status": "active",
+        "normStreet": "espirito santo"
+      },
+      "match": {
+        "score": 80,
+        "confidence": "HIGH",
+        "reasons": [
+          "Logradouro coincidente",
+          "Mesmo número predial (2357)",
+          "Coords muito próximas (0m)",
+          "Área idêntica (271.76m² vs 270m²)",
+          "Mesmos quartos (3)"
+        ],
+        "signals": {
+          "addressScore": 40,
+          "numberMatch": true,
+          "unitMatch": null,
+          "distanceMeters": 0,
+          "areaDiffPercentage": 1,
+          "bedroomsMatch": true
+        }
+      }
+    },
+    "medium": {
+      "a": {
+        "id": "6d51000e-3f40-42cf-b6fb-2e93951b3d73",
+        "agency_id": "6dcd90ea-3371-4d84-88db-9b189ae96224",
+        "external_id": "TE1112_UPIMOV",
+        "title": "Terreno à venda no Riviera, Laranjal, Pelotas: com 300 m² de área total (10 m de frente por 30 m de profundidade) em condomínio completo.",
+        "slug": "terreno-a-venda-no-riviera-laranjal-pelotas-com-300-m-de-area-total-10-m-de-frente-por-30-m-de-profundidade-em-condominio-completo-te1112_upimov",
+        "property_type": "land",
+        "street": "Avenida Adolfo Fetter",
+        "number": "4085",
+        "complement": null,
+        "zipcode": "96090-840",
+        "city_id": "2e217755-ec6c-4f1c-acc4-ac078d65fe6a",
+        "latitude": -31.7537662,
+        "longitude": -52.2458027,
+        "usable_area": 300,
+        "total_area": null,
+        "bedrooms": 3,
+        "suites": 1,
+        "bathrooms": 2,
+        "parking_spaces": 3,
+        "created_at": "2026-09-24T04:10:26.604167+00:00",
+        "status": "active",
+        "normStreet": "adolfo fetter"
+      },
+      "b": {
+        "id": "936c064a-2f9c-4e37-bd0b-1e0dd1c2d22e",
+        "agency_id": "6dcd90ea-3371-4d84-88db-9b189ae96224",
+        "external_id": "TE1256_UPIMOV",
+        "title": "Terreno à venda no Condomínio Riviera, Laranjal - 312 m² de área total, sendo 12 metros de frente e localização privilegiada.",
+        "slug": "terreno-a-venda-no-condominio-riviera-laranjal-312-m-de-area-total-sendo-12-metros-de-frente-e-localizacao-privilegiada-te1256_upimov",
+        "property_type": "land",
+        "street": "Avenida Adolfo Fetter",
+        "number": "4085",
+        "complement": null,
+        "zipcode": "96090-840",
+        "city_id": "2e217755-ec6c-4f1c-acc4-ac078d65fe6a",
+        "latitude": -31.7538669,
+        "longitude": -52.2458263,
+        "usable_area": 312,
+        "total_area": null,
+        "bedrooms": 3,
+        "suites": 1,
+        "bathrooms": 2,
+        "parking_spaces": 1,
+        "created_at": "2026-09-23T20:25:29.114188+00:00",
+        "status": "active",
+        "normStreet": "adolfo fetter"
+      },
+      "match": {
+        "score": 72,
+        "confidence": "MEDIUM",
+        "reasons": [
+          "Logradouro coincidente",
+          "Mesmo número predial (4085)",
+          "Coords muito próximas (11m)",
+          "Área similar (300m² vs 312m²)",
+          "Mesmos quartos (3)"
+        ],
+        "signals": {
+          "addressScore": 40,
+          "numberMatch": true,
+          "unitMatch": null,
+          "distanceMeters": 11,
+          "areaDiffPercentage": 4,
+          "bedroomsMatch": true
+        }
+      }
+    },
+    "low": {
+      "a": {
+        "id": "6d51000e-3f40-42cf-b6fb-2e93951b3d73",
+        "agency_id": "6dcd90ea-3371-4d84-88db-9b189ae96224",
+        "external_id": "TE1112_UPIMOV",
+        "title": "Terreno à venda no Riviera, Laranjal, Pelotas: com 300 m² de área total (10 m de frente por 30 m de profundidade) em condomínio completo.",
+        "slug": "terreno-a-venda-no-riviera-laranjal-pelotas-com-300-m-de-area-total-10-m-de-frente-por-30-m-de-profundidade-em-condominio-completo-te1112_upimov",
+        "property_type": "land",
+        "street": "Avenida Adolfo Fetter",
+        "number": "4085",
+        "complement": null,
+        "zipcode": "96090-840",
+        "city_id": "2e217755-ec6c-4f1c-acc4-ac078d65fe6a",
+        "latitude": -31.7537662,
+        "longitude": -52.2458027,
+        "usable_area": 300,
+        "total_area": null,
+        "bedrooms": 3,
+        "suites": 1,
+        "bathrooms": 2,
+        "parking_spaces": 3,
+        "created_at": "2026-09-24T04:10:26.604167+00:00",
+        "status": "active",
+        "normStreet": "adolfo fetter"
+      },
+      "b": {
+        "id": "d0c21b7c-09cd-4636-8a95-c1efebf94abc",
+        "agency_id": "6dcd90ea-3371-4d84-88db-9b189ae96224",
+        "external_id": "TE1025_UPIMOV",
+        "title": "Terreno de 328 m² à venda no Laranjal, Pelotas, com excelente dimensão 10 m x 32 m, em condomínio completo com lazer e segurança 24h.",
+        "slug": "terreno-de-328-m-a-venda-no-laranjal-pelotas-com-excelente-dimensao-10-m-x-32-m-em-condominio-completo-com-lazer-e-seguranca-24h-te1025_upimov",
+        "property_type": "land",
+        "street": "Avenida Adolfo Fetter",
+        "number": "4085",
+        "complement": null,
+        "zipcode": "96090-840",
+        "city_id": "2e217755-ec6c-4f1c-acc4-ac078d65fe6a",
+        "latitude": -31.7542038,
+        "longitude": -52.2458696,
+        "usable_area": 328,
+        "total_area": null,
+        "bedrooms": 0,
+        "suites": 0,
+        "bathrooms": 0,
+        "parking_spaces": 0,
+        "created_at": "2026-09-24T04:12:56.335448+00:00",
+        "status": "active",
+        "normStreet": "adolfo fetter"
+      },
+      "match": {
+        "score": 35,
+        "confidence": "LOW",
+        "reasons": [
+          "Logradouro coincidente",
+          "Mesmo número predial (4085)",
+          "Coords próximas (49m)"
+        ],
+        "signals": {
+          "addressScore": 40,
+          "numberMatch": true,
+          "unitMatch": null,
+          "distanceMeters": 49,
+          "areaDiffPercentage": 9,
+          "bedroomsMatch": false
+        }
+      }
+    }
+  },
+  "candidatesHigh": 60,
+  "candidatesMedium": 4796,
+  "mergedCount": 41
+}

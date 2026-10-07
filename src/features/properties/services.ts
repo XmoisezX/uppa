@@ -164,8 +164,103 @@ export const getPropertyBySlug = cache(
         category: f.category,
         createdAt: f.created_at,
       })),
+    activeOffersCount: (data as any).active_offers_count || 1,
+    lowestSalePrice: (data as any).lowest_sale_price ?? data.price,
+    highestSalePrice: (data as any).highest_sale_price ?? data.price,
+    lowestRentPrice: (data as any).lowest_rent_price ?? data.rent_price,
+    highestRentPrice: (data as any).highest_rent_price ?? data.rent_price,
+    primaryOfferId: (data as any).primary_offer_id,
+    canonicalPropertyId: (data as any).canonical_property_id,
+    mergedAt: (data as any).merged_at,
   };
 });
+
+/**
+ * Consulta redirecionamento 301 de slug antigo para property canônica (Fases 5 e 23)
+ */
+export const getPropertyRedirect = cache(
+  async (slug: string): Promise<string | null> => {
+    const supabase = createPublicServerClient();
+
+    // 1. Tabela dedicada de redirects de slugs consolidados
+    const { data: redirect } = await supabase
+      .from("property_slug_redirects" as any)
+      .select("target_property_id, target_slug")
+      .eq("source_slug", slug)
+      .maybeSingle();
+
+    const redirectRecord = redirect as unknown as { target_slug?: string } | null;
+    if (redirectRecord?.target_slug) {
+      return redirectRecord.target_slug;
+    }
+
+    // 2. Imóvel marcado diretamente como merged
+    const { data: mergedProp } = await supabase
+      .from("properties")
+      .select("canonical_property_id, canonical:properties!canonical_property_id(slug, status)")
+      .eq("slug", slug)
+      .eq("status", "merged")
+      .maybeSingle();
+
+    if (mergedProp?.canonical && (mergedProp.canonical as any).status === "active") {
+      return (mergedProp.canonical as any).slug;
+    }
+
+    return null;
+  }
+);
+
+/**
+ * Consulta todas as ofertas comerciais ativas associadas a um imóvel físico (Fase 16)
+ */
+export const getPropertyOffers = cache(
+  async (propertyId: string): Promise<any[]> => {
+    const supabase = createPublicServerClient();
+
+    const { data, error } = await supabase
+      .from("property_offers" as any)
+      .select(`
+        id,
+        property_id,
+        agency_id,
+        broker_id,
+        source,
+        external_id,
+        sale_price,
+        rent_price,
+        condominium_fee,
+        iptu,
+        title,
+        description,
+        original_url,
+        status,
+        updated_at,
+        agency:agencies (
+          id,
+          name,
+          slug,
+          logo_url,
+          phone,
+          whatsapp,
+          creci,
+          verified_at
+        ),
+        media:offer_media (
+          id,
+          url,
+          thumbnail_url,
+          is_cover,
+          position
+        )
+      `)
+      .eq("property_id", propertyId)
+      .eq("status", "active")
+      .order("updated_at", { ascending: false });
+
+    if (error || !data) return [];
+    return data;
+  }
+);
 
 /**
  * Criação de imóvel no banco de dados (respeita RLS - apenas membros da imobiliária)

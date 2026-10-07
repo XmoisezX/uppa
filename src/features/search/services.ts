@@ -64,6 +64,12 @@ const SEARCH_PROPERTIES_SELECT = `
   property_type,
   price,
   rent_price,
+  active_offers_count,
+  lowest_sale_price,
+  highest_sale_price,
+  lowest_rent_price,
+  highest_rent_price,
+  primary_offer_id,
   condominium_fee,
   usable_area,
   total_area,
@@ -124,11 +130,23 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
   const limit = Math.min(50, Math.max(1, filters.limit || 12));
   const offset = (page - 1) * limit;
 
-  // Inicia query com projeção estrita de colunas (sem SELECT *) e status='active'
+  const isRent = filters.transactionType === "rent";
+  const hasPriceMin = filters.priceMin !== undefined && filters.priceMin > 0;
+  const hasPriceMax = filters.priceMax !== undefined && filters.priceMax > 0;
+  const hasPriceFilter = hasPriceMin || hasPriceMax;
+
+  let selectProjection = SEARCH_PROPERTIES_SELECT;
+  if (hasPriceFilter) {
+    selectProjection += `,\n  matching_offers:property_offers!property_offers_property_id_fkey!inner (\n    id,\n    sale_price,\n    rent_price,\n    status\n  )`;
+  }
+
+  // Inicia query com projeção estrita de colunas (sem SELECT *), apenas properties ativas canônicas
   let query = supabase
     .from("properties")
-    .select(SEARCH_PROPERTIES_SELECT, { count: "exact" })
-    .eq("status", "active");
+    .select(selectProjection, { count: "exact" })
+    .eq("status", "active")
+    .is("canonical_property_id", null)
+    .gt("active_offers_count", 0);
 
   // 1. FILTRO: FINALIDADE (transaction_type)
   if (filters.transactionType) {
@@ -217,16 +235,20 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
     }
   }
 
-  // 6. FILTROS DE PREÇO (price_min e price_max)
-  const isRent = filters.transactionType === "rent";
-  const priceColumn = isRent ? "rent_price" : "price";
+  // 6. FILTROS DE PREÇO (Item 1: Pelo menos uma oferta ativa deve satisfazer integralmente o filtro)
+  const minPriceCol = isRent ? "lowest_rent_price" : "lowest_sale_price";
+  const maxPriceCol = isRent ? "highest_rent_price" : "highest_sale_price";
+  const offerPriceCol = isRent ? "matching_offers.rent_price" : "matching_offers.sale_price";
 
-  if (filters.priceMin !== undefined && filters.priceMin > 0) {
-    query = query.gte(priceColumn, filters.priceMin);
-  }
+  if (hasPriceFilter) {
+    query = query.eq("matching_offers.status", "active");
 
-  if (filters.priceMax !== undefined && filters.priceMax > 0) {
-    query = query.lte(priceColumn, filters.priceMax);
+    if (hasPriceMin) {
+      query = query.gte(offerPriceCol, filters.priceMin!);
+    }
+    if (hasPriceMax) {
+      query = query.lte(offerPriceCol, filters.priceMax!);
+    }
   }
 
   // 7. FILTROS DE ESPECIFICAÇÕES (dormitórios, banheiros, vagas)
@@ -300,133 +322,29 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
 
   if (isCustomSort) {
     if (filters.orderBy === "price_asc") {
-      query = query.order(priceColumn, { ascending: true, nullsFirst: false });
+      query = query.order(minPriceCol, { ascending: true, nullsFirst: false });
     } else if (filters.orderBy === "price_desc") {
-      query = query.order(priceColumn, { ascending: false, nullsFirst: false });
+      query = query.order(maxPriceCol, { ascending: false, nullsFirst: false });
     } else if (filters.orderBy === "area_desc") {
       query = query.order("usable_area", { ascending: false, nullsFirst: false });
     }
-    const { data, count, error } = await query.range(offset, offset + limit - 1);
-    if (error || !data) {
-      if (error) console.error("[searchProperties] Erro na consulta do Supabase:", error);
-      return { properties: [], total: 0, page, totalPages: 0, limit, filters };
-    }
-    rawData = data;
-    totalCount = count || 0;
   } else {
-    // FLUXO OBRIGATÓRIO DE RANKING (0 a 100 pontos):
-    // Busca do Usuário -> Aplicação dos Filtros -> Identificação dos Elegíveis ->
-    // Cálculo do Score -> Ordenação por Score com Distribuição Justa -> Paginação -> Resultados
-    // Ordenado por ranking_score DESC e updated_at DESC (sem agrupar por lote de published_at)
+    // FLUXO DE RANKING NATIVO NO POSTGRESQL (Fase 11 e 12):
+    // Filtros -> Properties elegíveis -> Ranking Score -> Paginação no banco
     query = query
       .order("ranking_score", { ascending: false, nullsFirst: false })
       .order("updated_at", { ascending: false, nullsFirst: false });
-
-    // Determina o tamanho da piscina de candidatos para ordenação e intercalação justa
-    const candidateLimit = Math.min(1000, Math.max(180, (offset + limit) * 4));
-    const { data, count, error } = await query.range(0, candidateLimit - 1);
-    if (error || !data) {
-      if (error) console.error("[searchProperties] Erro na consulta do Supabase:", error);
-      return { properties: [], total: 0, page, totalPages: 0, limit, filters };
-    }
-    rawData = [...data];
-    totalCount = count || 0;
-
-    // Se o total de imóveis elegíveis for maior que os candidatos iniciais,
-    // verifica se alguma imobiliária parceira ficou sub-representada (menos de 12 imóveis)
-    // devido a lotes massivos de outras imobiliárias com pontuações próximas.
-    if (totalCount > data.length) {
-      const agencyCounts = new Map<string, number>();
-      for (const r of rawData) {
-        const agId = r.agency?.id || "independent";
-        agencyCounts.set(agId, (agencyCounts.get(agId) || 0) + 1);
-      }
-
-      // Busca imobiliárias parceiras
-      const { data: allAgencies } = await supabase.from("agencies").select("id, name");
-      const underrepresented = (allAgencies || []).filter(
-        (ag) => (agencyCounts.get(ag.id) || 0) < 12
-      );
-
-      if (underrepresented.length > 0) {
-        const existingIds = new Set(rawData.map((r: any) => r.id));
-        const topUpPromises = underrepresented.map(async (ag) => {
-          let agQuery = supabase
-            .from("properties")
-            .select(SEARCH_PROPERTIES_SELECT)
-            .eq("status", "active")
-            .eq("agency_id", ag.id);
-
-          if (filters.transactionType) {
-            if (filters.transactionType === "sale") {
-              agQuery = agQuery.in("transaction_type", ["sale", "sale_or_rent"]);
-            } else if (filters.transactionType === "rent") {
-              agQuery = agQuery.in("transaction_type", ["rent", "sale_or_rent"]);
-            } else {
-              agQuery = agQuery.eq("transaction_type", filters.transactionType);
-            }
-          }
-          if (filters.propertyType) {
-            if (Array.isArray(filters.propertyType) && filters.propertyType.length > 0) {
-              agQuery = agQuery.in("property_type", filters.propertyType);
-            } else if (typeof filters.propertyType === "string") {
-              agQuery = agQuery.eq("property_type", filters.propertyType);
-            }
-          }
-          if (filters.state) {
-            agQuery = agQuery.eq("state_id", filters.state);
-          }
-          if (resolvedCityId) {
-            agQuery = agQuery.eq("city_id", resolvedCityId);
-          }
-          if (resolvedNeighborhoodId) {
-            agQuery = agQuery.eq("neighborhood_id", resolvedNeighborhoodId);
-          }
-          if (filters.priceMin !== undefined && filters.priceMin > 0) {
-            agQuery = agQuery.gte(priceColumn, filters.priceMin);
-          }
-          if (filters.priceMax !== undefined && filters.priceMax > 0) {
-            agQuery = agQuery.lte(priceColumn, filters.priceMax);
-          }
-          if (filters.bedrooms !== undefined && filters.bedrooms > 0) {
-            agQuery = agQuery.gte("bedrooms", filters.bedrooms);
-          }
-          if (filters.bathrooms !== undefined && filters.bathrooms > 0) {
-            agQuery = agQuery.gte("bathrooms", filters.bathrooms);
-          }
-          if (filters.parkingSpaces !== undefined && filters.parkingSpaces > 0) {
-            agQuery = agQuery.gte("parking_spaces", filters.parkingSpaces);
-          }
-          if (filters.areaMin !== undefined && filters.areaMin > 0) {
-            agQuery = agQuery.gte("usable_area", filters.areaMin);
-          }
-          if (filters.areaMax !== undefined && filters.areaMax > 0) {
-            agQuery = agQuery.lte("usable_area", filters.areaMax);
-          }
-          if (filters.financiable === true) agQuery = agQuery.eq("financiable", true);
-          if (filters.furnished === true) agQuery = agQuery.eq("furnished", true);
-          if (filters.acceptsExchange === true) agQuery = agQuery.eq("accepts_exchange", true);
-
-          agQuery = agQuery
-            .order("ranking_score", { ascending: false, nullsFirst: false })
-            .limit(12);
-
-          const { data: topUpData } = await agQuery;
-          return topUpData || [];
-        });
-
-        const topUpResults = await Promise.all(topUpPromises);
-        for (const items of topUpResults) {
-          for (const item of items) {
-            if (!existingIds.has(item.id)) {
-              existingIds.add(item.id);
-              rawData.push(item);
-            }
-          }
-        }
-      }
-    }
   }
+
+  // Executa busca e paginação paginada diretamente no PostgreSQL
+  const { data, count, error } = await query.range(offset, offset + limit - 1);
+  if (error || !data) {
+    if (error) console.error("[searchProperties] Erro na consulta do Supabase:", error);
+    return { properties: [], total: 0, page, totalPages: 0, limit, filters };
+  }
+
+  rawData = data;
+  totalCount = count || 0;
 
   // Obter dados de engajamento em lote para os candidatos da busca
   const candidateIds = rawData.map((r: any) => r.id);
@@ -485,8 +403,14 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
       title: row.title,
       transactionType: row.transaction_type,
       propertyType: row.property_type,
-      price: row.price,
-      rentPrice: row.rent_price,
+      price: row.lowest_sale_price ?? row.price,
+      rentPrice: row.lowest_rent_price ?? row.rent_price,
+      activeOffersCount: row.active_offers_count ?? 0,
+      lowestSalePrice: row.lowest_sale_price,
+      highestSalePrice: row.highest_sale_price,
+      lowestRentPrice: row.lowest_rent_price,
+      highestRentPrice: row.highest_rent_price,
+      primaryOfferId: row.primary_offer_id,
       condominiumFee: row.condominium_fee,
       usableArea: row.usable_area,
       totalArea: row.total_area,
@@ -545,19 +469,7 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
     };
   });
 
-  let finalProperties: SearchPropertyItem[] = [];
-
-  if (isCustomSort) {
-    finalProperties = itemsWithRanking.map((w) => w.item);
-  } else {
-    // Ordenação determinística com critérios de desempate e distribuição justa (Round-Robin multi-imobiliária)
-    const sorted = sortPropertiesByRanking(itemsWithRanking);
-    if (offset < sorted.length) {
-      finalProperties = sorted.slice(offset, offset + limit);
-    } else {
-      finalProperties = itemsWithRanking.slice(0, limit).map((w) => w.item);
-    }
-  }
+  const finalProperties: SearchPropertyItem[] = itemsWithRanking.map((w) => w.item);
 
   const totalPages = Math.ceil(totalCount / limit);
 

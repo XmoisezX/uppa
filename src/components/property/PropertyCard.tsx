@@ -40,8 +40,11 @@ export function PropertyCard({ property, className = "" }: PropertyCardProps) {
     }).format(val);
   };
 
-  const salePriceFormatted = formatMoney(property.price);
-  const rentPriceFormatted = formatMoney(property.rentPrice);
+  const isMultipleOffers = (property.activeOffersCount || 1) > 1;
+  const effectiveSalePrice = property.lowestSalePrice ?? property.price;
+  const effectiveRentPrice = property.lowestRentPrice ?? property.rentPrice;
+  const salePriceFormatted = formatMoney(effectiveSalePrice);
+  const rentPriceFormatted = formatMoney(effectiveRentPrice);
   const condFeeFormatted = formatMoney(property.condominiumFee);
 
   const neighborhoodName = property.neighborhood?.name;
@@ -141,8 +144,14 @@ export function PropertyCard({ property, className = "" }: PropertyCardProps) {
       {/* 2. CONTEÚDO DO CARD */}
       <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
         <div>
-          {/* Logo ou Nome da Imobiliária (Com Selo Oficial Azul de Verificação) */}
-          {property.agency?.name && (
+          {/* Logo ou Nome da Imobiliária (ou Badge de Múltiplas Ofertas - Fase 15) */}
+          {isMultipleOffers ? (
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200/80 dark:border-indigo-800">
+                {property.activeOffersCount} ofertas disponíveis
+              </span>
+            </div>
+          ) : property.agency?.name ? (
             <div className="flex items-center gap-1.5 mb-2 flex-wrap">
               {property.agency.verifiedAt ? (
                 <VerifiedAgencyBadge agencyName={property.agency.name} />
@@ -158,7 +167,7 @@ export function PropertyCard({ property, className = "" }: PropertyCardProps) {
                 </span>
               )}
             </div>
-          )}
+          ) : null}
 
           {/* Título do Imóvel */}
           <Link
@@ -208,6 +217,11 @@ export function PropertyCard({ property, className = "" }: PropertyCardProps) {
         {/* 3. PREÇOS E CTAS */}
         <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-end justify-between gap-2">
           <div>
+            {isMultipleOffers && (
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-0.5">
+                A partir de
+              </span>
+            )}
             <div className="text-base font-extrabold text-slate-900 dark:text-white leading-tight">
               {isRent
                 ? rentPriceFormatted || "Sob consulta"
@@ -221,27 +235,41 @@ export function PropertyCard({ property, className = "" }: PropertyCardProps) {
           </div>
 
           <div className="flex items-center gap-1.5">
-            {property.agency?.phone && (
-              <button
-                type="button"
-                onClick={handleWhatsAppClick}
-                className="h-8 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
-                title="Falar no WhatsApp"
+            {isMultipleOffers ? (
+              <Link
+                href={`/imovel/${property.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                prefetch={false}
+                className="h-8 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center transition-colors"
               >
-                <MessageCircle className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">WhatsApp</span>
-              </button>
-            )}
+                Ver imóvel
+              </Link>
+            ) : (
+              <>
+                {property.agency?.phone && (
+                  <button
+                    type="button"
+                    onClick={handleWhatsAppClick}
+                    className="h-8 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                    title="Falar no WhatsApp"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">WhatsApp</span>
+                  </button>
+                )}
 
-            <Link
-              href={`/imovel/${property.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              prefetch={false}
-              className="h-8 px-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center transition-colors"
-            >
-              Ver mais
-            </Link>
+                <Link
+                  href={`/imovel/${property.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  prefetch={false}
+                  className="h-8 px-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center transition-colors"
+                >
+                  Ver mais
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>

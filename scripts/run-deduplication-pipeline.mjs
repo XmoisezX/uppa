@@ -320,12 +320,13 @@ async function run() {
     }))
   ];
 
-  for (const cand of allCandidates) {
+  for (let i = 0; i < allCandidates.length; i += 200) {
+    const chunk = allCandidates.slice(i, i + 200);
     const { error: insErr } = await supabase
       .from("property_match_candidates")
-      .upsert(cand, { onConflict: "property_a_id,property_b_id" });
+      .upsert(chunk, { onConflict: "property_a_id,property_b_id" });
     if (insErr) {
-      console.warn("Erro ao inserir candidato:", insErr.message);
+      console.warn("Erro ao inserir chunk de candidatos:", insErr.message);
     }
   }
 

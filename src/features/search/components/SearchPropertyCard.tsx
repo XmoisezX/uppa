@@ -52,8 +52,11 @@ export function SearchPropertyCard({
     }).format(val);
   };
 
-  const salePriceFormatted = formatMoney(property.price);
-  const rentPriceFormatted = formatMoney(property.rentPrice);
+  const isMultipleOffers = (property.activeOffersCount || 1) > 1;
+  const effectiveSalePrice = property.lowestSalePrice ?? property.price;
+  const effectiveRentPrice = property.lowestRentPrice ?? property.rentPrice;
+  const salePriceFormatted = formatMoney(effectiveSalePrice);
+  const rentPriceFormatted = formatMoney(effectiveRentPrice);
   const condFeeFormatted = formatMoney(property.condominiumFee);
 
   const neighborhoodName = property.neighborhood?.name;
@@ -239,8 +242,14 @@ export function SearchPropertyCard({
             </button>
           </div>
 
-          {/* IMOBILIÁRIA / SELO VERIFICADO */}
-          {property.agency?.name && (
+          {/* OFERTAS DISPONÍVEIS OU IMOBILIÁRIA (Fase 15) */}
+          {isMultipleOffers ? (
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200/80 dark:border-indigo-800">
+                {property.activeOffersCount} ofertas disponíveis
+              </span>
+            </div>
+          ) : property.agency?.name ? (
             <div className="flex items-center gap-1.5 mt-2 flex-wrap">
               {property.agency.verifiedAt ? (
                 <VerifiedAgencyBadge agencyName={property.agency.name} />
@@ -250,7 +259,7 @@ export function SearchPropertyCard({
                 </span>
               )}
             </div>
-          )}
+          ) : null}
 
           {/* LOCALIZAÇÃO (BAIRRO, CIDADE/UF + LOGRADOURO) */}
           <div className="mt-2.5 space-y-0.5">
@@ -306,6 +315,11 @@ export function SearchPropertyCard({
         {/* 3. RODAPÉ: PREÇO EM DESTAQUE + BOTÕES WHATSAPP E CONTATO */}
         <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
+            {isMultipleOffers && (
+              <span className="block text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-0.5">
+                A partir de
+              </span>
+            )}
             {isSaleOrRent ? (
               <div className="space-y-0.5">
                 {salePriceFormatted && (
@@ -340,26 +354,39 @@ export function SearchPropertyCard({
             )}
           </div>
 
-          {/* BOTÕES DE AÇÃO: WHATSAPP VERDE + FALAR COM O ANUNCIANTE */}
+          {/* BOTÕES DE AÇÃO: WHATSAPP VERDE + VER IMÓVEL / FALAR COM ANUNCIANTE */}
           <div className="flex items-center gap-2 self-stretch sm:self-auto shrink-0">
-            {property.agency?.phone && (
-              <button
-                type="button"
-                onClick={handleWhatsAppClick}
-                aria-label="Contato via WhatsApp"
-                title="Falar no WhatsApp"
-                className="h-11 w-11 flex items-center justify-center rounded-xl bg-[#25D366] hover:bg-[#20BD5C] text-white transition-colors cursor-pointer shrink-0 shadow-xs"
+            {isMultipleOffers ? (
+              <Link
+                href={`/imovel/${property.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 sm:flex-none h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm whitespace-nowrap transition-colors flex items-center justify-center shadow-xs"
               >
-                <MessageCircle className="h-5 w-5 fill-white stroke-none" />
-              </button>
+                Ver imóvel
+              </Link>
+            ) : (
+              <>
+                {property.agency?.phone && (
+                  <button
+                    type="button"
+                    onClick={handleWhatsAppClick}
+                    aria-label="Contato via WhatsApp"
+                    title="Falar no WhatsApp"
+                    className="h-11 w-11 flex items-center justify-center rounded-xl bg-[#25D366] hover:bg-[#20BD5C] text-white transition-colors cursor-pointer shrink-0 shadow-xs"
+                  >
+                    <MessageCircle className="h-5 w-5 fill-white stroke-none" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleContactClick}
+                  className="flex-1 sm:flex-none h-11 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-bold text-xs sm:text-sm whitespace-nowrap transition-colors cursor-pointer shadow-xs"
+                >
+                  Falar com o anunciante
+                </button>
+              </>
             )}
-            <button
-              type="button"
-              onClick={handleContactClick}
-              className="flex-1 sm:flex-none h-11 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-bold text-xs sm:text-sm whitespace-nowrap transition-colors cursor-pointer shadow-xs"
-            >
-              Falar com o anunciante
-            </button>
           </div>
         </div>
       </div>

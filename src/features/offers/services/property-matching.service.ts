@@ -33,7 +33,8 @@ export interface PropertyPhysicalProfile {
   bathrooms: number;
   parkingSpaces: number;
   createdAt: string;
-  agencyId: string;
+  agencyId?: string;
+  activeOffersCount?: number;
 }
 
 export interface MatchSignalBreakdown {
