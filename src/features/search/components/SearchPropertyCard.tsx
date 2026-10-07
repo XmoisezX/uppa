@@ -52,9 +52,14 @@ export function SearchPropertyCard({
     }).format(val);
   };
 
-  const isMultipleOffers = (property.activeOffersCount || 1) > 1;
-  const effectiveSalePrice = property.lowestSalePrice ?? property.price;
-  const effectiveRentPrice = property.lowestRentPrice ?? property.rentPrice;
+  // URL com contexto da representative offer persistido na jornada (Seções 11 e 12)
+  const targetUrl = property.primaryOfferId
+    ? `/imovel/${property.slug}?offer=${property.primaryOfferId}`
+    : `/imovel/${property.slug}`;
+
+  // Preço da representative offer (Seção 4: sem "A partir de", sem menor preço forçado)
+  const effectiveSalePrice = property.price ?? property.lowestSalePrice;
+  const effectiveRentPrice = property.rentPrice ?? property.lowestRentPrice;
   const salePriceFormatted = formatMoney(effectiveSalePrice);
   const rentPriceFormatted = formatMoney(effectiveRentPrice);
   const condFeeFormatted = formatMoney(property.condominiumFee);
@@ -110,16 +115,32 @@ export function SearchPropertyCard({
       const msg = encodeURIComponent(
         `Olá! Vi o anúncio do imóvel "${property.title}" na UPPA e gostaria de mais informações.`
       );
+
+      // Registra lead de intenção vinculado à representative offer (Seções 22 e 25)
+      if (property.agency?.id) {
+        import("@/features/leads/actions").then(({ trackWhatsAppLeadAction }) => {
+          trackWhatsAppLeadAction({
+            propertyId: property.id,
+            offerId: property.primaryOfferId || null,
+            agencyId: property.agency!.id,
+            snapshotPrice: isRent ? effectiveRentPrice : effectiveSalePrice,
+            snapshotTitle: property.title,
+            snapshotAgencyName: property.agency?.name,
+            message: `Contato via busca geral para o imóvel ${property.title}`,
+          }).catch(console.warn);
+        });
+      }
+
       window.open(`https://wa.me/55${cleanPhone}?text=${msg}`, "_blank");
     } else {
-      window.open(`/imovel/${property.slug}#contato`, "_blank");
+      window.open(`${targetUrl}#contato`, "_blank");
     }
   };
 
   const handleContactClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    window.open(`/imovel/${property.slug}#contato`, "_blank");
+    window.open(`${targetUrl}#contato`, "_blank");
   };
 
   return (
@@ -132,11 +153,11 @@ export function SearchPropertyCard({
           : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md"
       }`}
     >
-      {/* 1. MÍDIA / CARROSSEL DE FOTOS (ATÉ 5 FOTOS COM FILTRO E '+' NA ÚLTIMA) */}
+      {/* 1. MÍDIA / CARROSSEL DE FOTOS */}
       <div className="relative w-full sm:w-[340px] md:w-[380px] lg:w-[410px] xl:w-[440px] aspect-[16/10] sm:aspect-auto sm:min-h-[250px] overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
         {currentPhoto && !imageError ? (
           <Link
-            href={isLastPhoto ? `/imovel/${property.slug}#fotos` : `/imovel/${property.slug}`}
+            href={isLastPhoto ? `${targetUrl}#fotos` : targetUrl}
             target="_blank"
             rel="noopener noreferrer"
             tabIndex={-1}
@@ -242,14 +263,8 @@ export function SearchPropertyCard({
             </button>
           </div>
 
-          {/* OFERTAS DISPONÍVEIS OU IMOBILIÁRIA (Fase 15) */}
-          {isMultipleOffers ? (
-            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200/80 dark:border-indigo-800">
-                {property.activeOffersCount} ofertas disponíveis
-              </span>
-            </div>
-          ) : property.agency?.name ? (
+          {/* ANUNCIANTE DA REPRESENTATIVE OFFER (Seção 4: 1 card = 1 anunciante) */}
+          {property.agency?.name ? (
             <div className="flex items-center gap-1.5 mt-2 flex-wrap">
               {property.agency.verifiedAt ? (
                 <VerifiedAgencyBadge agencyName={property.agency.name} />
@@ -312,14 +327,9 @@ export function SearchPropertyCard({
           </div>
         </div>
 
-        {/* 3. RODAPÉ: PREÇO EM DESTAQUE + BOTÕES WHATSAPP E CONTATO */}
+        {/* 3. RODAPÉ: PREÇO DA REPRESENTATIVE OFFER + BOTÕES DE AÇÃO */}
         <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
-            {isMultipleOffers && (
-              <span className="block text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-0.5">
-                A partir de
-              </span>
-            )}
             {isSaleOrRent ? (
               <div className="space-y-0.5">
                 {salePriceFormatted && (
@@ -354,39 +364,26 @@ export function SearchPropertyCard({
             )}
           </div>
 
-          {/* BOTÕES DE AÇÃO: WHATSAPP VERDE + VER IMÓVEL / FALAR COM ANUNCIANTE */}
+          {/* BOTÕES DE AÇÃO: WHATSAPP VERDE + FALAR COM O ANUNCIANTE (REPRESENTATIVE OFFER) */}
           <div className="flex items-center gap-2 self-stretch sm:self-auto shrink-0">
-            {isMultipleOffers ? (
-              <Link
-                href={`/imovel/${property.slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 sm:flex-none h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm whitespace-nowrap transition-colors flex items-center justify-center shadow-xs"
+            {property.agency?.phone && (
+              <button
+                type="button"
+                onClick={handleWhatsAppClick}
+                aria-label="Contato via WhatsApp"
+                title="Falar no WhatsApp"
+                className="h-11 w-11 flex items-center justify-center rounded-xl bg-[#25D366] hover:bg-[#20BD5C] text-white transition-colors cursor-pointer shrink-0 shadow-xs"
               >
-                Ver imóvel
-              </Link>
-            ) : (
-              <>
-                {property.agency?.phone && (
-                  <button
-                    type="button"
-                    onClick={handleWhatsAppClick}
-                    aria-label="Contato via WhatsApp"
-                    title="Falar no WhatsApp"
-                    className="h-11 w-11 flex items-center justify-center rounded-xl bg-[#25D366] hover:bg-[#20BD5C] text-white transition-colors cursor-pointer shrink-0 shadow-xs"
-                  >
-                    <MessageCircle className="h-5 w-5 fill-white stroke-none" />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleContactClick}
-                  className="flex-1 sm:flex-none h-11 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-bold text-xs sm:text-sm whitespace-nowrap transition-colors cursor-pointer shadow-xs"
-                >
-                  Falar com o anunciante
-                </button>
-              </>
+                <MessageCircle className="h-5 w-5 fill-white stroke-none" />
+              </button>
             )}
+            <button
+              type="button"
+              onClick={handleContactClick}
+              className="flex-1 sm:flex-none h-11 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-bold text-xs sm:text-sm whitespace-nowrap transition-colors cursor-pointer shadow-xs"
+            >
+              Falar com o anunciante
+            </button>
           </div>
         </div>
       </div>

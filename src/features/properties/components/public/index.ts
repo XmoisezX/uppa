@@ -10,4 +10,5 @@ export * from "./PropertyStickyCTA";
 export * from "./SimilarProperties";
 export * from "./PropertyDetailMap";
 export * from "./PropertyOffersList";
+export * from "./RepresentativeOfferHero";
 

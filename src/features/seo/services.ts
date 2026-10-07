@@ -644,12 +644,13 @@ export function buildPropertyMetaTitle(property: PropertyWithDetails): string {
 }
 
 /**
- * Constrói descrição dinâmica com base em dados físicos e comerciais reais
+ * Constrói descrição dinâmica com base em dados físicos e da representative offer (Seção 17)
  */
 export function buildPropertyMetaDescription(
   property: PropertyWithDetails,
-  activeOffersCount = 1,
-  lowestPrice?: number | null
+  _activeOffersCount = 1,
+  representativePrice?: number | null,
+  representativeAgencyName?: string | null
 ): string {
   const typeLabel = PROPERTY_TYPE_LABELS[property.propertyType] || "Imóvel";
   const area = property.usableArea || property.totalArea;
@@ -670,78 +671,65 @@ export function buildPropertyMetaDescription(
 
   let commercialText = "";
   const effectivePrice =
-    lowestPrice ||
+    representativePrice ||
     (property.transactionType === "rent" ? property.rentPrice : property.price);
 
-  if (activeOffersCount > 1 && effectivePrice) {
-    commercialText = ` Compare ${activeOffersCount} ofertas disponíveis a partir de R$ ${effectivePrice.toLocaleString("pt-BR")}.`;
+  if (effectivePrice && representativeAgencyName) {
+    commercialText = `, anunciado por R$ ${effectivePrice.toLocaleString("pt-BR")} por ${representativeAgencyName}.`;
   } else if (effectivePrice) {
-    commercialText = ` Oferta disponível por R$ ${effectivePrice.toLocaleString("pt-BR")}.`;
+    commercialText = `, anunciado por R$ ${effectivePrice.toLocaleString("pt-BR")}.`;
   } else {
-    commercialText = " Veja detalhes, fotos e comodidades na UPPA.";
+    commercialText = ". Veja detalhes, fotos e comodidades na UPPA.";
   }
 
-  const desc = `${typeLabel}${specsText}${locationText}.${commercialText}`;
+  const desc = `${typeLabel}${specsText}${locationText}${commercialText}`;
   return desc.length > 160 ? desc.slice(0, 157) + "..." : desc;
 }
 
 /**
- * Constrói JSON-LD multi-ofertas estruturado para Property x Offers
+ * Constrói JSON-LD estruturado para Property x Representative Offer (Seção 18)
+ * Não publica array com ofertas concorrentes, reflete PROPERTY + representative offer única.
  */
 export function buildPropertyStructuredData(
   property: PropertyWithDetails,
-  offers: any[],
+  representativeOffer: any,
   siteUrl: string
 ) {
   const canonicalUrl = `${siteUrl}/imovel/${property.slug}`;
   const images = property.media?.map((m) => m.url).filter(Boolean) || [];
 
-  // Múltiplas ofertas comerciais legítimas sem fingir que são múltiplos imóveis
-  const schemaOffers =
-    offers.length > 0
-      ? offers.map((offer) => {
-          const price =
-            offer.salePrice ||
-            offer.rentPrice ||
-            property.price ||
-            property.rentPrice ||
-            0;
-          return {
-            "@type": "Offer",
-            price,
-            priceCurrency: "BRL",
-            availability: "https://schema.org/InStock",
-            url: canonicalUrl,
-            seller: offer.agency
-              ? {
-                  "@type": "RealEstateAgent",
-                  name: offer.agency.name,
-                  url: `${siteUrl}/imobiliaria/${offer.agency.slug}`,
-                  telephone: offer.agency.phone || offer.agency.whatsapp,
-                }
-              : undefined,
-            businessFunction:
-              offer.transactionType === "rent" || property.transactionType === "rent"
-                ? "http://purl.org/goodrelations/v1#LeaseOut"
-                : "http://purl.org/goodrelations/v1#Sell",
-          };
-        })
-      : [
-          {
-            "@type": "Offer",
-            price: property.price || property.rentPrice || 0,
-            priceCurrency: "BRL",
-            availability:
-              property.status === "active" && (property.activeOffersCount ?? 1) > 0
-                ? "https://schema.org/InStock"
-                : "https://schema.org/OutOfStock",
-            url: canonicalUrl,
-            businessFunction:
-              property.transactionType === "rent"
-                ? "http://purl.org/goodrelations/v1#LeaseOut"
-                : "http://purl.org/goodrelations/v1#Sell",
-          },
-        ];
+  const offerPrice =
+    representativeOffer?.price ||
+    representativeOffer?.salePrice ||
+    representativeOffer?.rentPrice ||
+    property.price ||
+    property.rentPrice ||
+    0;
+
+  const schemaOffers = [
+    {
+      "@type": "Offer",
+      price: offerPrice,
+      priceCurrency: "BRL",
+      availability:
+        property.status === "active" && (property.activeOffersCount ?? 1) > 0
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
+      url: canonicalUrl,
+      seller: representativeOffer?.agency
+        ? {
+            "@type": "RealEstateAgent",
+            name: representativeOffer.agency.name,
+            url: `${siteUrl}/imobiliaria/${representativeOffer.agency.slug}`,
+            telephone: representativeOffer.agency.phone || representativeOffer.agency.whatsapp,
+          }
+        : undefined,
+      businessFunction:
+        representativeOffer?.transactionType === "rent" || property.transactionType === "rent"
+          ? "http://purl.org/goodrelations/v1#LeaseOut"
+          : "http://purl.org/goodrelations/v1#Sell",
+    },
+  ];
 
   const citySlug = property.city?.slug
     ? formatCitySlug(property.city.slug, property.state?.code)

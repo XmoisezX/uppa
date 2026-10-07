@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PropertyWithDetails } from "@/types/property";
+import type { ResolvedRepresentativeOffer } from "@/features/offers/services/representative-offer.service";
 import {
   trackWhatsAppLeadAction,
   submitLeadFormAction,
@@ -22,9 +23,10 @@ import {
 
 interface PropertyStickyCTAProps {
   property: PropertyWithDetails;
+  representativeOffer?: ResolvedRepresentativeOffer | null;
 }
 
-export function PropertyStickyCTA({ property }: PropertyStickyCTAProps) {
+export function PropertyStickyCTA({ property, representativeOffer }: PropertyStickyCTAProps) {
   const [activeTab, setActiveTab] = useState<"whatsapp" | "form">("whatsapp");
   const [showPhone, setShowPhone] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -39,8 +41,12 @@ export function PropertyStickyCTA({ property }: PropertyStickyCTAProps) {
   const [formSuccess, setFormSuccess] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const agencyPhone = property.agency?.whatsapp || property.agency?.phone || "5511999999999";
+  const agency = representativeOffer?.agency || property.agency;
+  const agencyPhone = agency?.whatsapp || agency?.phone || "";
   const cleanPhone = agencyPhone.replace(/\D/g, "");
+  const targetOfferId = representativeOffer?.offerId || property.primaryOfferId || null;
+  const targetAgencyId = representativeOffer?.agency.id || property.agencyId;
+  const targetAgencyName = agency?.name || "Imobiliária";
 
   const formatCurrency = (val?: number | null) => {
     if (!val) return "Consulte";
@@ -52,10 +58,12 @@ export function PropertyStickyCTA({ property }: PropertyStickyCTAProps) {
   };
 
   const primaryPrice =
-    property.transactionType === "rent" ? property.rentPrice : property.price;
+    property.transactionType === "rent"
+      ? (representativeOffer?.rentPrice ?? property.rentPrice)
+      : (representativeOffer?.salePrice ?? property.price);
 
   // Mensagem personalizada do WhatsApp
-  const messageText = `Olá! Vi o anúncio do imóvel "${property.title}" (Código: ${property.externalId}) na UPPA e gostaria de mais informações.`;
+  const messageText = `Olá! Vi o anúncio do imóvel "${property.title}" (Código: ${property.externalId}) na UPPA anunciado por ${targetAgencyName} e gostaria de mais informações.`;
   const whatsappUrl = `https://wa.me/${cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`}?text=${encodeURIComponent(messageText)}`;
 
   const getUtmAndSession = () => {
