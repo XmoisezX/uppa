@@ -327,6 +327,31 @@ export async function updateProperty(propertyId: string, input: Partial<CreatePr
     throw new Error(error?.message || "Erro ao atualizar dados do imóvel.");
   }
 
+  // Atualização nativa de campos comerciais em property_offers
+  const commercialUpdate: Record<string, any> = {};
+  if (input.title !== undefined) commercialUpdate.title = input.title.trim();
+  if (input.description !== undefined) commercialUpdate.description = input.description?.trim() || null;
+  if (input.transactionType !== undefined) commercialUpdate.transaction_type = input.transactionType;
+  if (input.status !== undefined) commercialUpdate.status = input.status;
+  if (input.price !== undefined) commercialUpdate.sale_price = input.price || null;
+  if (input.rentPrice !== undefined) commercialUpdate.rent_price = input.rentPrice || null;
+  if (input.condominiumFee !== undefined) commercialUpdate.condominium_fee = input.condominiumFee || null;
+  if (input.iptu !== undefined) commercialUpdate.iptu = input.iptu || null;
+  if (input.financiable !== undefined) commercialUpdate.financiable = input.financiable;
+  if (input.acceptsExchange !== undefined) commercialUpdate.accepts_exchange = input.acceptsExchange;
+  if (input.acceptsVehicle !== undefined) commercialUpdate.accepts_vehicle = input.acceptsVehicle;
+  if (input.furnished !== undefined) commercialUpdate.furnished = input.furnished;
+  if (input.petFriendly !== undefined) commercialUpdate.pet_friendly = input.petFriendly;
+  if (input.addressVisible !== undefined) commercialUpdate.address_visible = input.addressVisible;
+
+  if (Object.keys(commercialUpdate).length > 0) {
+    commercialUpdate.updated_at = new Date().toISOString();
+    await supabase
+      .from("property_offers")
+      .update(commercialUpdate)
+      .eq("property_id", propertyId);
+  }
+
   return {
     id: data.id,
     agencyId: data.agency_id,
@@ -944,11 +969,12 @@ export async function publishProperty(propertyId: string): Promise<Property> {
     throw new Error("Informe o valor de locação para publicar o anúncio.");
   }
 
+  const nowIso = new Date().toISOString();
   const { data, error } = await supabase
     .from("properties")
     .update({
       status: "active",
-      published_at: new Date().toISOString(),
+      published_at: nowIso,
     })
     .eq("id", propertyId)
     .select()
@@ -957,6 +983,16 @@ export async function publishProperty(propertyId: string): Promise<Property> {
   if (error || !data) {
     throw new Error(error?.message || "Erro ao publicar imóvel.");
   }
+
+  // Atualização nativa comercial na oferta
+  await supabase
+    .from("property_offers")
+    .update({
+      status: "active",
+      published_at: nowIso,
+      updated_at: nowIso,
+    })
+    .eq("property_id", propertyId);
 
   return {
     id: data.id,
@@ -1010,6 +1046,7 @@ export async function publishProperty(propertyId: string): Promise<Property> {
  */
 export async function savePropertyAsDraft(propertyId: string): Promise<Property> {
   const supabase = await createClient();
+  const nowIso = new Date().toISOString();
 
   const { data, error } = await supabase
     .from("properties")
@@ -1021,6 +1058,15 @@ export async function savePropertyAsDraft(propertyId: string): Promise<Property>
   if (error || !data) {
     throw new Error(error?.message || "Erro ao salvar imóvel como rascunho.");
   }
+
+  // Atualização nativa comercial na oferta
+  await supabase
+    .from("property_offers")
+    .update({
+      status: "draft",
+      updated_at: nowIso,
+    })
+    .eq("property_id", propertyId);
 
   return {
     id: data.id,
@@ -1304,6 +1350,13 @@ export async function getSimilarProperties(
 export async function deleteProperty(propertyId: string, agencyId: string): Promise<void> {
   const supabase = await createClient();
 
+  // Exclusão protegida: remove a oferta primeiro para respeitar o ON DELETE RESTRICT da Fase 1
+  await supabase
+    .from("property_offers")
+    .delete()
+    .eq("property_id", propertyId)
+    .eq("agency_id", agencyId);
+
   const { error } = await supabase
     .from("properties")
     .delete()
@@ -1321,6 +1374,13 @@ export async function deleteProperty(propertyId: string, agencyId: string): Prom
 export async function deletePropertiesBatch(propertyIds: string[], agencyId: string): Promise<number> {
   if (!propertyIds || propertyIds.length === 0) return 0;
   const supabase = await createClient();
+
+  // Remove ofertas primeiro para respeitar o ON DELETE RESTRICT
+  await supabase
+    .from("property_offers")
+    .delete()
+    .in("property_id", propertyIds)
+    .eq("agency_id", agencyId);
 
   const { error, count } = await supabase
     .from("properties")

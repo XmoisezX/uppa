@@ -7,9 +7,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   Clock,
-  Building2,
-  Briefcase,
-  ExternalLink,
   Check,
   AlertCircle,
   Pause,
@@ -61,8 +58,9 @@ export function FeedsClient({ initialFeeds }: Props) {
         } else {
           showNotice(res.error || 'Erro ao executar sincronização.', 'error');
         }
-      } catch (err: any) {
-        showNotice(err?.message || 'Erro inesperado na sincronização.', 'error');
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : 'Erro inesperado na sincronização.';
+        showNotice(errorMsg, 'error');
       } finally {
         setSyncingFeedId(null);
       }

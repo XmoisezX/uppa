@@ -16,6 +16,7 @@ export type LeadEventType =
 export interface Lead {
   id: string;
   propertyId?: string | null;
+  offerId?: string | null;
   agencyId: string;
   brokerId?: string | null;
   consumerUserId?: string | null;
@@ -54,6 +55,7 @@ export interface LeadWithDetails extends Lead {
 
 export interface CreateWhatsAppLeadInput {
   propertyId: string;
+  offerId?: string | null;
   agencyId: string;
   message?: string;
   utmSource?: string;
@@ -65,6 +67,7 @@ export interface CreateWhatsAppLeadInput {
 
 export interface CreateFormLeadInput {
   propertyId: string;
+  offerId?: string | null;
   agencyId: string;
   name: string;
   phone: string;

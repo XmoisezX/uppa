@@ -13,9 +13,22 @@ export async function recordWhatsAppLead(input: CreateWhatsAppLeadInput): Promis
   const leadId = crypto.randomUUID();
   const nowIso = new Date().toISOString();
 
+  // Resolução da oferta comercial vinculada ao imóvel
+  let resolvedOfferId = input.offerId || null;
+  if (!resolvedOfferId && input.propertyId) {
+    const { data: offer } = await supabase
+      .from("property_offers")
+      .select("id")
+      .eq("property_id", input.propertyId)
+      .limit(1)
+      .maybeSingle();
+    resolvedOfferId = offer?.id || null;
+  }
+
   const insertData: LeadInsert = {
     id: leadId,
-    property_id: input.propertyId,
+    property_id: input.propertyId || null,
+    offer_id: resolvedOfferId,
     agency_id: input.agencyId,
     source: "whatsapp",
     message: input.message || null,
@@ -42,6 +55,7 @@ export async function recordWhatsAppLead(input: CreateWhatsAppLeadInput): Promis
     metadata: {
       source: "whatsapp",
       propertyId: input.propertyId,
+      offerId: resolvedOfferId,
       utmSource: input.utmSource || null,
       utmMedium: input.utmMedium || null,
     },
@@ -50,6 +64,7 @@ export async function recordWhatsAppLead(input: CreateWhatsAppLeadInput): Promis
   return {
     id: leadId,
     propertyId: input.propertyId,
+    offerId: resolvedOfferId,
     agencyId: input.agencyId,
     source: "whatsapp",
     message: input.message || null,
@@ -71,9 +86,22 @@ export async function recordFormLead(input: CreateFormLeadInput): Promise<Lead> 
   const leadId = crypto.randomUUID();
   const nowIso = new Date().toISOString();
 
+  // Resolução da oferta comercial vinculada ao imóvel
+  let resolvedOfferId = input.offerId || null;
+  if (!resolvedOfferId && input.propertyId) {
+    const { data: offer } = await supabase
+      .from("property_offers")
+      .select("id")
+      .eq("property_id", input.propertyId)
+      .limit(1)
+      .maybeSingle();
+    resolvedOfferId = offer?.id || null;
+  }
+
   const insertData: LeadInsert = {
     id: leadId,
-    property_id: input.propertyId,
+    property_id: input.propertyId || null,
+    offer_id: resolvedOfferId,
     agency_id: input.agencyId,
     source: "form",
     name: input.name.trim(),
@@ -103,6 +131,7 @@ export async function recordFormLead(input: CreateFormLeadInput): Promise<Lead> 
     metadata: {
       source: "form",
       propertyId: input.propertyId,
+      offerId: resolvedOfferId,
       name: input.name.trim(),
       phone: input.phone.trim(),
       email: input.email?.trim() || null,

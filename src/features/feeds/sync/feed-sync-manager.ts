@@ -16,9 +16,9 @@ import { ChavesNaMaoParser } from "../parser/chaves-na-mao-parser";
 import { detectFeedFormat } from "../parser/feed-detector";
 import {
   PropertyImporter,
-  type ImportResult,
   type ImportProgressData,
 } from "../importer/property-importer";
+import { PropertyOfferIngestionService } from "@/features/offers";
 import { FEED_SAFETY_CONFIG } from "../config";
 
 export interface FeedSyncOptions {
@@ -91,7 +91,7 @@ export class FeedSyncManager {
     }
 
     let feedRunId: string | undefined = undefined;
-    let currentFeedRecord: any = null;
+    let currentFeedRecord: Database["public"]["Tables"]["feeds"]["Row"] | null = null;
 
     try {
       // 2. Busca dados do feed
@@ -263,8 +263,9 @@ export class FeedSyncManager {
         itemsFailed: importResult.itemsFailed,
         durationMs: Date.now() - startTime,
       };
-    } catch (err: any) {
-      console.error(`[FeedSyncManager] Falha crítica na sincronização do feed ${feedId}:`, err?.message);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Erro inesperado durante a sincronização.";
+      console.error(`[FeedSyncManager] Falha crítica na sincronização do feed ${feedId}:`, errorMsg);
 
       if (feedRunId) {
         await this.supabase
@@ -272,7 +273,7 @@ export class FeedSyncManager {
           .update({
             status: "failed",
             finished_at: new Date().toISOString(),
-            error_message: err?.message || "Erro inesperado durante a sincronização.",
+            error_message: errorMsg,
             items_failed: 1,
           })
           .eq("id", feedRunId);
@@ -280,7 +281,7 @@ export class FeedSyncManager {
         await this.supabase.from("feed_errors").insert({
           feed_run_id: feedRunId,
           error_type: "critical_sync_error",
-          message: err?.message || "Falha crítica de execução",
+          message: errorMsg,
           payload: { error: String(err) },
         });
       }
@@ -317,7 +318,7 @@ export class FeedSyncManager {
         itemsUpdated: 0,
         itemsDeactivated: 0,
         itemsFailed: 1,
-        error: err?.message || "Erro inesperado durante a sincronização.",
+        error: errorMsg,
         durationMs: Date.now() - startTime,
       };
     } finally {
@@ -391,73 +392,12 @@ export class FeedSyncManager {
     presentExternalIds: string[],
     source: "vrsync" | "chaves_na_mao" = "vrsync"
   ): Promise<number> {
-    const presentSet = new Set(presentExternalIds);
-
-    // Consulta todos os imóveis da imobiliária originados do feed específico
-    const { data: dbProperties, error } = await this.supabase
-      .from("properties")
-      .select("id, external_id, status, missing_from_feed_at")
-      .eq("agency_id", agencyId)
-      .eq("source", source);
-
-    if (error || !dbProperties) {
-      console.warn("[FeedSyncManager] Falha ao consultar imóveis para detecção de ausência:", error?.message);
-      return 0;
-    }
-
-    let deactivatedCount = 0;
-    const nowIso = new Date().toISOString();
-
-    for (const prop of dbProperties) {
-      const isPresent = presentSet.has(prop.external_id);
-
-      if (isPresent) {
-        // =========================================================================
-        // IMÓVEL PRESENTE NO FEED
-        // Se estava marcado como ausente ou inativo, restaura para active
-        // =========================================================================
-        if (prop.missing_from_feed_at !== null || prop.status === "inactive") {
-          await this.supabase
-            .from("properties")
-            .update({
-              missing_from_feed_at: null,
-              status: "active",
-              updated_at: nowIso,
-            })
-            .eq("id", prop.id);
-          // Histórico de reativação registrado automaticamente pela trigger trg_property_status_history no PostgreSQL
-        }
-      } else {
-        // =========================================================================
-        // IMÓVEL AUSENTE NO FEED
-        // =========================================================================
-        if (prop.missing_from_feed_at === null) {
-          // ETAPA 1: Primeira ausência detectada -> apenas marca timestamp, MANTÉM ACTIVE
-          await this.supabase
-            .from("properties")
-            .update({
-              missing_from_feed_at: nowIso,
-            })
-            .eq("id", prop.id);
-        } else {
-          // ETAPA 2: Ausência confirmada em sincronização subsequente -> DESATIVA
-          if (prop.status === "active") {
-            await this.supabase
-              .from("properties")
-              .update({
-                status: "inactive",
-                updated_at: nowIso,
-              })
-              .eq("id", prop.id);
-
-            // Histórico de desativação registrado automaticamente pela trigger trg_property_status_history no PostgreSQL
-            deactivatedCount++;
-          }
-        }
-      }
-    }
-
-    return deactivatedCount;
+    const ingestionService = new PropertyOfferIngestionService(this.supabase);
+    return await ingestionService.reconcileMissingOffers({
+      agencyId,
+      source,
+      presentExternalIds,
+    });
   }
 
   /**
@@ -471,13 +411,15 @@ export class FeedSyncManager {
     currentFoundCount: number
   ): Promise<{ isSuspicious: boolean; reason?: string; baseline: number }> {
     try {
-      // 1. Quantidade de imóveis ativos no banco atualmente para esta imobiliária e fonte
-      const { count: activeDbCount } = await this.supabase
-        .from("properties")
+      // 1. Quantidade de ofertas ativas no banco atualmente para esta imobiliária e fonte
+      const { count: activeOffersCount } = await this.supabase
+        .from("property_offers")
         .select("id", { count: "exact", head: true })
         .eq("agency_id", agencyId)
         .eq("source", source)
         .eq("status", "active");
+
+      const activeDbCount = activeOffersCount ?? 0;
 
       // 2. Histórico da última corrida bem-sucedida deste feed
       const { data: previousRun } = await this.supabase
@@ -515,8 +457,9 @@ export class FeedSyncManager {
       }
 
       return { isSuspicious: false, baseline };
-    } catch (err: any) {
-      console.warn("[FeedSyncManager] Falha ao avaliar métricas de segurança de estoque:", err?.message);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.warn("[FeedSyncManager] Falha ao avaliar métricas de segurança de estoque:", errorMsg);
       return { isSuspicious: false, baseline: 0 };
     }
   }

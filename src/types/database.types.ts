@@ -721,6 +721,7 @@ export interface Database {
         Row: {
           id: string;
           property_id: string | null;
+          offer_id: string | null;
           agency_id: string;
           broker_id: string | null;
           consumer_user_id: string | null;
@@ -739,6 +740,7 @@ export interface Database {
         Insert: {
           id?: string;
           property_id?: string | null;
+          offer_id?: string | null;
           agency_id: string;
           broker_id?: string | null;
           consumer_user_id?: string | null;
@@ -757,6 +759,7 @@ export interface Database {
         Update: {
           id?: string;
           property_id?: string | null;
+          offer_id?: string | null;
           agency_id?: string;
           broker_id?: string | null;
           consumer_user_id?: string | null;
@@ -785,6 +788,263 @@ export interface Database {
             columns: ["property_id"];
             isOneToOne: false;
             referencedRelation: "properties";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "leads_offer_id_fkey";
+            columns: ["offer_id"];
+            isOneToOne: false;
+            referencedRelation: "property_offers";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      property_offers: {
+        Row: {
+          id: string;
+          property_id: string;
+          legacy_property_id: string | null;
+          agency_id: string;
+          broker_id: string | null;
+          source: Database["public"]["Enums"]["listing_source"];
+          external_id: string;
+          transaction_type: Database["public"]["Enums"]["transaction_type"];
+          status: Database["public"]["Enums"]["property_status"];
+          sale_price: number | null;
+          rent_price: number | null;
+          condominium_fee: number | null;
+          iptu: number | null;
+          financiable: boolean;
+          accepts_exchange: boolean;
+          accepts_vehicle: boolean;
+          furnished: boolean;
+          pet_friendly: boolean;
+          address_visible: boolean;
+          title: string;
+          description: string | null;
+          original_url: string | null;
+          published_at: string | null;
+          source_updated_at: string | null;
+          missing_from_feed_at: string | null;
+          content_hash: string | null;
+          last_seen_at: string | null;
+          ranking_score: number | null;
+          ranking_breakdown: Json | null;
+          ranking_updated_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          property_id: string;
+          legacy_property_id?: string | null;
+          agency_id: string;
+          broker_id?: string | null;
+          source?: Database["public"]["Enums"]["listing_source"];
+          external_id: string;
+          transaction_type: Database["public"]["Enums"]["transaction_type"];
+          status?: Database["public"]["Enums"]["property_status"];
+          sale_price?: number | null;
+          rent_price?: number | null;
+          condominium_fee?: number | null;
+          iptu?: number | null;
+          financiable?: boolean;
+          accepts_exchange?: boolean;
+          accepts_vehicle?: boolean;
+          furnished?: boolean;
+          pet_friendly?: boolean;
+          address_visible?: boolean;
+          title: string;
+          description?: string | null;
+          original_url?: string | null;
+          published_at?: string | null;
+          source_updated_at?: string | null;
+          missing_from_feed_at?: string | null;
+          content_hash?: string | null;
+          last_seen_at?: string | null;
+          ranking_score?: number | null;
+          ranking_breakdown?: Json | null;
+          ranking_updated_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          property_id?: string;
+          legacy_property_id?: string | null;
+          agency_id?: string;
+          broker_id?: string | null;
+          source?: Database["public"]["Enums"]["listing_source"];
+          external_id?: string;
+          transaction_type?: Database["public"]["Enums"]["transaction_type"];
+          status?: Database["public"]["Enums"]["property_status"];
+          sale_price?: number | null;
+          rent_price?: number | null;
+          condominium_fee?: number | null;
+          iptu?: number | null;
+          financiable?: boolean;
+          accepts_exchange?: boolean;
+          accepts_vehicle?: boolean;
+          furnished?: boolean;
+          pet_friendly?: boolean;
+          address_visible?: boolean;
+          title?: string;
+          description?: string | null;
+          original_url?: string | null;
+          published_at?: string | null;
+          source_updated_at?: string | null;
+          missing_from_feed_at?: string | null;
+          content_hash?: string | null;
+          last_seen_at?: string | null;
+          ranking_score?: number | null;
+          ranking_breakdown?: Json | null;
+          ranking_updated_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "property_offers_property_id_fkey";
+            columns: ["property_id"];
+            isOneToOne: false;
+            referencedRelation: "properties";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "property_offers_legacy_property_id_fkey";
+            columns: ["legacy_property_id"];
+            isOneToOne: false;
+            referencedRelation: "properties";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "property_offers_agency_id_fkey";
+            columns: ["agency_id"];
+            isOneToOne: false;
+            referencedRelation: "agencies";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      offer_media: {
+        Row: {
+          id: string;
+          offer_id: string;
+          media_type: Database["public"]["Enums"]["media_type"];
+          url: string;
+          thumbnail_url: string | null;
+          width: number | null;
+          height: number | null;
+          position: number;
+          is_cover: boolean;
+          source_url: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          offer_id: string;
+          media_type?: Database["public"]["Enums"]["media_type"];
+          url: string;
+          thumbnail_url?: string | null;
+          width?: number | null;
+          height?: number | null;
+          position?: number;
+          is_cover?: boolean;
+          source_url?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          offer_id?: string;
+          media_type?: Database["public"]["Enums"]["media_type"];
+          url?: string;
+          thumbnail_url?: string | null;
+          width?: number | null;
+          height?: number | null;
+          position?: number;
+          is_cover?: boolean;
+          source_url?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "offer_media_offer_id_fkey";
+            columns: ["offer_id"];
+            isOneToOne: false;
+            referencedRelation: "property_offers";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      offer_price_history: {
+        Row: {
+          id: string;
+          offer_id: string;
+          price: number | null;
+          rent_price: number | null;
+          source: string | null;
+          recorded_at: string;
+        };
+        Insert: {
+          id?: string;
+          offer_id: string;
+          price?: number | null;
+          rent_price?: number | null;
+          source?: string | null;
+          recorded_at?: string;
+        };
+        Update: {
+          id?: string;
+          offer_id?: string;
+          price?: number | null;
+          rent_price?: number | null;
+          source?: string | null;
+          recorded_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "offer_price_history_offer_id_fkey";
+            columns: ["offer_id"];
+            isOneToOne: false;
+            referencedRelation: "property_offers";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      offer_status_history: {
+        Row: {
+          id: string;
+          offer_id: string;
+          from_status: Database["public"]["Enums"]["property_status"] | null;
+          to_status: Database["public"]["Enums"]["property_status"];
+          changed_by: string | null;
+          reason: string | null;
+          recorded_at: string;
+        };
+        Insert: {
+          id?: string;
+          offer_id: string;
+          from_status?: Database["public"]["Enums"]["property_status"] | null;
+          to_status: Database["public"]["Enums"]["property_status"];
+          changed_by?: string | null;
+          reason?: string | null;
+          recorded_at?: string;
+        };
+        Update: {
+          id?: string;
+          offer_id?: string;
+          from_status?: Database["public"]["Enums"]["property_status"] | null;
+          to_status?: Database["public"]["Enums"]["property_status"];
+          changed_by?: string | null;
+          reason?: string | null;
+          recorded_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "offer_status_history_offer_id_fkey";
+            columns: ["offer_id"];
+            isOneToOne: false;
+            referencedRelation: "property_offers";
             referencedColumns: ["id"];
           }
         ];

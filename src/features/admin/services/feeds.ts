@@ -74,19 +74,47 @@ export async function getAllAdminFeeds(): Promise<AdminFeedItem[]> {
       return [];
     }
 
+    interface FeedRunRow {
+      id: string;
+      status: string;
+      started_at: string;
+      finished_at: string | null;
+      items_found: number | null;
+      items_created: number | null;
+      items_updated: number | null;
+      items_deactivated: number | null;
+      items_failed: number | null;
+      error_message: string | null;
+    }
+
+    interface FeedDbRow {
+      id: string;
+      agency_id: string;
+      type: string;
+      url: string;
+      status: string;
+      sync_interval_minutes: number;
+      last_sync_at: string | null;
+      next_sync_at: string | null;
+      created_at: string;
+      updated_at: string;
+      agency?: { id: string; name: string } | null;
+      runs?: FeedRunRow[];
+    }
+
     const now = Date.now();
 
-    return (data as any[]).map((row) => {
-      const runs = (row.runs || []) as any[];
+    return (data as unknown as FeedDbRow[]).map((row) => {
+      const runs = row.runs || [];
       runs.sort(
-        (a: any, b: any) =>
+        (a, b) =>
           new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
       );
       const latest = runs[0] || null;
 
       // Localiza a última sincronização que teve status de sucesso ou concluído com alertas
       const lastSuccess = runs.find(
-        (r: any) =>
+        (r) =>
           (r.status === 'completed' || r.status === 'completed_with_errors') &&
           r.finished_at
       );

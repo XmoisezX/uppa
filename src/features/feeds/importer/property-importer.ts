@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import type { NormalizedProperty } from "@/types/feed";
+import { PropertyOfferIngestionService } from "@/features/offers";
 
 export interface PropertyImporterContext {
   agencyId: string;
@@ -42,6 +43,7 @@ export interface ImportProgressData {
 export class PropertyImporter {
   private supabase: SupabaseClient<Database>;
   private context: PropertyImporterContext;
+  private ingestionService: PropertyOfferIngestionService;
 
   // Caches em memória durante a execução para evitar consultas repetitivas ao banco
   private stateCache = new Map<string, string>(); // UF ou Nome -> UUID
@@ -52,6 +54,7 @@ export class PropertyImporter {
   constructor(supabase: SupabaseClient<Database>, context: PropertyImporterContext) {
     this.supabase = supabase;
     this.context = context;
+    this.ingestionService = new PropertyOfferIngestionService(supabase);
   }
 
   private get source(): "vrsync" | "chaves_na_mao" | "website" | "manual" | "api" | "csv" | "partner" {
@@ -207,7 +210,8 @@ export class PropertyImporter {
   }
 
   /**
-   * Persiste ou atualiza um único imóvel garantindo idempotência
+   * Persiste ou atualiza um único imóvel e oferta garantindo idempotência
+   * Utiliza a camada central PropertyOfferIngestionService
    */
   private async persistSingleProperty(
     prop: NormalizedProperty
@@ -222,143 +226,56 @@ export class PropertyImporter {
       cityId
     );
 
-    // Verificação de identidade: agency_id + source + external_id (Seção 28 do MASTER_PLAN)
-    const { data: existingProperty, error: searchError } = await this.supabase
-      .from("properties")
-      .select("id, price, rent_price, status, slug")
-      .eq("agency_id", agencyId)
-      .eq("source", this.source)
-      .eq("external_id", prop.externalId)
-      .maybeSingle();
+    const hasValidPrice = Boolean(
+      (typeof prop.price === "number" && prop.price > 0) ||
+      (typeof prop.rentPrice === "number" && prop.rentPrice > 0)
+    );
 
-    if (searchError) {
-      throw new Error(`Falha ao verificar idempotência: ${searchError.message}`);
-    }
+    const result = await this.ingestionService.upsertPropertyOffer({
+      agencyId,
+      source: this.source,
+      externalId: prop.externalId,
+      propertyType: prop.propertyType,
+      street: prop.address.street || null,
+      number: prop.address.number || null,
+      complement: prop.address.complement || null,
+      zipcode: prop.address.postalCode || null,
+      stateId: stateId || null,
+      cityId: cityId || null,
+      neighborhoodId: neighborhoodId || null,
+      latitude: prop.address.latitude || null,
+      longitude: prop.address.longitude || null,
+      usableArea: this.safeArea(prop.usableArea),
+      totalArea: this.safeArea(prop.totalArea),
+      lotArea: this.safeArea(prop.lotArea),
+      bedrooms: prop.bedrooms || 0,
+      suites: prop.suites || 0,
+      bathrooms: prop.bathrooms || 0,
+      parkingSpaces: prop.parkingSpaces || 0,
+      title: prop.title,
+      description: prop.description || null,
+      transactionType: prop.transactionType,
+      status: hasValidPrice ? "active" : "inactive",
+      salePrice: prop.price || null,
+      rentPrice: prop.rentPrice || null,
+      condominiumFee: prop.condominiumFee || null,
+      iptu: prop.iptu || null,
+      sourceUpdatedAt: prop.sourceUpdatedAt
+        ? new Date(prop.sourceUpdatedAt).toISOString()
+        : new Date().toISOString(),
+      missingFromFeedAt: null,
+      media: (prop.images || []).map((img, idx) => ({
+        url: img.url,
+        isCover: Boolean(img.isCover || idx === 0),
+        position: idx,
+        type: "image",
+      })),
+    });
 
-    if (existingProperty) {
-      // ==========================================
-      // OPERAÇÃO UPDATE (Imóvel existente)
-      // ==========================================
-      const propertyId = existingProperty.id;
+    // Sincroniza características físicas na property
+    await this.syncFeatures(result.propertyId, prop.features);
 
-      // 1. Atualiza dados principais (históricos de preço e status são gerados automaticamente pelas triggers no Postgres)
-
-      const hasValidPrice = Boolean(
-        (typeof prop.price === "number" && prop.price > 0) ||
-        (typeof prop.rentPrice === "number" && prop.rentPrice > 0)
-      );
-
-      // 2. Atualiza dados principais
-      const { error: updateError } = await this.supabase
-        .from("properties")
-        .update({
-          title: prop.title,
-          description: prop.description || null,
-          transaction_type: prop.transactionType,
-          property_type: prop.propertyType,
-          ...(!hasValidPrice ? { status: "inactive" as const } : {}),
-          price: prop.price || null,
-          rent_price: prop.rentPrice || null,
-          condominium_fee: prop.condominiumFee || null,
-          iptu: prop.iptu || null,
-          bedrooms: prop.bedrooms || 0,
-          bathrooms: prop.bathrooms || 0,
-          suites: prop.suites || 0,
-          parking_spaces: prop.parkingSpaces || 0,
-          usable_area: this.safeArea(prop.usableArea),
-          total_area: this.safeArea(prop.totalArea),
-          lot_area: this.safeArea(prop.lotArea),
-          street: prop.address.street || null,
-          number: prop.address.number || null,
-          complement: prop.address.complement || null,
-          zipcode: prop.address.postalCode || null,
-          state_id: stateId || null,
-          city_id: cityId || null,
-          neighborhood_id: neighborhoodId || null,
-          latitude: prop.address.latitude || null,
-          longitude: prop.address.longitude || null,
-          source_updated_at: prop.sourceUpdatedAt
-            ? new Date(prop.sourceUpdatedAt).toISOString()
-            : new Date().toISOString(),
-          missing_from_feed_at: null, // Limpa marcação de ausência pois foi encontrado
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", propertyId);
-
-      if (updateError) {
-        throw new Error(`Falha ao atualizar imóvel: ${updateError.message}`);
-      }
-
-      // 3. Sincroniza mídias e características
-      await this.syncMedia(propertyId, prop.images);
-      await this.syncFeatures(propertyId, prop.features);
-
-      return "updated";
-    } else {
-      // ==========================================
-      // OPERAÇÃO INSERT (Novo imóvel)
-      // ==========================================
-      const baseSlug = this.generateSlug(prop.title, prop.externalId);
-      const hasValidPrice = Boolean(
-        (typeof prop.price === "number" && prop.price > 0) ||
-        (typeof prop.rentPrice === "number" && prop.rentPrice > 0)
-      );
-
-      const { data: newProperty, error: insertError } = await this.supabase
-        .from("properties")
-        .insert({
-          agency_id: agencyId,
-          source: this.source,
-          external_id: prop.externalId,
-          slug: baseSlug,
-          title: prop.title,
-          description: prop.description || null,
-          transaction_type: prop.transactionType,
-          property_type: prop.propertyType,
-          status: hasValidPrice ? "active" : "inactive",
-          price: prop.price || null,
-          rent_price: prop.rentPrice || null,
-          condominium_fee: prop.condominiumFee || null,
-          iptu: prop.iptu || null,
-          bedrooms: prop.bedrooms || 0,
-          bathrooms: prop.bathrooms || 0,
-          suites: prop.suites || 0,
-          parking_spaces: prop.parkingSpaces || 0,
-          usable_area: this.safeArea(prop.usableArea),
-          total_area: this.safeArea(prop.totalArea),
-          lot_area: this.safeArea(prop.lotArea),
-          street: prop.address.street || null,
-          number: prop.address.number || null,
-          complement: prop.address.complement || null,
-          zipcode: prop.address.postalCode || null,
-          state_id: stateId || null,
-          city_id: cityId || null,
-          neighborhood_id: neighborhoodId || null,
-          latitude: prop.address.latitude || null,
-          longitude: prop.address.longitude || null,
-          published_at: new Date().toISOString(),
-          source_updated_at: prop.sourceUpdatedAt
-            ? new Date(prop.sourceUpdatedAt).toISOString()
-            : new Date().toISOString(),
-        })
-        .select("id")
-        .single();
-
-      if (insertError || !newProperty) {
-        throw new Error(`Falha ao inserir imóvel: ${insertError?.message}`);
-      }
-
-      const propertyId = newProperty.id;
-
-      // Históricos de preço e status iniciais são gerados automaticamente pelas triggers no PostgreSQL
-      // trg_property_price_history e trg_property_status_history após o INSERT
-
-      // Mídias e características
-      await this.syncMedia(propertyId, prop.images);
-      await this.syncFeatures(propertyId, prop.features);
-
-      return "created";
-    }
+    return result.action;
   }
 
   /**

@@ -18,6 +18,7 @@ import type { NormalizedProperty } from "@/types/feed";
 import type { PropertyStatus } from "@/types/property";
 import type { CrawlResult, CrawlRunStatus } from "../types";
 import { computePropertyContentHash } from "../utils/content-hash";
+import { PropertyOfferIngestionService } from "@/features/offers";
 
 export interface WebsiteImporterContext {
   agencyId: string;
@@ -33,6 +34,7 @@ export interface WebsiteImporterContext {
 export class WebsitePropertyImporter {
   private supabase: SupabaseClient<Database>;
   private context: WebsiteImporterContext;
+  private ingestionService: PropertyOfferIngestionService;
 
   private stateCache = new Map<string, string>();
   private cityCache = new Map<string, string>();
@@ -52,6 +54,7 @@ export class WebsitePropertyImporter {
   ) {
     this.supabase = supabase;
     this.context = context;
+    this.ingestionService = new PropertyOfferIngestionService(supabase);
     this._itemsCreated = context.initialCounts?.created || 0;
     this._itemsUpdated = context.initialCounts?.updated || 0;
     this._itemsFailed = context.initialCounts?.failed || 0;
@@ -274,36 +277,22 @@ export class WebsitePropertyImporter {
       cityId
     );
 
-    // 1. Verificação de identidade: agency_id + source ('website') + external_id
-    let { data: existing, error: searchError } = await this.supabase
-      .from("properties")
-      .select("id, content_hash, status, source, external_id")
-      .eq("agency_id", agencyId)
-      .eq("source", "website")
-      .eq("external_id", prop.externalId)
-      .maybeSingle();
+    // 1. Verificação de identidade comercial nativa: agency_id + source ('website') + external_id em property_offers
+    let existingOffer = await this.ingestionService.findOfferByIdentity(
+      agencyId,
+      "website",
+      prop.externalId
+    );
 
-    if (searchError) {
-      throw new Error(`Falha na busca de idempotência: ${searchError.message}`);
-    }
-
-    // 2. Análise de duplicação cross-origem para a mesma imobiliária:
-    // Se o imóvel não foi encontrado com source 'website', verifica se a mesma imobiliária
-    // já o cadastrou via Feed XML ('vrsync', 'chaves_na_mao') ou manualmente ('manual')
-    if (!existing) {
+    // 2. Análise de código limpo se não localizado diretamente
+    if (!existingOffer) {
       const cleanCode = prop.externalId.replace(/_[A-Z0-9]+$/i, "");
-      const searchCodes = Array.from(new Set([prop.externalId, cleanCode]));
-
-      const { data: crossSource } = await this.supabase
-        .from("properties")
-        .select("id, content_hash, status, source, external_id")
-        .eq("agency_id", agencyId)
-        .in("external_id", searchCodes)
-        .limit(1)
-        .maybeSingle();
-
-      if (crossSource) {
-        existing = crossSource;
+      if (cleanCode !== prop.externalId) {
+        existingOffer = await this.ingestionService.findOfferByIdentity(
+          agencyId,
+          "website",
+          cleanCode
+        );
       }
     }
 
@@ -326,12 +315,19 @@ export class WebsitePropertyImporter {
       targetStatus = "inactive";
     }
 
-    if (existing) {
-      const propertyId = existing.id;
-
+    if (existingOffer) {
       // HASH CHECK: Se o content hash for idêntico, poupa writes pesados
-      if (existing.content_hash === contentHash) {
-        // Apenas marca que o imóvel foi visto nesta execução, limpa marcação de ausência e atualiza status
+      if (existingOffer.content_hash === contentHash) {
+        // Apenas marca que a oferta e o imóvel foram vistos nesta execução
+        await this.supabase
+          .from("property_offers")
+          .update({
+            last_seen_at: nowIso,
+            missing_from_feed_at: null,
+            status: targetStatus,
+          })
+          .eq("id", existingOffer.id);
+
         await this.supabase
           .from("properties")
           .update({
@@ -339,290 +335,126 @@ export class WebsitePropertyImporter {
             missing_from_feed_at: null,
             status: targetStatus,
           })
-          .eq("id", propertyId);
+          .eq("id", existingOffer.property_id);
 
         return "skipped";
       }
-
-      // Determina precisão do endereço: pontual (exato) vs região/bairro
-      const isExactAddress = Boolean(
-        prop.address.street &&
-        prop.address.number &&
-        prop.address.number !== "0" &&
-        prop.address.number !== "0000" &&
-        prop.address.number.toLowerCase() !== "sn" &&
-        prop.address.number.toLowerCase() !== "s/n"
-      );
-
-      const addressVisible =
-        typeof prop.address.addressVisible === "boolean"
-          ? prop.address.addressVisible
-          : isExactAddress;
-
-      let resolvedLat = prop.address.latitude || null;
-      let resolvedLng = prop.address.longitude || null;
-
-      if ((!resolvedLat || !resolvedLng) && neighborhoodId) {
-        try {
-          const { data: nRow } = await this.supabase
-            .from("neighborhoods")
-            .select("latitude, longitude")
-            .eq("id", neighborhoodId)
-            .single();
-          if (nRow?.latitude && nRow?.longitude) {
-            resolvedLat = Number(nRow.latitude);
-            resolvedLng = Number(nRow.longitude);
-          }
-        } catch {}
-      }
-
-      if ((!resolvedLat || !resolvedLng) && cityId) {
-        try {
-          const { data: cRow } = await this.supabase
-            .from("cities")
-            .select("latitude, longitude")
-            .eq("id", cityId)
-            .single();
-          if (cRow?.latitude && cRow?.longitude) {
-            resolvedLat = Number(cRow.latitude);
-            resolvedLng = Number(cRow.longitude);
-          }
-        } catch {}
-      }
-
-      // Conteúdo alterado: executa UPDATE completo
-      const { error: updateError } = await this.supabase
-        .from("properties")
-        .update({
-          title: prop.title,
-          description: prop.description || null,
-          transaction_type: prop.transactionType,
-          property_type: prop.propertyType,
-          status: targetStatus,
-          price: prop.price || null,
-          rent_price: prop.rentPrice || null,
-          condominium_fee: prop.condominiumFee || null,
-          iptu: prop.iptu || null,
-          bedrooms: prop.bedrooms || 0,
-          bathrooms: prop.bathrooms || 0,
-          suites: prop.suites || 0,
-          parking_spaces: prop.parkingSpaces || 0,
-          usable_area: this.safeArea(prop.usableArea),
-          total_area: this.safeArea(prop.totalArea),
-          lot_area: this.safeArea(prop.lotArea),
-          address_visible: addressVisible,
-          street: prop.address.street || null,
-          number: prop.address.number || null,
-          complement: prop.address.complement || null,
-          zipcode: prop.address.postalCode || null,
-          state_id: stateId || null,
-          city_id: cityId || null,
-          neighborhood_id: neighborhoodId || null,
-          latitude: resolvedLat,
-          longitude: resolvedLng,
-          source_url: prop.sourceUrl || null,
-          content_hash: contentHash,
-          last_seen_at: nowIso,
-          missing_from_feed_at: null,
-          source_updated_at: prop.sourceUpdatedAt
-            ? new Date(prop.sourceUpdatedAt).toISOString()
-            : nowIso,
-          updated_at: nowIso,
-        })
-        .eq("id", propertyId);
-
-      if (updateError) {
-        throw new Error(`Falha ao atualizar imóvel: ${updateError.message}`);
-      }
-
-      // Sincroniza mídias e características
-      await this.syncMedia(propertyId, prop.images);
-      await this.syncFeatures(propertyId, prop.features);
-
-      return "updated";
-    } else {
-      // Determina precisão do endereço: pontual (exato) vs região/bairro
-      const isExactAddress = Boolean(
-        prop.address.street &&
-        prop.address.number &&
-        prop.address.number !== "0" &&
-        prop.address.number !== "0000" &&
-        prop.address.number.toLowerCase() !== "sn" &&
-        prop.address.number.toLowerCase() !== "s/n"
-      );
-
-      const addressVisible =
-        typeof prop.address.addressVisible === "boolean"
-          ? prop.address.addressVisible
-          : isExactAddress;
-
-      let resolvedLat = prop.address.latitude || null;
-      let resolvedLng = prop.address.longitude || null;
-
-      if ((!resolvedLat || !resolvedLng) && neighborhoodId) {
-        try {
-          const { data: nRow } = await this.supabase
-            .from("neighborhoods")
-            .select("latitude, longitude")
-            .eq("id", neighborhoodId)
-            .single();
-          if (nRow?.latitude && nRow?.longitude) {
-            resolvedLat = Number(nRow.latitude);
-            resolvedLng = Number(nRow.longitude);
-          }
-        } catch {}
-      }
-
-      if ((!resolvedLat || !resolvedLng) && cityId) {
-        try {
-          const { data: cRow } = await this.supabase
-            .from("cities")
-            .select("latitude, longitude")
-            .eq("id", cityId)
-            .single();
-          if (cRow?.latitude && cRow?.longitude) {
-            resolvedLat = Number(cRow.latitude);
-            resolvedLng = Number(cRow.longitude);
-          }
-        } catch {}
-      }
-
-      // Inserção de Novo Anúncio
-      const baseSlug = this.generateSlug(prop.title, prop.externalId);
-
-      const { data: newProperty, error: insertError } = await this.supabase
-        .from("properties")
-        .insert({
-          agency_id: agencyId,
-          source: "website",
-          external_id: prop.externalId,
-          slug: baseSlug,
-          title: prop.title,
-          description: prop.description || null,
-          transaction_type: prop.transactionType,
-          property_type: prop.propertyType,
-          status: targetStatus,
-          price: prop.price || null,
-          rent_price: prop.rentPrice || null,
-          condominium_fee: prop.condominiumFee || null,
-          iptu: prop.iptu || null,
-          bedrooms: prop.bedrooms || 0,
-          bathrooms: prop.bathrooms || 0,
-          suites: prop.suites || 0,
-          parking_spaces: prop.parkingSpaces || 0,
-          usable_area: this.safeArea(prop.usableArea),
-          total_area: this.safeArea(prop.totalArea),
-          lot_area: this.safeArea(prop.lotArea),
-          address_visible: addressVisible,
-          street: prop.address.street || null,
-          number: prop.address.number || null,
-          complement: prop.address.complement || null,
-          zipcode: prop.address.postalCode || null,
-          state_id: stateId || null,
-          city_id: cityId || null,
-          neighborhood_id: neighborhoodId || null,
-          latitude: resolvedLat,
-          longitude: resolvedLng,
-          source_url: prop.sourceUrl || null,
-          content_hash: contentHash,
-          last_seen_at: nowIso,
-          published_at: nowIso,
-          source_updated_at: prop.sourceUpdatedAt
-            ? new Date(prop.sourceUpdatedAt).toISOString()
-            : nowIso,
-        })
-        .select("id")
-        .single();
-
-      if (insertError || !newProperty) {
-        throw new Error(`Falha ao inserir imóvel: ${insertError?.message}`);
-      }
-
-      const propertyId = newProperty.id;
-
-      await this.syncMedia(propertyId, prop.images);
-      await this.syncFeatures(propertyId, prop.features);
-
-      return "created";
     }
+
+    // Determina precisão do endereço: pontual (exato) vs região/bairro
+    const isExactAddress = Boolean(
+      prop.address.street &&
+      prop.address.number &&
+      prop.address.number !== "0" &&
+      prop.address.number !== "0000" &&
+      prop.address.number.toLowerCase() !== "sn" &&
+      prop.address.number.toLowerCase() !== "s/n"
+    );
+
+    const addressVisible =
+      typeof prop.address.addressVisible === "boolean"
+        ? prop.address.addressVisible
+        : isExactAddress;
+
+    let resolvedLat = prop.address.latitude || null;
+    let resolvedLng = prop.address.longitude || null;
+
+    if ((!resolvedLat || !resolvedLng) && neighborhoodId) {
+      try {
+        const { data: nRow } = await this.supabase
+          .from("neighborhoods")
+          .select("latitude, longitude")
+          .eq("id", neighborhoodId)
+          .single();
+        if (nRow?.latitude && nRow?.longitude) {
+          resolvedLat = Number(nRow.latitude);
+          resolvedLng = Number(nRow.longitude);
+        }
+      } catch {}
+    }
+
+    if ((!resolvedLat || !resolvedLng) && cityId) {
+      try {
+        const { data: cRow } = await this.supabase
+          .from("cities")
+          .select("latitude, longitude")
+          .eq("id", cityId)
+          .single();
+        if (cRow?.latitude && cRow?.longitude) {
+          resolvedLat = Number(cRow.latitude);
+          resolvedLng = Number(cRow.longitude);
+        }
+      } catch {}
+    }
+
+    // Gravação central via PropertyOfferIngestionService
+    const result = await this.ingestionService.upsertPropertyOffer({
+      agencyId,
+      source: "website",
+      externalId: prop.externalId,
+      propertyType: prop.propertyType,
+      street: prop.address.street || null,
+      number: prop.address.number || null,
+      complement: prop.address.complement || null,
+      zipcode: prop.address.postalCode || null,
+      stateId: stateId || null,
+      cityId: cityId || null,
+      neighborhoodId: neighborhoodId || null,
+      latitude: resolvedLat,
+      longitude: resolvedLng,
+      usableArea: this.safeArea(prop.usableArea),
+      totalArea: this.safeArea(prop.totalArea),
+      lotArea: this.safeArea(prop.lotArea),
+      bedrooms: prop.bedrooms || 0,
+      suites: prop.suites || 0,
+      bathrooms: prop.bathrooms || 0,
+      parkingSpaces: prop.parkingSpaces || 0,
+      addressVisible,
+      title: prop.title,
+      description: prop.description || null,
+      transactionType: prop.transactionType,
+      status: targetStatus,
+      salePrice: prop.price || null,
+      rentPrice: prop.rentPrice || null,
+      condominiumFee: prop.condominiumFee || null,
+      iptu: prop.iptu || null,
+      originalUrl: prop.sourceUrl || null,
+      contentHash,
+      lastSeenAt: nowIso,
+      missingFromFeedAt: null,
+      sourceUpdatedAt: prop.sourceUpdatedAt
+        ? new Date(prop.sourceUpdatedAt).toISOString()
+        : nowIso,
+      media: (prop.images || []).map((img, idx) => ({
+        url: img.url,
+        isCover: Boolean(img.isCover || idx === 0),
+        position: idx,
+        type: "image",
+      })),
+    });
+
+    // Sincroniza características na property
+    await this.syncFeatures(result.propertyId, prop.features);
+
+    return result.action;
   }
 
   /**
    * Desativação segura em duas etapas de imóveis não mais encontrados no website
-   * NUNCA executa DELETE físico
+   * Opera prioritariamente através do PropertyOfferIngestionService
    */
   private async handleMissingProperties(
     agencyId: string,
     presentExternalIds: string[],
     crawlRunStartedAt?: string
   ): Promise<number> {
-    const presentSet = new Set(presentExternalIds);
-
-    const { data: dbProperties, error } = await this.supabase
-      .from("properties")
-      .select("id, external_id, status, missing_from_feed_at, last_seen_at")
-      .eq("agency_id", agencyId)
-      .eq("source", "website");
-
-    if (error || !dbProperties) {
-      console.warn(
-        "[WebsitePropertyImporter] Falha ao consultar imóveis para detecção de ausência:",
-        error?.message
-      );
-      return 0;
-    }
-
-    let deactivatedCount = 0;
-    const nowIso = new Date().toISOString();
-
-    for (const prop of dbProperties) {
-      const isPresent =
-        presentSet.has(prop.external_id) ||
-        Boolean(
-          crawlRunStartedAt &&
-            prop.last_seen_at &&
-            new Date(prop.last_seen_at).getTime() >=
-              new Date(crawlRunStartedAt).getTime()
-        );
-
-      if (isPresent) {
-        // Imóvel presente: se estava marcado como ausente temporariamente, limpa marcação
-        // NUNCA força reativação para active se o imóvel estiver inativo por falta de preço/imagens/descrição
-        if (prop.missing_from_feed_at !== null) {
-          await this.supabase
-            .from("properties")
-            .update({
-              missing_from_feed_at: null,
-              updated_at: nowIso,
-            })
-            .eq("id", prop.id);
-        }
-      } else {
-        // Imóvel ausente no site
-        if (prop.missing_from_feed_at === null) {
-          // 1ª ausência: apenas marca timestamp e mantém status atual
-          await this.supabase
-            .from("properties")
-            .update({
-              missing_from_feed_at: nowIso,
-            })
-            .eq("id", prop.id);
-        } else {
-          // 2ª ausência: confirmação de exclusão na origem -> desativa
-          if (prop.status === "active") {
-            await this.supabase
-              .from("properties")
-              .update({
-                status: "inactive",
-                updated_at: nowIso,
-              })
-              .eq("id", prop.id);
-
-            deactivatedCount++;
-          }
-        }
-      }
-    }
+    return await this.ingestionService.reconcileMissingOffers({
+      agencyId,
+      source: "website",
+      presentExternalIds,
+      crawlRunStartedAt,
+    });
+  }
 
     return deactivatedCount;
   }

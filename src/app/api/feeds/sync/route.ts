@@ -106,11 +106,12 @@ async function handleSyncRequest(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
-    console.error("[/api/feeds/sync] Falha na execução do cron:", err);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "Erro inesperado ao executar cron de feeds.";
+    console.error("[/api/feeds/sync] Falha na execução do cron:", errorMsg);
     return NextResponse.json(
       {
-        error: err?.message || "Erro inesperado ao executar cron de feeds.",
+        error: errorMsg,
         durationMs: Date.now() - startTime,
       },
       { status: 500 }
