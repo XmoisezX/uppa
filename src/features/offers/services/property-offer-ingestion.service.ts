@@ -245,12 +245,16 @@ export class PropertyOfferIngestionService {
 
       if (isPriceChanged && (input.salePrice || input.rentPrice)) {
         // Verifica se a ponte ou gravação nativa já registrou este valor recentemente
-        const { data: recentPriceHist } = await this.supabase
+        let priceQuery = this.supabase
           .from("offer_price_history")
           .select("id")
-          .eq("offer_id", offerId)
-          .eq("price", input.salePrice || null)
-          .limit(1);
+          .eq("offer_id", offerId);
+
+        if (input.salePrice) {
+          priceQuery = priceQuery.eq("price", input.salePrice);
+        }
+
+        const { data: recentPriceHist } = await priceQuery.limit(1);
 
         if (!recentPriceHist || recentPriceHist.length === 0) {
           await this.supabase.from("offer_price_history").insert({
@@ -411,12 +415,16 @@ export class PropertyOfferIngestionService {
 
       // 3. Registra histórico inicial nativo (com prevenção de duplicata da ponte)
       if (input.salePrice || input.rentPrice) {
-        const { data: existingInitPrice } = await this.supabase
+        let initPriceQuery = this.supabase
           .from("offer_price_history")
           .select("id")
-          .eq("offer_id", offerId)
-          .eq("price", input.salePrice || null)
-          .limit(1);
+          .eq("offer_id", offerId);
+
+        if (input.salePrice) {
+          initPriceQuery = initPriceQuery.eq("price", input.salePrice);
+        }
+
+        const { data: existingInitPrice } = await initPriceQuery.limit(1);
 
         if (!existingInitPrice || existingInitPrice.length === 0) {
           await this.supabase.from("offer_price_history").insert({

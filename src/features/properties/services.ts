@@ -7,6 +7,7 @@ import type { CreatePropertyInput, UpdatePropertyInput } from "@/lib/validations
 
 type PropertyInsert = Database["public"]["Tables"]["properties"]["Insert"];
 type PropertyUpdate = Database["public"]["Tables"]["properties"]["Update"];
+type PropertyOfferUpdate = Database["public"]["Tables"]["property_offers"]["Update"];
 
 /**
  * Retorna catálogo completo de características disponíveis
@@ -328,7 +329,7 @@ export async function updateProperty(propertyId: string, input: Partial<CreatePr
   }
 
   // Atualização nativa de campos comerciais em property_offers
-  const commercialUpdate: Record<string, any> = {};
+  const commercialUpdate: PropertyOfferUpdate = {};
   if (input.title !== undefined) commercialUpdate.title = input.title.trim();
   if (input.description !== undefined) commercialUpdate.description = input.description?.trim() || null;
   if (input.transactionType !== undefined) commercialUpdate.transaction_type = input.transactionType;

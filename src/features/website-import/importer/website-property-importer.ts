@@ -456,9 +456,6 @@ export class WebsitePropertyImporter {
     });
   }
 
-    return deactivatedCount;
-  }
-
   private async syncMedia(propertyId: string, images: NormalizedProperty["images"]) {
     if (!images || images.length === 0) return;
 

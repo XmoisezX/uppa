@@ -37,6 +37,12 @@ export interface SearchPropertyItem {
   propertyType: PropertyType;
   price?: number | null;
   rentPrice?: number | null;
+  activeOffersCount?: number;
+  lowestSalePrice?: number | null;
+  highestSalePrice?: number | null;
+  lowestRentPrice?: number | null;
+  highestRentPrice?: number | null;
+  primaryOfferId?: string | null;
   condominiumFee?: number | null;
   usableArea?: number | null;
   totalArea?: number | null;

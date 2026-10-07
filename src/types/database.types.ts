@@ -273,9 +273,18 @@ export interface Database {
             | "sold"
             | "rented"
             | "blocked"
-            | "archived";
+            | "archived"
+            | "merged";
           price: number | null;
           rent_price: number | null;
+          active_offers_count: number;
+          lowest_sale_price: number | null;
+          highest_sale_price: number | null;
+          lowest_rent_price: number | null;
+          highest_rent_price: number | null;
+          primary_offer_id: string | null;
+          canonical_property_id: string | null;
+          merged_at: string | null;
           condominium_fee: number | null;
           iptu: number | null;
           bedrooms: number;
@@ -345,9 +354,18 @@ export interface Database {
             | "sold"
             | "rented"
             | "blocked"
-            | "archived";
+            | "archived"
+            | "merged";
           price?: number | null;
           rent_price?: number | null;
+          active_offers_count?: number;
+          lowest_sale_price?: number | null;
+          highest_sale_price?: number | null;
+          lowest_rent_price?: number | null;
+          highest_rent_price?: number | null;
+          primary_offer_id?: string | null;
+          canonical_property_id?: string | null;
+          merged_at?: string | null;
           condominium_fee?: number | null;
           iptu?: number | null;
           bedrooms?: number;
@@ -417,9 +435,18 @@ export interface Database {
             | "sold"
             | "rented"
             | "blocked"
-            | "archived";
+            | "archived"
+            | "merged";
           price?: number | null;
           rent_price?: number | null;
+          active_offers_count?: number;
+          lowest_sale_price?: number | null;
+          highest_sale_price?: number | null;
+          lowest_rent_price?: number | null;
+          highest_rent_price?: number | null;
+          primary_offer_id?: string | null;
+          canonical_property_id?: string | null;
+          merged_at?: string | null;
           condominium_fee?: number | null;
           iptu?: number | null;
           bedrooms?: number;
@@ -1045,6 +1072,98 @@ export interface Database {
             columns: ["offer_id"];
             isOneToOne: false;
             referencedRelation: "property_offers";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      property_slug_redirects: {
+        Row: {
+          id: string;
+          source_slug: string;
+          target_property_id: string;
+          target_slug: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          source_slug: string;
+          target_property_id: string;
+          target_slug: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          source_slug?: string;
+          target_property_id?: string;
+          target_slug?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "property_slug_redirects_target_property_id_fkey";
+            columns: ["target_property_id"];
+            isOneToOne: false;
+            referencedRelation: "properties";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      property_match_candidates: {
+        Row: {
+          id: string;
+          property_a_id: string;
+          property_b_id: string;
+          score: number;
+          confidence: "HIGH" | "MEDIUM" | "LOW";
+          signals: Json;
+          status: "pending" | "auto_approved" | "approved" | "rejected" | "unmerged";
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          decision_notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          property_a_id: string;
+          property_b_id: string;
+          score: number;
+          confidence: "HIGH" | "MEDIUM" | "LOW";
+          signals?: Json;
+          status?: "pending" | "auto_approved" | "approved" | "rejected" | "unmerged";
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          decision_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          property_a_id?: string;
+          property_b_id?: string;
+          score?: number;
+          confidence?: "HIGH" | "MEDIUM" | "LOW";
+          signals?: Json;
+          status?: "pending" | "auto_approved" | "approved" | "rejected" | "unmerged";
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          decision_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "property_match_candidates_property_a_id_fkey";
+            columns: ["property_a_id"];
+            isOneToOne: false;
+            referencedRelation: "properties";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "property_match_candidates_property_b_id_fkey";
+            columns: ["property_b_id"];
+            isOneToOne: false;
+            referencedRelation: "properties";
             referencedColumns: ["id"];
           }
         ];
@@ -1849,7 +1968,7 @@ export interface Database {
       user_role: "consumer" | "broker" | "agency_member" | "agency_admin" | "platform_admin";
       agency_member_role: "owner" | "admin" | "manager" | "broker" | "viewer";
       transaction_type: "sale" | "rent" | "sale_or_rent";
-      property_status: "draft" | "pending" | "active" | "inactive" | "sold" | "rented" | "blocked" | "archived";
+      property_status: "draft" | "pending" | "active" | "inactive" | "sold" | "rented" | "blocked" | "archived" | "merged";
       property_type:
         | "apartment"
         | "house"

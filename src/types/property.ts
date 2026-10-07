@@ -15,7 +15,8 @@ export type PropertyStatus =
   | "sold"
   | "rented"
   | "blocked"
-  | "archived";
+  | "archived"
+  | "merged";
 
 export type PropertyType =
   | "apartment"
@@ -60,6 +61,14 @@ export interface Property {
   featured?: boolean;
   rankingScore?: number;
   rankingBreakdown?: Record<string, number>;
+  activeOffersCount?: number;
+  lowestSalePrice?: number | null;
+  highestSalePrice?: number | null;
+  lowestRentPrice?: number | null;
+  highestRentPrice?: number | null;
+  primaryOfferId?: string | null;
+  canonicalPropertyId?: string | null;
+  mergedAt?: string | null;
   price?: number | null;
   rentPrice?: number | null;
   condominiumFee?: number | null;
