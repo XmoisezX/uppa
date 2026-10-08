@@ -42,6 +42,7 @@ const NAV_MAIN = [
   { label: 'Ranking de Imóveis', href: '/admin/ranking', icon: Award, permission: 'settings.manage' },
   { label: 'Agências', href: '/admin/agencias', icon: Briefcase, permission: 'agencies.manage' },
   { label: 'Reivindicações (Claims)', href: '/admin/claims', icon: ShieldCheck, permission: 'agencies.manage' },
+  { label: 'Expansão Territorial', href: '/admin/expansao', icon: Globe, permission: 'agencies.manage' },
   { label: 'Leads', href: '/admin/leads', icon: Inbox, permission: 'leads.manage' },
   { label: 'Feeds / VRSync', href: '/admin/feeds', icon: RefreshCw, permission: 'feeds.manage' },
   { label: 'Configurações', href: '/admin/configuracoes', icon: Settings, permission: 'settings.manage' },

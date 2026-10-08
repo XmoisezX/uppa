@@ -30,6 +30,9 @@ export interface WebsiteSource {
   metadata: Record<string, any>;
   lastCrawlAt?: string | null;
   nextCrawlAt?: string | null;
+  ingestionOrigin?: string;
+  createdBy?: string | null;
+  cityId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

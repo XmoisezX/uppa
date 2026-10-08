@@ -123,6 +123,23 @@ export async function createOrUpdateWebsiteSource(
   const parsed = new URL(formattedUrl);
   const domain = parsed.hostname.toLowerCase();
 
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // 1. Validação de segurança anti-concorrente (Seção 4):
+  // Impede que uma imobiliária cadastre o domínio oficial já vinculado e claimed por outra agência
+  const { data: conflictingAgency } = await supabase
+    .from("agencies")
+    .select("id, name, claim_status, is_official_profile")
+    .neq("id", agencyId)
+    .ilike("website", `%${domain}%`)
+    .eq("claim_status", "claimed")
+    .limit(1)
+    .maybeSingle();
+
+  if (conflictingAgency) {
+    throw new Error("Este domínio já está vinculado a outra imobiliária na UPPA.");
+  }
+
   // Executa detecção inicial para metadados
   const detector = new WebsiteSourceDetector();
   const detection = await detector.detect(formattedUrl);
@@ -130,6 +147,8 @@ export async function createOrUpdateWebsiteSource(
   const selectedConnector =
     connectorType || detection.recommendedConnector || "universal_structured_data";
 
+  // Se já existia uma fonte criada por uppa_discovery para este mesmo domínio e agência,
+  // preserva e converte para agency_managed (Seção 31)
   const { data, error } = await supabase
     .from("website_sources")
     .upsert(
@@ -145,6 +164,8 @@ export async function createOrUpdateWebsiteSource(
           hasJsonLd: detection.hasJsonLd,
         },
         crawl_interval_hours: 24,
+        ingestion_origin: "agency_managed",
+        created_by: user?.id || null,
       },
       { onConflict: "agency_id,domain" }
     )
@@ -166,6 +187,9 @@ export async function createOrUpdateWebsiteSource(
     metadata: (typeof data.metadata === "object" && data.metadata !== null ? data.metadata : {}) as Record<string, any>,
     lastCrawlAt: data.last_crawl_at,
     nextCrawlAt: data.next_crawl_at,
+    ingestionOrigin: (data as any).ingestion_origin || "agency_managed",
+    createdBy: (data as any).created_by,
+    cityId: (data as any).city_id,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -183,6 +207,7 @@ export async function getAgencyWebsiteSources(
     .from("website_sources")
     .select("*")
     .eq("agency_id", agencyId)
+    .eq("ingestion_origin", "agency_managed")
     .order("created_at", { ascending: false });
 
   if (error || !data) return [];
@@ -198,6 +223,9 @@ export async function getAgencyWebsiteSources(
     metadata: d.metadata || {},
     lastCrawlAt: d.last_crawl_at,
     nextCrawlAt: d.next_crawl_at,
+    ingestionOrigin: d.ingestion_origin || "agency_managed",
+    createdBy: d.created_by,
+    cityId: d.city_id,
     createdAt: d.created_at,
     updatedAt: d.updated_at,
   }));
