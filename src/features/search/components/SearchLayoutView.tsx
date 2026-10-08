@@ -7,10 +7,25 @@ import { SearchBreadcrumb } from "./SearchBreadcrumb";
 import { SearchHeader } from "./SearchHeader";
 import { SearchSidebarFilters } from "./SearchSidebarFilters";
 import { SearchPropertyList } from "./SearchPropertyList";
+import dynamic from "next/dynamic";
 import { SearchFilterDrawer } from "./SearchFilterDrawer";
-import { SearchMap } from "./SearchMap";
 import type { MapViewport } from "@/features/maps/types";
 import type { SearchResult, SearchFilters } from "../types";
+
+const SearchMap = dynamic(
+  () => import("./SearchMap").then((mod) => mod.SearchMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full min-h-[500px] flex items-center justify-center bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+        <div className="flex flex-col items-center gap-2 text-slate-500">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          <span className="text-xs font-semibold">Carregando mapa interativo...</span>
+        </div>
+      </div>
+    ),
+  }
+);
 
 interface SearchLayoutViewProps {
   result: SearchResult;

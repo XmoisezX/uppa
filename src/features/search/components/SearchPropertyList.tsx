@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { ArrowUpDown, Map, List, Loader2 } from "lucide-react";
+import { ArrowUpDown, Map, List, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchPropertyCard } from "./SearchPropertyCard";
 import { SearchPropertyCardSkeleton } from "./SearchPropertyCardSkeleton";
 import { SearchEmptyState } from "./SearchEmptyState";
 import { SearchFilterChips } from "./SearchFilterChips";
+import { SEARCH_BATCH_SIZE, SEARCH_SENTINEL_ROOT_MARGIN } from "../constants";
 import type { SearchResult, SearchPropertyItem, SearchFilters } from "../types";
 
 const PROPERTY_TYPE_PLURALS: Record<string, string> = {
@@ -111,34 +112,132 @@ export function SearchPropertyList({
 
   const { properties, total, page, totalPages, filters } = result;
 
-  // Estado interno para suportar carregamento infinito contínuo
-  const [propertiesList, setPropertiesList] = useState<SearchPropertyItem[]>(properties);
-  const [currentPage, setCurrentPage] = useState<number>(page || 1);
-  const [hasMore, setHasMore] = useState<boolean>(properties.length < total);
-  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const storageKey = typeof window !== "undefined"
+    ? `uppa_search_cache_${pathname}?${Array.from(searchParams.entries())
+        .filter(([k]) => k !== "cursor" && k !== "page")
+        .map(([k, v]) => `${k}=${v}`)
+        .sort()
+        .join("&")}`
+    : "";
 
-  // Sincroniza estado quando a busca do servidor ou os filtros mudarem
+  // Estado interno para suportar carregamento infinito contínuo via Keyset Cursor
+  const [propertiesList, setPropertiesList] = useState<SearchPropertyItem[]>(properties);
+  const [currentCursor, setCurrentCursor] = useState<string | null>(result.nextCursor || null);
+  const [hasMore, setHasMore] = useState<boolean>(Boolean(result.hasMore));
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<boolean>(false);
+
+  const activeAbortController = useRef<AbortController | null>(null);
+  const inFlightCursor = useRef<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const isRestoredFromSession = useRef<boolean>(false);
+
+  // 1. BACK BUTTON: Restaura estado e posição do scroll do sessionStorage na montagem
   useEffect(() => {
+    if (!storageKey) return;
+    try {
+      const raw = sessionStorage.getItem(storageKey);
+      if (raw) {
+        const cached = JSON.parse(raw);
+        if (
+          cached &&
+          Array.isArray(cached.items) &&
+          cached.items.length >= result.properties.length &&
+          cached.items[0]?.id === result.properties[0]?.id
+        ) {
+          isRestoredFromSession.current = true;
+          setPropertiesList(cached.items);
+          setCurrentCursor(cached.nextCursor || null);
+          setHasMore(Boolean(cached.hasMore));
+
+          if (typeof cached.scrollY === "number" && cached.scrollY > 0) {
+            requestAnimationFrame(() => {
+              window.scrollTo({ top: cached.scrollY, behavior: "instant" });
+            });
+          }
+          return;
+        }
+      }
+    } catch {
+      // Ignora erro no storage
+    }
+  }, [storageKey, result.properties]);
+
+  // 2. Sincroniza estado quando a busca do servidor ou os filtros mudarem
+  useEffect(() => {
+    if (isRestoredFromSession.current) {
+      isRestoredFromSession.current = false;
+      return;
+    }
+    if (activeAbortController.current) {
+      activeAbortController.current.abort();
+      activeAbortController.current = null;
+    }
+    inFlightCursor.current = null;
     setPropertiesList(result.properties);
-    setCurrentPage(result.page || 1);
-    setHasMore(result.properties.length < result.total);
+    setCurrentCursor(result.nextCursor || null);
+    setHasMore(Boolean(result.hasMore));
     setIsLoadingMore(false);
+    setLoadError(false);
   }, [result]);
 
-  // Função assíncrona para buscar a próxima página de imóveis
-  const loadMore = useCallback(async () => {
-    if (isLoadingMore || !hasMore) return;
+  // 3. Salva estado e scroll no sessionStorage
+  const persistSessionState = useCallback((items: SearchPropertyItem[], cursor: string | null, more: boolean) => {
+    if (!storageKey) return;
+    try {
+      sessionStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          items,
+          nextCursor: cursor,
+          hasMore: more,
+          scrollY: window.scrollY,
+        })
+      );
+    } catch {
+      // Ignora estouro de cota
+    }
+  }, [storageKey]);
 
-    const nextPage = currentPage + 1;
+  useEffect(() => {
+    if (!storageKey) return;
+    const handleScroll = () => {
+      try {
+        const raw = sessionStorage.getItem(storageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          parsed.scrollY = window.scrollY;
+          sessionStorage.setItem(storageKey, JSON.stringify(parsed));
+        }
+      } catch {}
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [storageKey]);
+
+  // 4. Carregamento do próximo lote via Keyset Cursor
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore || !currentCursor) return;
+    if (inFlightCursor.current === currentCursor) return;
+
+    inFlightCursor.current = currentCursor;
     setIsLoadingMore(true);
+    setLoadError(false);
+
+    const controller = new AbortController();
+    activeAbortController.current = controller;
 
     try {
       const params = new URLSearchParams(searchParams.toString());
-      params.set("page", String(nextPage));
-      params.set("limit", "12");
+      params.set("cursor", currentCursor);
+      params.set("limit", String(SEARCH_BATCH_SIZE));
+      params.delete("page");
 
-      const res = await fetch(`/api/properties?${params.toString()}`);
+      const res = await fetch(`/api/properties?${params.toString()}`, {
+        signal: controller.signal,
+      });
+
       if (res.ok) {
         const data = await res.json();
         const incoming: SearchPropertyItem[] = data.properties || [];
@@ -148,29 +247,37 @@ export function SearchPropertyList({
             const existingIds = new Set(prev.map((p) => p.id));
             const newItems = incoming.filter((p) => !existingIds.has(p.id));
             const updated = [...prev, ...newItems];
-            if (updated.length >= data.total || incoming.length === 0) {
-              setHasMore(false);
-            }
+            const nextHasMore = Boolean(data.hasMore && newItems.length > 0);
+
+            persistSessionState(updated, data.nextCursor || null, nextHasMore);
             return updated;
           });
-          setCurrentPage(nextPage);
+
+          setCurrentCursor(data.nextCursor || null);
+          setHasMore(Boolean(data.hasMore));
         } else {
           setHasMore(false);
+          persistSessionState(propertiesList, null, false);
         }
       } else {
-        setHasMore(false);
+        setLoadError(true);
       }
-    } catch (err) {
-      console.error("[SearchPropertyList] Erro ao carregar mais imóveis:", err);
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        console.error("[SearchPropertyList] Erro ao carregar mais imóveis:", err);
+        setLoadError(true);
+      }
     } finally {
       setIsLoadingMore(false);
+      inFlightCursor.current = null;
+      activeAbortController.current = null;
     }
-  }, [currentPage, hasMore, isLoadingMore, searchParams]);
+  }, [currentCursor, hasMore, isLoadingMore, searchParams, persistSessionState, propertiesList]);
 
-  // Observer do sentinel para acionar o carregamento infinito ao rolar
+  // Observer do sentinel para acionar o carregamento infinito antecipado (1 a 2 viewports antes)
   useEffect(() => {
     const sentinel = sentinelRef.current;
-    if (!sentinel || !hasMore || isLoadingMore) return;
+    if (!sentinel || !hasMore || isLoadingMore || !currentCursor) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -179,18 +286,19 @@ export function SearchPropertyList({
         }
       },
       {
-        rootMargin: "800px", // Pré-carrega de forma instantânea antes de o usuário chegar ao fim
+        rootMargin: SEARCH_SENTINEL_ROOT_MARGIN,
       }
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, loadMore]);
+  }, [hasMore, isLoadingMore, loadMore, currentCursor]);
 
   const handleOrderChange = (order: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("orderBy", order);
     params.set("page", "1");
+    params.delete("cursor");
     router.push(`${pathname}?${params.toString()}`);
   };
 
@@ -268,35 +376,57 @@ export function SearchPropertyList({
         <SearchEmptyState />
       ) : (
         <div className="properties-list space-y-4 w-full">
-          {propertiesList.map((property) => (
+          {propertiesList.map((property, idx) => (
             <SearchPropertyCard
               key={property.id}
               property={property}
               isHovered={hoveredPropertyId === property.id}
               onHover={onHoverProperty}
+              isPriority={idx < 3}
             />
           ))}
         </div>
       )}
 
       {/* SENTINELA PARA CARREGAMENTO INFINITO VIA INTERSECTION OBSERVER */}
-      <div ref={sentinelRef} className="h-4 w-full pointer-events-none" />
+      {hasMore && !isLoadingMore && (
+        <div ref={sentinelRef} className="h-6 w-full pointer-events-none" />
+      )}
 
-      {/* SKELETON / INDICADOR DE CARREGAMENTO DE NOVOS IMÓVEIS */}
+      {/* SKELETON / INDICADOR DE CARREGAMENTO DO PRÓXIMO LOTE */}
       {isLoadingMore && (
         <div className="space-y-4 pt-2">
           <div className="flex items-center justify-center gap-2 py-3 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/40 animate-pulse">
             <Loader2 className="h-4 w-4 animate-spin text-indigo-600 dark:text-indigo-400" />
-            <span>Carregando mais imóveis...</span>
+            <span>Carregando próximos imóveis...</span>
           </div>
           <SearchPropertyCardSkeleton />
         </div>
       )}
 
-      {/* MENSAGEM QUANDO TODOS OS IMÓVEIS FOREM CARREGADOS */}
-      {!hasMore && propertiesList.length > 0 && propertiesList.length >= total && (
+      {/* FEEDBACK E RETRY EM CASO DE ERRO */}
+      {loadError && (
+        <div className="flex flex-col items-center justify-center gap-2 py-6 text-center border-t border-slate-100 dark:border-slate-800">
+          <span className="text-xs text-rose-500 font-medium">
+            Não foi possível carregar o próximo lote de imóveis.
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={loadMore}
+            className="gap-1.5 text-xs font-semibold rounded-xl"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            <span>Tentar novamente</span>
+          </Button>
+        </div>
+      )}
+
+      {/* MENSAGEM DISCRETA QUANDO TODOS OS IMÓVEIS FOREM CARREGADOS */}
+      {!hasMore && propertiesList.length > 0 && (
         <div className="py-8 text-center text-xs font-medium text-slate-400 border-t border-slate-100 dark:border-slate-800 mt-6">
-          Você visualizou todos os {total} imóveis encontrados.
+          Você chegou ao fim dos resultados. ({propertiesList.length} de {total} imóveis)
         </div>
       )}
     </div>

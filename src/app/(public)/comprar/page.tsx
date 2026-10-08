@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { searchProperties } from "@/features/search/services";
 import { SearchLayoutView } from "@/features/search/components";
 import { BannerSlot } from "@/features/banners/components/BannerSlot";
+import { SEARCH_BATCH_SIZE } from "@/features/search/constants";
 import type { SearchFilters } from "@/features/search/types";
 import type { PropertyType } from "@/types/property";
 
@@ -67,6 +68,8 @@ function parseSearchParams(params: Record<string, string | string[] | undefined>
     furnished: getSingle(params.furnished) === "true" ? true : undefined,
     acceptsExchange: getSingle(params.acceptsExchange) === "true" ? true : undefined,
     page: getSingle(params.page) ? Number(getSingle(params.page)) : 1,
+    limit: getSingle(params.limit) ? Number(getSingle(params.limit)) : SEARCH_BATCH_SIZE,
+    cursor: getSingle(params.cursor),
     orderBy: getSingle(params.orderBy) as any,
     bbox,
   };

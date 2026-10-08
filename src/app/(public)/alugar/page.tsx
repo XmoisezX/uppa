@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { searchProperties } from "@/features/search/services";
 import { SearchLayoutView } from "@/features/search/components";
 import { BannerSlot } from "@/features/banners/components/BannerSlot";
+import { SEARCH_BATCH_SIZE } from "@/features/search/constants";
 import type { SearchFilters } from "@/features/search/types";
 import type { PropertyType } from "@/types/property";
 

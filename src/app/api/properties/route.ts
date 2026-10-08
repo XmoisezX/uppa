@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchProperties } from "@/features/search/services";
+import { SEARCH_BATCH_SIZE } from "@/features/search/constants";
 import type { SearchFilters } from "@/features/search/types";
 import type { PropertyType, TransactionType } from "@/types/property";
 
@@ -23,7 +24,10 @@ export async function GET(request: NextRequest) {
     }
 
     const page = searchParams.get("page") ? Math.max(1, Number(searchParams.get("page"))) : 1;
-    const limit = searchParams.get("limit") ? Math.max(1, Math.min(50, Number(searchParams.get("limit")))) : 12;
+    const limit = searchParams.get("limit")
+      ? Math.max(1, Math.min(50, Number(searchParams.get("limit"))))
+      : SEARCH_BATCH_SIZE;
+    const cursor = searchParams.get("cursor") || undefined;
 
     const filters: SearchFilters = {
       transactionType: (searchParams.get("transactionType") as TransactionType) || "sale",
@@ -45,7 +49,8 @@ export async function GET(request: NextRequest) {
       acceptsExchange: searchParams.get("acceptsExchange") === "true" ? true : undefined,
       page,
       limit,
-      orderBy: (searchParams.get("orderBy") as any) || "recent",
+      cursor,
+      orderBy: (searchParams.get("orderBy") as any) || "ranking",
     };
 
     const result = await searchProperties(filters);

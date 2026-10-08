@@ -11,6 +11,7 @@ import {
   Share2,
   Check,
 } from "lucide-react";
+import { SmartImage } from "@/components/ui/smart-image";
 import type { PropertyMedia } from "@/types/property";
 
 interface PropertyGalleryProps {
@@ -76,11 +77,13 @@ export function PropertyGallery({ media, title }: PropertyGalleryProps) {
         {media.length === 1 ? (
           <div
             onClick={() => setSelectedPhotoIndex(0)}
-            className="aspect-[16/9] md:aspect-[21/9] w-full cursor-pointer overflow-hidden group"
+            className="aspect-[16/9] md:aspect-[21/9] w-full cursor-pointer overflow-hidden group relative"
           >
-            <img
+            <SmartImage
               src={media[0].url}
               alt={title}
+              priority
+              sizes="(max-width: 768px) 100vw, 1200px"
               className="h-full w-full object-cover group-hover:scale-103 transition-transform duration-500"
             />
           </div>
@@ -91,9 +94,11 @@ export function PropertyGallery({ media, title }: PropertyGalleryProps) {
               onClick={() => setSelectedPhotoIndex(media.findIndex((m) => m.id === coverPhoto.id))}
               className="md:col-span-2 md:row-span-2 relative cursor-pointer overflow-hidden group bg-slate-100 dark:bg-slate-800"
             >
-              <img
+              <SmartImage
                 src={coverPhoto.url}
                 alt={title}
+                priority
+                sizes="(max-width: 768px) 100vw, 60vw"
                 className="h-full w-full object-cover group-hover:scale-103 transition-transform duration-500"
               />
             </div>
@@ -109,9 +114,10 @@ export function PropertyGallery({ media, title }: PropertyGalleryProps) {
                   onClick={() => setSelectedPhotoIndex(originalIndex)}
                   className="hidden md:block relative cursor-pointer overflow-hidden group bg-slate-100 dark:bg-slate-800"
                 >
-                  <img
+                  <SmartImage
                     src={item.url}
                     alt={`${title} - foto ${idx + 2}`}
+                    sizes="(max-width: 768px) 50vw, 25vw"
                     className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
 

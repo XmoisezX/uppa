@@ -15,29 +15,35 @@ import {
   Plus,
 } from "lucide-react";
 import { VerifiedAgencyBadge, FeaturedPropertyBadge } from "@/components/ui/verified-badge";
+import { SmartImage } from "@/components/ui/smart-image";
 import type { SearchPropertyItem } from "../types";
 
 interface SearchPropertyCardProps {
   property: SearchPropertyItem;
   isHovered?: boolean;
   onHover?: (id: string | null) => void;
+  isPriority?: boolean;
 }
 
 export function SearchPropertyCard({
   property,
   isHovered,
   onHover,
+  isPriority = false,
 }: SearchPropertyCardProps) {
   const [isFavorited, setIsFavorited] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
   // Carrega até 5 fotos para o carrossel do card
-  const rawMedia = property.media || [];
+  const coverUrl = property.coverImage || property.media?.[0]?.url;
+  const rawMedia = property.media && property.media.length > 0
+    ? property.media
+    : (coverUrl ? [{ id: "cover", url: coverUrl, isCover: true, position: 0 }] : []);
   const photos = rawMedia.slice(0, 5);
   const totalPhotos = rawMedia.length;
 
-  const currentPhoto = photos[currentPhotoIndex]?.url || photos[0]?.url;
+  const currentPhoto = photos[currentPhotoIndex]?.url || coverUrl;
   const isLastPhoto = photos.length > 1 && currentPhotoIndex === photos.length - 1;
 
   const isRent = property.transactionType === "rent";
@@ -147,7 +153,7 @@ export function SearchPropertyCard({
     <article
       onMouseEnter={() => onHover && onHover(property.id)}
       onMouseLeave={() => onHover && onHover(null)}
-      className={`group relative bg-white dark:bg-slate-900 rounded-2xl border transition-all duration-200 overflow-hidden flex flex-col sm:flex-row w-full ${
+      className={`group relative bg-white dark:bg-slate-900 rounded-2xl border transition-all duration-200 overflow-hidden flex flex-col sm:flex-row w-full [content-visibility:auto] [contain-intrinsic-size:260px] ${
         isHovered
           ? "border-indigo-500 shadow-md ring-1 ring-indigo-500"
           : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md"
@@ -165,16 +171,14 @@ export function SearchPropertyCard({
             className="block h-full w-full relative"
           >
             <div key={currentPhotoIndex} className="absolute inset-0 h-full w-full overflow-hidden">
-              <img
+              <SmartImage
                 src={currentPhoto}
                 alt={`${property.title} - foto ${currentPhotoIndex + 1}`}
-                loading="lazy"
-                decoding="async"
+                priority={Boolean(isPriority && currentPhotoIndex === 0)}
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 440px"
                 onError={() => setImageError(true)}
-                className={`absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03] ${
-                  isLastPhoto
-                    ? "brightness-[0.45] contrast-[1.05]"
-                    : ""
+                className={`transition-transform duration-300 group-hover:scale-[1.03] ${
+                  isLastPhoto ? "brightness-[0.45] contrast-[1.05]" : ""
                 }`}
               />
 

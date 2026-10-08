@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createPublicServerClient } from "@/lib/supabase/server";
 import type { Agency } from "@/types/agency";
 
@@ -151,11 +152,13 @@ function mapResolvedOffer(
 /**
  * Seleciona a REPRESENTATIVE OFFER para uma exposição pública de uma PROPERTY (Seções 2, 7, 8, 9, 11, 13, 14, 15)
  * Garante que cada exibição da property apresente 1 única offer comercial (1 preço, 1 anunciante, 1 CTA).
+ * Envolvido em React.cache para deduplicação entre generateMetadata e Page.
  */
-export async function resolveRepresentativeOffer(
-  propertyId: string,
-  context?: ResolveContext
-): Promise<ResolvedRepresentativeOffer | null> {
+export const resolveRepresentativeOffer = cache(
+  async function resolveRepresentativeOffer(
+    propertyId: string,
+    context?: ResolveContext
+  ): Promise<ResolvedRepresentativeOffer | null> {
   const supabase = createPublicServerClient();
 
   // 1. Busca dados da propriedade para verificar primary_offer_id
@@ -281,7 +284,7 @@ export async function resolveRepresentativeOffer(
     winner.id === prop.primary_offer_id,
     "scored_winner"
   );
-}
+});
 
 /**
  * Registra impressão da representative offer para métricas de distribuição e observabilidade (Seção 21)

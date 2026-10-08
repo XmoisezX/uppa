@@ -1,19 +1,40 @@
 import { createClient, createPublicServerClient } from "@/lib/supabase/server";
 import type { SearchFilters, SearchPropertyItem, SearchResult } from "./types";
+import { SEARCH_BATCH_SIZE } from "./constants";
+import { decodeCursor, encodeCursor } from "./utils/cursor";
 import {
   calculatePropertyRanking,
   sortPropertiesByRanking,
 } from "@/features/ranking/engine";
-import {
-  getRankingConfig,
-  getCohortPriceStats,
-  getPropertiesEngagementBatch,
-} from "@/features/ranking/services";
+import { getRankingConfig } from "@/features/ranking/services";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 import { getApproximateCoordinates } from "./utils/price-formatter";
+
+/**
+ * Cache leve em memória de destaques da home/busca (TTL 60s)
+ */
+let cachedFeaturedIds: { ids: string[]; expiresAt: number } | null = null;
+async function getFeaturedPropertyIds(supabase: any): Promise<string[]> {
+  const now = Date.now();
+  if (cachedFeaturedIds && cachedFeaturedIds.expiresAt > now) {
+    return cachedFeaturedIds.ids;
+  }
+  try {
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "featured_property_ids")
+      .maybeSingle();
+    const ids = Array.isArray(data?.value) ? data.value : [];
+    cachedFeaturedIds = { ids, expiresAt: now + 60000 };
+    return ids;
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Validador robusto de formato UUID v1-v5
@@ -53,7 +74,8 @@ export function isValidBoundingBox(bbox?: {
 }
 
 /**
- * Colunas explícitas selecionadas na busca (PROIBIDO SELECT * - Seção 86)
+ * DTO OTIMIZADO PARA SEARCH CARDS (Projeção estrita, sem description, sem 30 fotos)
+ * Une property + representative offer + agency + single cover em 1 única query PostgreSQL
  */
 const SEARCH_PROPERTIES_SELECT = `
   id,
@@ -62,8 +84,6 @@ const SEARCH_PROPERTIES_SELECT = `
   title,
   transaction_type,
   property_type,
-  price,
-  rent_price,
   active_offers_count,
   lowest_sale_price,
   highest_sale_price,
@@ -87,7 +107,7 @@ const SEARCH_PROPERTIES_SELECT = `
   longitude,
   published_at,
   updated_at,
-  description,
+  ranking_score,
   city:cities!city_id (
     id,
     name,
@@ -103,32 +123,36 @@ const SEARCH_PROPERTIES_SELECT = `
     code,
     name
   ),
-  agency:agencies!agency_id (
+  primary_offer:property_offers!primary_offer_id (
     id,
-    name,
-    slug,
-    logo_url,
-    creci,
-    verified_at,
-    phone
+    sale_price,
+    rent_price,
+    agency_id,
+    agency:agencies!agency_id (
+      id,
+      name,
+      slug,
+      logo_url,
+      creci,
+      verified_at,
+      phone
+    )
   ),
-  media:property_media (
-    id,
+  cover:property_media (
     url,
-    is_cover,
-    position
+    is_cover
   )
 `;
 
 /**
- * Executa a busca pública de imóveis ativos com filtros dinâmicos e paginação
+ * Executa a busca pública de imóveis ativos com filtros dinâmicos e Keyset/Cursor Pagination
  */
 export async function searchProperties(filters: SearchFilters): Promise<SearchResult> {
   const supabase = createPublicServerClient();
 
-  const page = Math.max(1, filters.page || 1);
-  const limit = Math.min(50, Math.max(1, filters.limit || 12));
-  const offset = (page - 1) * limit;
+  const limit = Math.min(50, Math.max(1, filters.limit || SEARCH_BATCH_SIZE));
+  const decodedCursor = decodeCursor(filters.cursor);
+  const isKeyset = Boolean(decodedCursor);
 
   const isRent = filters.transactionType === "rent";
   const hasPriceMin = filters.priceMin !== undefined && filters.priceMin > 0;
@@ -140,13 +164,14 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
     selectProjection += `,\n  matching_offers:property_offers!property_offers_property_id_fkey!inner (\n    id,\n    sale_price,\n    rent_price,\n    status\n  )`;
   }
 
-  // Inicia query com projeção estrita de colunas (sem SELECT *), apenas properties ativas canônicas
+  // Inicia query com projeção enxuta e apenas 1 imagem de capa
   let query = supabase
     .from("properties")
-    .select(selectProjection, { count: "exact" })
+    .select(selectProjection, isKeyset ? undefined : { count: "exact" })
     .eq("status", "active")
     .is("canonical_property_id", null)
-    .gt("active_offers_count", 0);
+    .gt("active_offers_count", 0)
+    .eq("cover.is_cover", true);
 
   // 1. FILTRO: FINALIDADE (transaction_type)
   if (filters.transactionType) {
@@ -296,88 +321,112 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
       .lte("longitude", east);
   }
 
-  // 11. ORDENAÇÃO E PIPELINE DE RANKING
-  const isCustomSort =
-    filters.orderBy === "price_asc" ||
-    filters.orderBy === "price_desc" ||
-    filters.orderBy === "area_desc";
+  // 11. ORDENAÇÃO E PIPELINE DETERMINÍSTICO (COM DESEMPATE POR ID)
+  const isPriceAsc = filters.orderBy === "price_asc";
+  const isPriceDesc = filters.orderBy === "price_desc";
+  const isAreaDesc = filters.orderBy === "area_desc";
+  const isRecent = filters.orderBy === "recent";
 
-  // Obter configurações de ranking e destaques em paralelo
-  const [rankingConfig, featuredResult] = await Promise.all([
-    getRankingConfig(),
-    supabase
-      .from("site_settings")
-      .select("value")
-      .eq("key", "featured_property_ids")
-      .maybeSingle(),
-  ]);
-
-  let featuredIds: string[] = [];
-  if (featuredResult?.data?.value && Array.isArray(featuredResult.data.value)) {
-    featuredIds = featuredResult.data.value;
+  if (isPriceAsc) {
+    query = query
+      .order(minPriceCol, { ascending: true, nullsFirst: false })
+      .order("id", { ascending: true });
+  } else if (isPriceDesc) {
+    query = query
+      .order(maxPriceCol, { ascending: false, nullsFirst: false })
+      .order("id", { ascending: true });
+  } else if (isAreaDesc) {
+    query = query
+      .order("usable_area", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: true });
+  } else if (isRecent) {
+    query = query
+      .order("updated_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: true });
+  } else {
+    // Default: ranking nativo no PostgreSQL
+    query = query
+      .order("ranking_score", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: true });
   }
+
+  // 12. APLICAÇÃO DE KEYSET / CURSOR PAGINATION
+  if (isKeyset && decodedCursor) {
+    const { sortVal, id: cursorId } = decodedCursor;
+    if (isPriceAsc) {
+      query = query.or(
+        `${minPriceCol}.gt.${sortVal},and(${minPriceCol}.eq.${sortVal},id.gt.${cursorId})`
+      );
+    } else if (isPriceDesc) {
+      query = query.or(
+        `${maxPriceCol}.lt.${sortVal},and(${maxPriceCol}.eq.${sortVal},id.gt.${cursorId})`
+      );
+    } else if (isAreaDesc) {
+      query = query.or(
+        `usable_area.lt.${sortVal},and(usable_area.eq.${sortVal},id.gt.${cursorId})`
+      );
+    } else if (isRecent) {
+      query = query.or(
+        `updated_at.lt.${sortVal},and(updated_at.eq.${sortVal},id.gt.${cursorId})`
+      );
+    } else {
+      // Ranking
+      query = query.or(
+        `ranking_score.lt.${sortVal},and(ranking_score.eq.${sortVal},id.gt.${cursorId})`
+      );
+    }
+  }
+
+  // Obter IDs de destaques com cache leve
+  const featuredIds = await getFeaturedPropertyIds(supabase);
 
   let rawData: any[] = [];
   let totalCount = 0;
 
-  if (isCustomSort) {
-    if (filters.orderBy === "price_asc") {
-      query = query.order(minPriceCol, { ascending: true, nullsFirst: false });
-    } else if (filters.orderBy === "price_desc") {
-      query = query.order(maxPriceCol, { ascending: false, nullsFirst: false });
-    } else if (filters.orderBy === "area_desc") {
-      query = query.order("usable_area", { ascending: false, nullsFirst: false });
+  if (isKeyset) {
+    // Busca do próximo lote via Keyset: sem COUNT(*) pesado e sem OFFSET caro
+    const { data, error } = await query.limit(limit);
+    if (error || !data) {
+      if (error) console.error("[searchProperties] Erro no lote keyset:", error);
+      return {
+        properties: [],
+        total: 0,
+        page: 1,
+        totalPages: 0,
+        limit,
+        filters,
+        nextCursor: null,
+        hasMore: false,
+      };
     }
+    rawData = data;
   } else {
-    // FLUXO DE RANKING NATIVO NO POSTGRESQL (Fase 11 e 12):
-    // Filtros -> Properties elegíveis -> Ranking Score -> Paginação no banco
-    query = query
-      .order("ranking_score", { ascending: false, nullsFirst: false })
-      .order("updated_at", { ascending: false, nullsFirst: false });
+    // Primeiro lote (SSR ou busca inicial): executa COUNT(*) e offset inicial
+    const page = Math.max(1, filters.page || 1);
+    const offset = (page - 1) * limit;
+    const { data, count, error } = await query.range(offset, offset + limit - 1);
+    if (error || !data) {
+      if (error) console.error("[searchProperties] Erro no lote inicial:", error);
+      return {
+        properties: [],
+        total: 0,
+        page,
+        totalPages: 0,
+        limit,
+        filters,
+        nextCursor: null,
+        hasMore: false,
+      };
+    }
+    rawData = data;
+    totalCount = count || 0;
   }
 
-  // Executa busca e paginação paginada diretamente no PostgreSQL
-  const { data, count, error } = await query.range(offset, offset + limit - 1);
-  if (error || !data) {
-    if (error) console.error("[searchProperties] Erro na consulta do Supabase:", error);
-    return { properties: [], total: 0, page, totalPages: 0, limit, filters };
-  }
-
-  rawData = data;
-  totalCount = count || 0;
-
-  // Obter dados de engajamento em lote para os candidatos da busca
-  const candidateIds = rawData.map((r: any) => r.id);
-  const engagementMap = await getPropertiesEngagementBatch(candidateIds);
-
-  // Obter coorte estatística de preços se aplicável
-  let cohortStats = null;
-  const targetType = Array.isArray(filters.propertyType)
-    ? filters.propertyType[0]
-    : filters.propertyType;
-  if (resolvedCityId && targetType && filters.transactionType) {
-    cohortStats = await getCohortPriceStats(
-      resolvedCityId,
-      targetType,
-      filters.transactionType
-    );
-  }
-
-  // Mapeia os dados brutos e calcula o ranking determinístico de cada imóvel
-  const itemsWithRanking = rawData.map((row: any) => {
-    const rawMedia = (row.media as any[]) || [];
-    const sortedMedia = rawMedia
-      .map((m) => ({
-        id: m.id,
-        url: m.url,
-        isCover: Boolean(m.is_cover),
-        position: m.position || 0,
-      }))
-      .sort((a, b) => {
-        if (a.isCover) return -1;
-        if (b.isCover) return 1;
-        return a.position - b.position;
-      });
+  // 13. CONSTRUÇÃO DO DTO ENXUTO PARA LISTAGEM
+  const properties: SearchPropertyItem[] = rawData.map((row: any) => {
+    const coverUrl = Array.isArray(row.cover) && row.cover.length > 0 ? row.cover[0]?.url : null;
+    const repOffer = row.primary_offer;
+    const agency = repOffer?.agency;
 
     let lat = row.latitude;
     let lng = row.longitude;
@@ -393,9 +442,8 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
     }
 
     const isFeatured = featuredIds.includes(row.id);
-    const isAgencyVerified = Boolean(row.agency?.verified_at);
 
-    const propertyItem: SearchPropertyItem = {
+    return {
       id: row.id,
       featured: isFeatured,
       slug: row.slug,
@@ -403,9 +451,11 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
       title: row.title,
       transactionType: row.transaction_type,
       propertyType: row.property_type,
-      price: row.lowest_sale_price ?? row.price,
-      rentPrice: row.lowest_rent_price ?? row.rent_price,
-      activeOffersCount: row.active_offers_count ?? 0,
+      price: repOffer?.sale_price ?? row.lowest_sale_price,
+      rentPrice: repOffer?.rent_price ?? row.lowest_rent_price,
+      coverImage: coverUrl,
+      representativeOfferId: repOffer?.id ?? row.primary_offer_id,
+      activeOffersCount: row.active_offers_count ?? 1,
       lowestSalePrice: row.lowest_sale_price,
       highestSalePrice: row.highest_sale_price,
       lowestRentPrice: row.lowest_rent_price,
@@ -427,59 +477,63 @@ export async function searchProperties(filters: SearchFilters): Promise<SearchRe
       latitude: lat,
       longitude: lng,
       publishedAt: row.published_at,
+      rankingScore: row.ranking_score,
       city: row.city,
       neighborhood: row.neighborhood,
       state: row.state,
-      agency: row.agency
+      agency: agency
         ? {
-            id: row.agency.id,
-            name: row.agency.name,
-            slug: row.agency.slug,
-            logoUrl: row.agency.logo_url,
-            creci: row.agency.creci,
-            verifiedAt: row.agency.verified_at,
-            phone: row.agency.phone,
+            id: agency.id,
+            name: agency.name,
+            slug: agency.slug,
+            logoUrl: agency.logo_url,
+            creci: agency.creci,
+            verifiedAt: agency.verified_at,
+            phone: agency.phone,
           }
         : null,
-      media: sortedMedia,
-    };
-
-    const ranking = calculatePropertyRanking(
-      {
-        ...propertyItem,
-        description: row.description,
-        updatedAt: row.updated_at,
-      },
-      {
-        filters,
-        rankingConfig,
-        cohortStats: cohortStats || undefined,
-        engagementData: engagementMap.get(row.id),
-        isFeatured,
-        isAgencyVerified,
-      }
-    );
-
-    propertyItem.rankingScore = ranking.score;
-    propertyItem.rankingBreakdown = ranking.breakdown;
-
-    return {
-      item: propertyItem,
-      ranking,
+      media: coverUrl ? [{ id: "cover", url: coverUrl, isCover: true, position: 0 }] : [],
     };
   });
 
-  const finalProperties: SearchPropertyItem[] = itemsWithRanking.map((w) => w.item);
+  // 14. GERAÇÃO DETERMINÍSTICA DO PRÓXIMO CURSOR
+  const hasMore = rawData.length === limit;
+  let nextCursor: string | null = null;
 
-  const totalPages = Math.ceil(totalCount / limit);
+  if (hasMore && rawData.length > 0) {
+    const last = rawData[rawData.length - 1];
+    let sortVal: any = null;
+    if (isPriceAsc) {
+      sortVal = last[minPriceCol] ?? last.price ?? 0;
+    } else if (isPriceDesc) {
+      sortVal = last[maxPriceCol] ?? last.price ?? 0;
+    } else if (isAreaDesc) {
+      sortVal = last.usable_area ?? 0;
+    } else if (isRecent) {
+      sortVal = last.updated_at || last.published_at || "";
+    } else {
+      sortVal = last.ranking_score ?? 0;
+    }
+
+    nextCursor = encodeCursor({
+      sortVal,
+      id: last.id,
+      order: filters.orderBy || "ranking",
+    });
+  }
+
+  const page = Math.max(1, filters.page || 1);
+  const totalPages = totalCount > 0 ? Math.ceil(totalCount / limit) : 0;
 
   return {
-    properties: finalProperties,
+    properties,
     total: totalCount,
     page,
     totalPages,
     limit,
     filters,
+    nextCursor,
+    hasMore,
   };
 }
 
