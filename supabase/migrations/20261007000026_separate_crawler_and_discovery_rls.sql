@@ -14,6 +14,10 @@ DROP POLICY IF EXISTS website_sources_update_admin ON public.website_sources;
 DROP POLICY IF EXISTS website_sources_delete_admin ON public.website_sources;
 DROP POLICY IF EXISTS "Website sources agency select access" ON public.website_sources;
 DROP POLICY IF EXISTS "Website sources admin full access" ON public.website_sources;
+DROP POLICY IF EXISTS "Website sources select access" ON public.website_sources;
+DROP POLICY IF EXISTS "Website sources insert access" ON public.website_sources;
+DROP POLICY IF EXISTS "Website sources update access" ON public.website_sources;
+DROP POLICY IF EXISTS "Website sources delete access" ON public.website_sources;
 
 -- 1.1 Leitura: Imobiliária só visualiza suas próprias fontes 'agency_managed'.
 --     Administradores UPPA podem visualizar todas (uppa_discovery, agency_managed, feed, api, partner).

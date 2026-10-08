@@ -18,6 +18,7 @@ export interface SearchFilters {
   acceptsExchange?: boolean;
   page?: number;
   limit?: number;
+  cursor?: string;
   orderBy?: "recent" | "ranking" | "price_asc" | "price_desc" | "area_desc";
   bbox?: {
     north: number;
@@ -37,6 +38,8 @@ export interface SearchPropertyItem {
   propertyType: PropertyType;
   price?: number | null;
   rentPrice?: number | null;
+  coverImage?: string | null;
+  representativeOfferId?: string | null;
   activeOffersCount?: number;
   lowestSalePrice?: number | null;
   highestSalePrice?: number | null;
@@ -111,4 +114,6 @@ export interface SearchResult {
   totalPages: number;
   limit: number;
   filters: SearchFilters;
+  nextCursor?: string | null;
+  hasMore?: boolean;
 }

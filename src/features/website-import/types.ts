@@ -19,6 +19,21 @@ export type CrawlRunStatus =
   | "completed_with_errors"
   | "failed";
 
+export interface WebsiteSourceProvenance {
+  originalIngestionOrigin: string;
+  discoveredAt?: string | null;
+  discoveredBy?: string | null;
+  agencyConfirmedAt?: string | null;
+  agencyConfirmedBy?: string | null;
+  transitionHistory?: Array<{
+    from: string;
+    to: string;
+    transitionedAt: string;
+    transitionedBy?: string | null;
+    reason: string;
+  }>;
+}
+
 export interface WebsiteSource {
   id: string;
   agencyId: string;
@@ -28,6 +43,7 @@ export interface WebsiteSource {
   connectorType: string;
   crawlIntervalHours: number;
   metadata: Record<string, any>;
+  provenance?: WebsiteSourceProvenance;
   lastCrawlAt?: string | null;
   nextCrawlAt?: string | null;
   ingestionOrigin?: string;
