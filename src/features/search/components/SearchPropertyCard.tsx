@@ -57,7 +57,7 @@ export function SearchPropertyCard({
     ? `/imovel/${property.slug}?offer=${property.primaryOfferId}`
     : `/imovel/${property.slug}`;
 
-  // Preço da representative offer (Seção 4: sem "A partir de", sem menor preço forçado)
+  // Preço da representative offer (Seção 4: preço comercial direto da oferta, sem menor preço forçado)
   const effectiveSalePrice = property.price ?? property.lowestSalePrice;
   const effectiveRentPrice = property.rentPrice ?? property.lowestRentPrice;
   const salePriceFormatted = formatMoney(effectiveSalePrice);

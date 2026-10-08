@@ -156,7 +156,7 @@ export interface CreateFormLeadInput {
   name: string;
   phone: string;
   email?: string;
-  message: string;
+  message?: string;
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;

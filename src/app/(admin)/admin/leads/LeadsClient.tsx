@@ -16,9 +16,20 @@ import type { AdminLeadItem } from '@/features/admin/services/leads';
 
 interface Props {
   initialLeads: AdminLeadItem[];
+  observability?: {
+    leadsToday: number;
+    leads7Days: number;
+    whatsappCount: number;
+    formCount: number;
+    totalAttempts: number;
+    deliveredCount: number;
+    failedCount: number;
+    missingDestinationCount: number;
+    providerNotConfiguredCount: number;
+  };
 }
 
-export function LeadsClient({ initialLeads }: Props) {
+export function LeadsClient({ initialLeads, observability }: Props) {
   const [leads] = useState<AdminLeadItem[]>(initialLeads);
   const [search, setSearch] = useState('');
   const [selectedLead, setSelectedLead] = useState<AdminLeadItem | null>(null);
@@ -39,13 +50,68 @@ export function LeadsClient({ initialLeads }: Props) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-            Central de Leads & Oportunidades
+            Central de Leads & Observabilidade
           </h2>
           <p className="text-xs text-slate-400">
             {leads.length} contatos de compradores e inquilinos gerados para os anunciantes da UPPA.
           </p>
         </div>
       </div>
+
+      {/* CARDS DE OBSERVABILIDADE ADMIN (Seção 45) */}
+      {observability && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Leads Hoje
+            </span>
+            <div className="text-2xl font-black text-slate-900">
+              {observability.leadsToday}
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Últimos 7 Dias
+            </span>
+            <div className="text-2xl font-black text-slate-900">
+              {observability.leads7Days}
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Canais (WA / Form)
+            </span>
+            <div className="text-sm font-bold text-slate-900 flex items-center gap-1.5 mt-1">
+              <span className="text-emerald-600">{observability.whatsappCount} WA</span>
+              <span className="text-slate-300">/</span>
+              <span className="text-indigo-600">{observability.formCount} Form</span>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Entregas / Pendências
+            </span>
+            <div className="text-xs font-semibold text-slate-700 flex flex-wrap gap-1 mt-1">
+              {observability.providerNotConfiguredCount > 0 && (
+                <span className="inline-flex px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-mono text-[10px]">
+                  {observability.providerNotConfiguredCount} s/ provedor
+                </span>
+              )}
+              {observability.missingDestinationCount > 0 && (
+                <span className="inline-flex px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-mono text-[10px]">
+                  {observability.missingDestinationCount} s/ destino
+                </span>
+              )}
+              {observability.providerNotConfiguredCount === 0 && observability.missingDestinationCount === 0 && (
+                <span className="text-emerald-600 font-bold">100% normal</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white border border-slate-200 rounded-xl p-4">
         <div className="relative max-w-md">

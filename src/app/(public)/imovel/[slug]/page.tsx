@@ -7,6 +7,7 @@ import {
   getPropertyOffers,
   getSimilarProperties,
 } from "@/features/properties/services";
+import { resolveRepresentativeOffer } from "@/features/offers/services/representative-offer.service";
 import {
   buildPropertyMetaTitle,
   buildPropertyMetaDescription,
@@ -18,7 +19,7 @@ import {
   PropertyGallery,
   PropertyHeader,
   PropertyPricing,
-  PropertyOffersList,
+  RepresentativeOfferHero,
   PropertySpecs,
   PropertyDescription,
   PropertyFeaturesList,
@@ -39,8 +40,9 @@ export const revalidate = 120;
 /**
  * GERAÇÃO DE METADATA DINÂMICA E CANONICAL (Seções 4, 16, 17 e 20)
  */
-export async function generateMetadata({ params }: PropertyPageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PropertyPageProps): Promise<Metadata> {
   const { slug } = await params;
+  const sParams = searchParams ? await searchParams : {};
   let property = await getPropertyBySlug(slug);
 
   if (!property || property.status !== "active") {
@@ -62,14 +64,21 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
   const canonicalUrl = `${siteUrl}/imovel/${property.slug}`;
   const coverImage = property.media?.find((m) => m.isCover)?.url || property.media?.[0]?.url || `${siteUrl}/images/og-uppa.jpg`;
 
-  const offersCount = property.activeOffersCount ?? 1;
-  const lowestPrice = property.lowestSalePrice || property.lowestRentPrice || property.price || property.rentPrice;
+  const representativeOffer = await resolveRepresentativeOffer(property.id, {
+    preferredOfferId: sParams.offer,
+    preferredAgencySlug: sParams.agency,
+  });
+
+  const repPrice = property.transactionType === "rent"
+    ? representativeOffer?.rentPrice ?? property.rentPrice
+    : representativeOffer?.salePrice ?? property.price;
+  const repAgencyName = representativeOffer?.agency?.name ?? property.agency?.name;
 
   const title = buildPropertyMetaTitle(property);
-  const description = buildPropertyMetaDescription(property, offersCount, lowestPrice);
+  const description = buildPropertyMetaDescription(property, property.activeOffersCount ?? 1, repPrice, repAgencyName);
 
   // Se o imóvel não tiver ofertas ativas no momento, mantemos noindex, follow
-  const hasActiveOffers = offersCount > 0;
+  const hasActiveOffers = (property.activeOffersCount ?? 0) > 0;
 
   return {
     title,
@@ -140,14 +149,17 @@ export default async function PropertyPage({ params, searchParams }: PropertyPag
     notFound();
   }
 
-  // Carrega todas as ofertas ativas deste imóvel físico
-  const offers = await getPropertyOffers(property.id);
+  // Resolve a oferta comercial representativa desta jornada (Seções 1, 2, 7, 11 e 12)
+  const representativeOffer = await resolveRepresentativeOffer(property.id, {
+    preferredOfferId: sParams.offer,
+    preferredAgencySlug: sParams.agency,
+  });
 
-  // Schema Estruturado JSON-LD adaptado para Property x Offer (RealEstateListing + BreadcrumbList)
+  // Schema Estruturado JSON-LD adaptado para Property x Representative Offer (Seção 18)
   const siteUrl = SEO_INDEXABILITY_CONFIG.SITE_URL;
-  const jsonLd = buildPropertyStructuredData(property, offers, siteUrl);
+  const jsonLd = buildPropertyStructuredData(property, representativeOffer, siteUrl);
 
-  const hasNoOffers = offers.length === 0 || property.activeOffersCount === 0;
+  const hasNoOffers = !representativeOffer || property.activeOffersCount === 0;
 
   return (
     <main className="min-h-screen bg-slate-50/50 dark:bg-slate-950 pb-24 md:pb-16 pt-4">
@@ -158,7 +170,7 @@ export default async function PropertyPage({ params, searchParams }: PropertyPag
       />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
-        {/* AVISO QUANDO O IMÓVEL NÃO POSSUI OFERTAS ATIVAS NO MOMENTO (SEÇÃO 17) */}
+        {/* AVISO QUANDO O IMÓVEL NÃO POSSUI OFERTAS ATIVAS NO MOMENTO (SEÇÃO 15) */}
         {hasNoOffers && (
           <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
@@ -187,17 +199,13 @@ export default async function PropertyPage({ params, searchParams }: PropertyPag
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Coluna Esquerda: Dados do Imóvel */}
           <div className="lg:col-span-8 space-y-8">
-            {/* Preços e Encargos */}
-            <PropertyPricing property={property} />
-
-            {/* Ofertas comerciais legítimas disponíveis por imobiliária anunciante */}
-            <PropertyOffersList
-              propertyId={property.id}
-              propertyTitle={property.title}
-              offers={offers}
-              highlightOfferId={sParams.offer}
-              highlightAgencySlug={sParams.agency}
-            />
+            {/* Oferta comercial representativa selecionada com formulário de interesse (Seções 1, 2, 5 e 31) */}
+            {representativeOffer && (
+              <RepresentativeOfferHero
+                property={property}
+                offer={representativeOffer}
+              />
+            )}
 
             {/* Especificações Físicas (Áreas, Quartos, Vagas) */}
             <PropertySpecs property={property} />
@@ -220,7 +228,9 @@ export default async function PropertyPage({ params, searchParams }: PropertyPag
             <div className="h-px bg-slate-200 dark:bg-slate-800" />
 
             {/* Perfil da Imobiliária Anunciante */}
-            {property.agency && <PropertyAgencyCard agency={property.agency} />}
+            {(representativeOffer?.agency || property.agency) && (
+              <PropertyAgencyCard agency={(representativeOffer?.agency || property.agency) as any} />
+            )}
 
             <div className="h-px bg-slate-200 dark:bg-slate-800" />
 
@@ -251,7 +261,7 @@ export default async function PropertyPage({ params, searchParams }: PropertyPag
           {/* Coluna Direita: Sidebar Sticky com CTA de WhatsApp */}
           {!hasNoOffers && (
             <div className="hidden lg:block lg:col-span-4">
-              <PropertyStickyCTA property={property} />
+              <PropertyStickyCTA property={property} representativeOffer={representativeOffer} />
             </div>
           )}
         </div>
@@ -260,7 +270,7 @@ export default async function PropertyPage({ params, searchParams }: PropertyPag
       {/* Barra Fixa Inferior Mobile */}
       {!hasNoOffers && (
         <div className="lg:hidden">
-          <PropertyStickyCTA property={property} />
+          <PropertyStickyCTA property={property} representativeOffer={representativeOffer} />
         </div>
       )}
     </main>

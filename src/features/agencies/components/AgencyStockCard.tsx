@@ -71,11 +71,14 @@ export function AgencyStockCard({ item, agency }: AgencyStockCardProps) {
       cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`
     }?text=${msg}`;
 
-    // Registra lead de forma segura vinculado estritamente a esta agência e oferta (Seção 18)
+    // Registra lead de forma segura vinculado estritamente a esta agência e oferta (Seções 22 e 25)
     trackWhatsAppLeadAction({
       propertyId: item.propertyId,
       offerId: item.offerId,
       agencyId: agency.id,
+      snapshotPrice: item.offerPrice ?? item.offerRentPrice ?? null,
+      snapshotTitle: item.propertyTitle,
+      snapshotAgencyName: agency.name,
       message: `Contato via vitrine pública da imobiliária ${agency.name}`,
     }).catch(console.warn);
 

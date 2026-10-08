@@ -105,7 +105,12 @@ export function PropertyStickyCTA({ property, representativeOffer }: PropertySti
 
     const trackPromise = trackWhatsAppLeadAction({
       propertyId: property.id,
-      agencyId: property.agencyId,
+      offerId: targetOfferId,
+      agencyId: targetAgencyId,
+      brokerId: representativeOffer?.brokerId || null,
+      snapshotPrice: primaryPrice,
+      snapshotTitle: property.title,
+      snapshotAgencyName: targetAgencyName,
       message: messageText,
       utmSource,
       utmMedium,
@@ -147,11 +152,16 @@ export function PropertyStickyCTA({ property, representativeOffer }: PropertySti
     try {
       const res = await submitLeadFormAction({
         propertyId: property.id,
-        agencyId: property.agencyId,
+        offerId: targetOfferId,
+        agencyId: targetAgencyId,
+        brokerId: representativeOffer?.brokerId || null,
         name: formName,
         phone: formPhone,
         email: formEmail || undefined,
         message: formMessage,
+        snapshotPrice: primaryPrice,
+        snapshotTitle: property.title,
+        snapshotAgencyName: targetAgencyName,
         utmSource,
         utmMedium,
         utmCampaign,
@@ -199,10 +209,10 @@ export function PropertyStickyCTA({ property, representativeOffer }: PropertySti
         {/* Resumo da Imobiliária Anunciante */}
         <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
           <div className="h-11 w-11 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
-            {property.agency?.logoUrl ? (
+            {agency?.logoUrl ? (
               <img
-                src={property.agency.logoUrl}
-                alt={property.agency.name}
+                src={agency.logoUrl}
+                alt={targetAgencyName}
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -211,13 +221,13 @@ export function PropertyStickyCTA({ property, representativeOffer }: PropertySti
           </div>
           <div className="min-w-0 flex-1">
             <Link
-              href={property.agency?.slug ? `/imobiliaria/${property.agency.slug}` : "#"}
+              href={agency?.slug ? `/imobiliaria/${agency.slug}` : "#"}
               className="text-xs font-bold text-slate-900 dark:text-white block truncate hover:text-indigo-600 transition-colors"
             >
-              {property.agency?.name || "Imobiliária Parceira"}
+              {targetAgencyName}
             </Link>
             <span className="text-[11px] text-slate-400 block">
-              {property.agency?.creci ? `CRECI: ${property.agency.creci}` : "Credenciada UPPA"}
+              {agency?.creci ? `CRECI: ${agency.creci}` : "Credenciada UPPA"}
             </span>
           </div>
         </div>

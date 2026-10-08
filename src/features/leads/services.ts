@@ -74,20 +74,42 @@ export async function recordWhatsAppLead(input: CreateWhatsAppLeadInput): Promis
   const nowIso = new Date().toISOString();
 
   // Deduplicação curta anti-spam (Seção 33): evita cliques acidentais repetidos dentro de 5 minutos
+  // Regra: mesma sessão + mesma offer + mesma agency + canal whatsapp + 5 min
   if (input.sessionId) {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const { data: existing } = await supabase
+    let query = supabase
       .from("leads")
-      .select("id, created_at")
+      .select("id, property_id, offer_id, agency_id, broker_id, source, status, snapshot_price, snapshot_title, snapshot_source, snapshot_agency_name, snapshot_broker_name, created_at")
       .eq("agency_id", input.agencyId)
       .eq("session_id", input.sessionId)
       .eq("source", "whatsapp")
-      .gte("created_at", fiveMinutesAgo)
-      .limit(1)
-      .maybeSingle();
+      .gte("created_at", fiveMinutesAgo);
+
+    if (input.offerId) {
+      query = query.eq("offer_id", input.offerId);
+    } else if (input.propertyId) {
+      query = query.eq("property_id", input.propertyId);
+    }
+
+    const { data: existingList } = await query.limit(1);
+    const existing = existingList?.[0];
 
     if (existing) {
-      return existing as any;
+      return {
+        id: existing.id,
+        propertyId: existing.property_id,
+        offerId: existing.offer_id,
+        agencyId: existing.agency_id,
+        brokerId: existing.broker_id,
+        source: existing.source,
+        status: (existing.status as LeadStatus) || "new",
+        snapshotPrice: existing.snapshot_price,
+        snapshotTitle: existing.snapshot_title,
+        snapshotSource: existing.snapshot_source,
+        snapshotAgencyName: existing.snapshot_agency_name,
+        snapshotBrokerName: existing.snapshot_broker_name,
+        createdAt: existing.created_at,
+      };
     }
   }
 
@@ -162,10 +184,10 @@ export async function recordWhatsAppLead(input: CreateWhatsAppLeadInput): Promis
     channel: "whatsapp",
     destination: destination.destinationPhone || "Nenhum telefone registrado",
     provider: "wa.me_direct",
-    status: destination.destinationPhone ? "delivered" : "missing_destination",
+    status: destination.destinationPhone ? "pending" : "missing_destination",
     attempt_number: 1,
     attempted_at: nowIso,
-    delivered_at: destination.destinationPhone ? nowIso : null,
+    delivered_at: null, // Não marcar como delivered pois a UPPA não controla entrega via API no modelo wa.me (Seção 30)
   });
 
   return {
@@ -197,21 +219,53 @@ export async function recordFormLead(input: CreateFormLeadInput): Promise<Lead> 
   const supabase = await createClient();
   const nowIso = new Date().toISOString();
 
-  // Deduplicação anti-spam (Seção 33): mesmo telefone + offer + agency nos últimos 15 minutos
+  // Deduplicação anti-spam (Seção 33):
+  // Regra estrita: mesma pessoa (telefone/e-mail) + mesma offer + mesma agency + canal 'form' dentro da janela de 15 minutos.
+  // Se for outra offer ou outra agency, é um NOVO LEAD LEGÍTIMO.
   const cleanPhone = input.phone.trim().replace(/\D/g, "");
   const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
-  const { data: duplicate } = await supabase
+  let dedupQuery = supabase
     .from("leads")
-    .select("id, created_at")
+    .select("id, property_id, offer_id, agency_id, broker_id, name, phone, email, source, status, snapshot_price, snapshot_title, snapshot_source, snapshot_agency_name, snapshot_broker_name, created_at")
     .eq("agency_id", input.agencyId)
-    .eq("phone", input.phone.trim())
-    .gte("created_at", fifteenMinAgo)
-    .limit(1)
-    .maybeSingle();
+    .eq("source", "form")
+    .gte("created_at", fifteenMinAgo);
+
+  if (input.offerId) {
+    dedupQuery = dedupQuery.eq("offer_id", input.offerId);
+  } else if (input.propertyId) {
+    dedupQuery = dedupQuery.eq("property_id", input.propertyId);
+  }
+
+  if (cleanPhone) {
+    dedupQuery = dedupQuery.or(`phone.eq.${input.phone.trim()},phone.eq.${cleanPhone}`);
+  } else if (input.email) {
+    dedupQuery = dedupQuery.eq("email", input.email.trim().toLowerCase());
+  }
+
+  const { data: duplicates } = await dedupQuery.limit(1);
+  const duplicate = duplicates?.[0];
 
   if (duplicate) {
-    return duplicate as any;
+    return {
+      id: duplicate.id,
+      propertyId: duplicate.property_id,
+      offerId: duplicate.offer_id,
+      agencyId: duplicate.agency_id,
+      brokerId: duplicate.broker_id,
+      name: duplicate.name,
+      phone: duplicate.phone,
+      email: duplicate.email,
+      source: duplicate.source,
+      status: (duplicate.status as LeadStatus) || "new",
+      snapshotPrice: duplicate.snapshot_price,
+      snapshotTitle: duplicate.snapshot_title,
+      snapshotSource: duplicate.snapshot_source,
+      snapshotAgencyName: duplicate.snapshot_agency_name,
+      snapshotBrokerName: duplicate.snapshot_broker_name,
+      createdAt: duplicate.created_at,
+    };
   }
 
   // Resolução de snapshot da oferta
@@ -696,7 +750,9 @@ export async function getAdminLeadsObservability(): Promise<{
 }
 
 /**
- * Processador em lote para retentativas de entrega com backoff e proteção de idempotência (Seções 41, 42 e 43)
+ * Processador em lote para retentativas de entrega com backoff e proteção de concorrência/idempotência (Seções 41, 42 e 43)
+ * Utiliza claim atômico via RPC (FOR UPDATE SKIP LOCKED) quando disponível no banco de dados
+ * e bloqueio otimista atômico via Compare-And-Swap (CAS) para eliminar processamento duplicado entre workers concorrentes.
  */
 export async function processPendingLeadDeliveriesBatch(batchSize = 20): Promise<{
   processed: number;
@@ -705,28 +761,43 @@ export async function processPendingLeadDeliveriesBatch(batchSize = 20): Promise
   const supabase = createAdminClient();
   const now = new Date().toISOString();
 
-  // Busca tentativas pendentes ou falhas prontas para retry
-  const { data: pendingAttempts, error } = await supabase
-    .from("lead_delivery_attempts" as any)
-    .select("*")
-    .eq("status", "failed")
-    .lte("next_retry_at", now)
-    .lt("attempt_number", 3)
-    .limit(batchSize);
+  // 1. Tenta claim atômico nativo PostgreSQL com FOR UPDATE SKIP LOCKED via RPC
+  let attemptsToProcess: any[] = [];
+  const { data: rpcClaimed, error: rpcError } = await supabase.rpc(
+    "claim_lead_delivery_attempts",
+    { p_batch_size: batchSize }
+  );
 
-  if (error || !pendingAttempts || pendingAttempts.length === 0) {
-    return { processed: 0, retried: 0 };
+  if (!rpcError && Array.isArray(rpcClaimed) && rpcClaimed.length > 0) {
+    attemptsToProcess = rpcClaimed;
+  } else {
+    // 2. Fallback: seleção das tentativas elegíveis para retry
+    const { data: pendingAttempts, error } = await supabase
+      .from("lead_delivery_attempts" as any)
+      .select("*")
+      .eq("status", "failed")
+      .lte("next_retry_at", now)
+      .lt("attempt_number", 3)
+      .order("next_retry_at", { ascending: true })
+      .limit(batchSize);
+
+    if (error || !pendingAttempts || pendingAttempts.length === 0) {
+      return { processed: 0, retried: 0 };
+    }
+    attemptsToProcess = pendingAttempts;
   }
 
   let retried = 0;
 
-  for (const attempt of pendingAttempts as any[]) {
+  for (const attempt of attemptsToProcess) {
     const nextAttemptNumber = attempt.attempt_number + 1;
     const nextDelayMs = RETRY_DELAYS_MS[Math.min(nextAttemptNumber - 1, RETRY_DELAYS_MS.length - 1)];
     const nextRetryAt = new Date(Date.now() + nextDelayMs).toISOString();
 
-    // Idempotência: marca tentativa com timestamp
-    await supabase
+    // Idempotência e Concorrência Atômica via Compare-And-Swap (CAS):
+    // Só atualiza a linha se o attempt_number atual no banco for exatamente o que lemos.
+    // Se outro worker já tiver alterado a linha simultaneamente, afeta 0 registros e não duplica envio.
+    const { data: updatedRows, error: updateError } = await supabase
       .from("lead_delivery_attempts" as any)
       .update({
         attempt_number: nextAttemptNumber,
@@ -734,10 +805,15 @@ export async function processPendingLeadDeliveriesBatch(batchSize = 20): Promise
         next_retry_at: nextAttemptNumber < 3 ? nextRetryAt : null,
         updated_at: now,
       })
-      .eq("id", attempt.id);
+      .eq("id", attempt.id)
+      .eq("attempt_number", attempt.attempt_number)
+      .select("id");
 
-    retried++;
+    if (!updateError && updatedRows && updatedRows.length > 0) {
+      retried++;
+    }
   }
 
-  return { processed: pendingAttempts.length, retried };
+  return { processed: attemptsToProcess.length, retried };
 }
+
