@@ -68,6 +68,8 @@ function parseSearchParams(params: Record<string, string | string[] | undefined>
     furnished: getSingle(params.furnished) === "true" ? true : undefined,
     acceptsExchange: getSingle(params.acceptsExchange) === "true" ? true : undefined,
     page: getSingle(params.page) ? Number(getSingle(params.page)) : 1,
+    limit: getSingle(params.limit) ? Number(getSingle(params.limit)) : SEARCH_BATCH_SIZE,
+    cursor: getSingle(params.cursor),
     orderBy: getSingle(params.orderBy) as any,
     bbox,
   };

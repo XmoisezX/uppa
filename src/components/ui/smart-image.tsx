@@ -13,6 +13,7 @@ interface SmartImageProps {
   sizes?: string;
   className?: string;
   fallbackIconClassName?: string;
+  onError?: () => void;
 }
 
 /**
@@ -29,9 +30,15 @@ export function SmartImage({
   sizes = "(max-width: 640px) 100vw, (max-width: 1024px) 380px, 440px",
   className = "object-cover",
   fallbackIconClassName = "h-8 w-8 text-slate-400 stroke-[1.5]",
+  onError,
 }: SmartImageProps) {
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const handleError = () => {
+    setHasError(true);
+    onError?.();
+  };
 
   if (!src || hasError) {
     return (
@@ -66,7 +73,7 @@ export function SmartImage({
           priority={priority}
           sizes={sizes}
           onLoad={() => setIsLoaded(true)}
-          onError={() => setHasError(true)}
+          onError={handleError}
           className={`${className} transition-opacity duration-300 ${
             isLoaded ? "opacity-100" : "opacity-0"
           }`}
@@ -78,7 +85,7 @@ export function SmartImage({
           loading={priority ? "eager" : "lazy"}
           decoding="async"
           onLoad={() => setIsLoaded(true)}
-          onError={() => setHasError(true)}
+          onError={handleError}
           className={`absolute inset-0 h-full w-full ${className} transition-opacity duration-300 ${
             isLoaded ? "opacity-100" : "opacity-0"
           }`}
